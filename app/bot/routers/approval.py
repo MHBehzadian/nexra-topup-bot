@@ -1,0 +1,145 @@
+"""Superadmin-facing: approve/reject top-up requests (with a reject reason),
+and message any bot user directly through the bot."""
+
+from __future__ import annotations
+
+from aiogram import Bot, F, Router
+from aiogram.filters import BaseFilter
+from aiogram.fsm.context import FSMContext
+from aiogram.types import CallbackQuery, Message
+
+from .. import texts
+from ..states import MessageUser, RejectReason
+from ... import db
+from ...config import settings
+from ...services.nexra_panel import NexraPanelError, nexra_panel
+from ...units import bytes_to_gb
+
+router = Router(name="approval")
+
+
+class SuperadminFilter(BaseFilter):
+    async def __call__(self, event: Message | CallbackQuery) -> bool:
+        user = event.from_user
+        return user is not None and user.id in settings.superadmin_id_list
+
+
+router.message.filter(SuperadminFilter())
+router.callback_query.filter(SuperadminFilter())
+
+
+# ---- approve ----------------------------------------------------------------
+
+@router.callback_query(F.data.startswith("topup_approve:"))
+async def approve(call: CallbackQuery, bot: Bot) -> None:
+    request_id = int(call.data.split(":")[1])
+    req = db.get_request(request_id)
+    if req is None:
+        await call.answer(texts.NOT_FOUND, show_alert=True)
+        return
+    if not db.mark_reviewed(request_id, status="approved", reviewed_by=call.from_user.id):
+        await call.answer(texts.ALREADY_HANDLED, show_alert=True)
+        return
+
+    try:
+        result = await nexra_panel.topup(req.admin_telegram_id, req.requested_gb)
+    except NexraPanelError as exc:
+        db.revert_to_pending(request_id)
+        await call.answer(f"{texts.PANEL_ERROR_TOAST} ({exc})", show_alert=True)
+        return
+
+    new_balance_gb = bytes_to_gb(result.get("new_traffic_bytes"))
+    try:
+        await bot.send_message(
+            req.admin_telegram_id,
+            texts.REQUEST_APPROVED_ADMIN.format(
+                added_gb=req.requested_gb, new_balance_gb=new_balance_gb
+            ),
+        )
+    except Exception:
+        pass
+
+    await call.answer(texts.APPROVED_TOAST)
+    await call.message.edit_reply_markup(reply_markup=None)
+
+
+# ---- reject (asks for a reason first) ----------------------------------------
+
+@router.callback_query(F.data.startswith("topup_reject:"))
+async def start_reject(call: CallbackQuery, state: FSMContext) -> None:
+    request_id = int(call.data.split(":")[1])
+    req = db.get_request(request_id)
+    if req is None:
+        await call.answer(texts.NOT_FOUND, show_alert=True)
+        return
+    if req.status != "pending":
+        await call.answer(texts.ALREADY_HANDLED, show_alert=True)
+        return
+
+    await state.set_state(RejectReason.reason)
+    await state.update_data(
+        request_id=request_id,
+        origin_chat_id=call.message.chat.id,
+        origin_message_id=call.message.message_id,
+    )
+    await call.answer()
+    await call.message.answer(texts.ASK_REJECT_REASON)
+
+
+@router.message(RejectReason.reason)
+async def finish_reject(message: Message, state: FSMContext, bot: Bot) -> None:
+    data = await state.get_data()
+    await state.clear()
+    request_id = data["request_id"]
+    raw_reason = (message.text or "").strip()
+    reason = None if raw_reason == "-" else raw_reason
+
+    if not db.mark_reviewed(
+        request_id, status="rejected", reviewed_by=message.from_user.id, reason=reason
+    ):
+        await message.answer(texts.ALREADY_HANDLED)
+        return
+
+    req = db.get_request(request_id)
+    try:
+        text = (
+            texts.REQUEST_REJECTED_ADMIN_WITH_REASON.format(reason=reason)
+            if reason
+            else texts.REQUEST_REJECTED_ADMIN
+        )
+        await bot.send_message(req.admin_telegram_id, text)
+    except Exception:
+        pass
+
+    await message.answer(texts.REJECTED_TOAST)
+    try:
+        await bot.edit_message_reply_markup(
+            chat_id=data["origin_chat_id"],
+            message_id=data["origin_message_id"],
+            reply_markup=None,
+        )
+    except Exception:
+        pass
+
+
+# ---- message any bot user ----------------------------------------------------
+
+@router.callback_query(F.data.startswith("msg_user:"))
+async def start_message_user(call: CallbackQuery, state: FSMContext) -> None:
+    target_id = int(call.data.split(":")[1])
+    await state.set_state(MessageUser.text)
+    await state.update_data(target_telegram_id=target_id)
+    await call.answer()
+    await call.message.answer(texts.ASK_MESSAGE_TEXT)
+
+
+@router.message(MessageUser.text)
+async def finish_message_user(message: Message, state: FSMContext, bot: Bot) -> None:
+    data = await state.get_data()
+    await state.clear()
+    target_id = data["target_telegram_id"]
+    try:
+        await bot.send_message(target_id, texts.INCOMING_MESSAGE_PREFIX + (message.text or ""))
+        await message.answer(texts.MESSAGE_SENT)
+    except Exception:
+        await message.answer(texts.MESSAGE_FAILED)

@@ -131,6 +131,14 @@ def revert_to_pending(request_id: int) -> None:
         )
 
 
+def user_exists(telegram_id: int) -> bool:
+    with _connect() as conn:
+        row = conn.execute(
+            "SELECT 1 FROM bot_users WHERE telegram_id = ?", (telegram_id,)
+        ).fetchone()
+        return row is not None
+
+
 def upsert_user(telegram_id: int, username: str | None, full_name: str | None) -> None:
     """Record/refresh a bot user's info — needed so a superadmin can message them later."""
     now = datetime.now(timezone.utc).isoformat()
@@ -146,3 +154,11 @@ def upsert_user(telegram_id: int, username: str | None, full_name: str | None) -
             """,
             (telegram_id, username, full_name, now, now),
         )
+
+
+def list_pending_requests() -> list[TopupRequest]:
+    with _connect() as conn:
+        rows = conn.execute(
+            "SELECT * FROM topup_requests WHERE status = 'pending' ORDER BY created_at"
+        ).fetchall()
+        return [TopupRequest(**dict(row)) for row in rows]

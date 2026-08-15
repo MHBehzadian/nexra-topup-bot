@@ -21,6 +21,13 @@ def unlinked_menu_kb() -> ReplyKeyboardMarkup:
     return kb.as_markup(resize_keyboard=True)
 
 
+def superadmin_menu_kb() -> ReplyKeyboardMarkup:
+    kb = ReplyKeyboardBuilder()
+    kb.button(text=texts.BTN_PENDING_REQUESTS)
+    kb.adjust(1)
+    return kb.as_markup(resize_keyboard=True)
+
+
 def approval_kb(request_id: int, admin_telegram_id: int) -> InlineKeyboardMarkup:
     kb = InlineKeyboardBuilder()
     kb.button(text="✅ تأیید", callback_data=f"topup_approve:{request_id}")

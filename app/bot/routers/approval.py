@@ -6,9 +6,9 @@ from __future__ import annotations
 from aiogram import Bot, F, Router
 from aiogram.filters import BaseFilter
 from aiogram.fsm.context import FSMContext
-from aiogram.types import CallbackQuery, Message
+from aiogram.types import CallbackQuery, FSInputFile, Message
 
-from .. import texts
+from .. import keyboards, texts
 from ..states import MessageUser, RejectReason
 from ... import db
 from ...config import settings
@@ -26,6 +26,30 @@ class SuperadminFilter(BaseFilter):
 
 router.message.filter(SuperadminFilter())
 router.callback_query.filter(SuperadminFilter())
+
+
+# ---- on-demand list of pending requests --------------------------------------
+
+@router.message(F.text == texts.BTN_PENDING_REQUESTS)
+async def list_pending(message: Message) -> None:
+    pending = db.list_pending_requests()
+    if not pending:
+        await message.answer(texts.NO_PENDING_REQUESTS)
+        return
+    for req in pending:
+        caption = (
+            f"درخواست شارژ حجم #{req.id}\n"
+            f"ادمین: {req.admin_username} (telegram_id: {req.admin_telegram_id})\n"
+            f"حجم درخواستی: {req.requested_gb:g} گیگابایت\n"
+            f"مبلغ واریزی: {req.toman_amount:,} تومان"
+        )
+        markup = keyboards.approval_kb(req.id, req.admin_telegram_id)
+        try:
+            await message.answer_photo(
+                photo=FSInputFile(req.receipt_path), caption=caption, reply_markup=markup
+            )
+        except Exception:
+            await message.answer(caption + "\n(⚠️ فایل رسید در دسترس نیست)", reply_markup=markup)
 
 
 # ---- approve ----------------------------------------------------------------

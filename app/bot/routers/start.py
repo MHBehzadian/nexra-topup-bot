@@ -1,4 +1,5 @@
-"""/start: linkage check, main menu, and a heads-up to every superadmin."""
+"""/start: superadmin menu, linkage check, main menu, and a one-time heads-up
+to every superadmin the first time a given Telegram user ever starts the bot."""
 
 from __future__ import annotations
 
@@ -15,7 +16,7 @@ from ...units import bytes_to_gb
 router = Router(name="start")
 
 
-async def _notify_superadmins_of_start(bot: Bot, message: Message, admin: dict | None) -> None:
+async def _notify_superadmins_of_new_user(bot: Bot, message: Message, admin: dict | None) -> None:
     user = message.from_user
     username = f"@{user.username}" if user.username else "—"
     if admin:
@@ -40,9 +41,16 @@ async def _notify_superadmins_of_start(bot: Bot, message: Message, admin: dict |
 
 @router.message(CommandStart())
 async def start(message: Message, bot: Bot) -> None:
+    is_new_user = not db.user_exists(message.from_user.id)
     db.upsert_user(message.from_user.id, message.from_user.username, message.from_user.full_name)
+
+    if message.from_user.id in settings.superadmin_id_list:
+        await message.answer(texts.SUPERADMIN_WELCOME, reply_markup=keyboards.superadmin_menu_kb())
+        return
+
     admin = await nexra_panel.get_admin(message.from_user.id)
-    await _notify_superadmins_of_start(bot, message, admin)
+    if is_new_user:
+        await _notify_superadmins_of_new_user(bot, message, admin)
 
     if admin is None:
         await message.answer(

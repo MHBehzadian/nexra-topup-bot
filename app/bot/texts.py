@@ -1,6 +1,10 @@
 """User-facing strings (formal Persian)."""
 
-START_LINKED = "با سلام {username} عزیز 👋\nموجودی فعلی حجم شما: {balance_gb:.2f} گیگابایت است."
+START_LINKED = (
+    "با سلام {username} عزیز 👋\n"
+    "موجودی حجم شما: {remaining_gb:.2f} / {initial_gb:.2f} گیگابایت (باقی‌مانده / کل اعتبار)"
+)
+BALANCE_TEXT = "موجودی حجم شما: {remaining_gb:.2f} / {initial_gb:.2f} گیگابایت (باقی‌مانده / کل اعتبار)"
 START_UNLINKED = (
     "با سلام. برای فعال‌سازی حساب شما در این ربات، لازم است آیدی عددی تلگرام شما در پنل ثبت شود.\n\n"
     "آیدی عددی شما: <code>{telegram_id}</code>\n\n"

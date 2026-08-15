@@ -59,9 +59,12 @@ async def start(message: Message, bot: Bot) -> None:
         )
         return
 
-    balance_gb = bytes_to_gb(admin.get("traffic"))
     await message.answer(
-        texts.START_LINKED.format(username=admin["username"], balance_gb=balance_gb),
+        texts.START_LINKED.format(
+            username=admin["username"],
+            remaining_gb=bytes_to_gb(admin.get("traffic")),
+            initial_gb=bytes_to_gb(admin.get("initial_traffic")),
+        ),
         reply_markup=keyboards.main_menu_kb(),
     )
 
@@ -72,8 +75,12 @@ async def check_balance(message: Message) -> None:
     if admin is None:
         await message.answer(texts.NOT_LINKED_RETRY)
         return
-    balance_gb = bytes_to_gb(admin.get("traffic"))
-    await message.answer(f"موجودی فعلی: {balance_gb:.2f} گیگابایت")
+    await message.answer(
+        texts.BALANCE_TEXT.format(
+            remaining_gb=bytes_to_gb(admin.get("traffic")),
+            initial_gb=bytes_to_gb(admin.get("initial_traffic")),
+        )
+    )
 
 
 @router.message(F.text == texts.BTN_CREATE_PANEL)

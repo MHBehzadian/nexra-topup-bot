@@ -5,7 +5,7 @@ from aiogram.fsm.state import State, StatesGroup
 
 class TopUp(StatesGroup):
     amount_gb = State()
-    toman_amount = State()
+    awaiting_payment = State()
     receipt = State()
 
 
@@ -19,3 +19,11 @@ class MessageUser(StatesGroup):
 
 class ChangePassword(StatesGroup):
     new_password = State()
+
+
+class SetPricePerGb(StatesGroup):
+    value = State()
+
+
+class SetCardNumber(StatesGroup):
+    value = State()

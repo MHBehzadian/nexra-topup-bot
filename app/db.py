@@ -55,6 +55,14 @@ def init_db() -> None:
             )
             """
         )
+        conn.execute(
+            """
+            CREATE TABLE IF NOT EXISTS bot_settings (
+                key TEXT PRIMARY KEY,
+                value TEXT NOT NULL
+            )
+            """
+        )
 
 
 @dataclass
@@ -162,3 +170,20 @@ def list_pending_requests() -> list[TopupRequest]:
             "SELECT * FROM topup_requests WHERE status = 'pending' ORDER BY created_at"
         ).fetchall()
         return [TopupRequest(**dict(row)) for row in rows]
+
+
+def get_setting(key: str) -> str | None:
+    with _connect() as conn:
+        row = conn.execute("SELECT value FROM bot_settings WHERE key = ?", (key,)).fetchone()
+        return row["value"] if row else None
+
+
+def set_setting(key: str, value: str) -> None:
+    with _connect() as conn:
+        conn.execute(
+            """
+            INSERT INTO bot_settings (key, value) VALUES (?, ?)
+            ON CONFLICT(key) DO UPDATE SET value = excluded.value
+            """,
+            (key, value),
+        )

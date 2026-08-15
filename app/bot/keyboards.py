@@ -24,8 +24,22 @@ def unlinked_menu_kb() -> ReplyKeyboardMarkup:
 def superadmin_menu_kb() -> ReplyKeyboardMarkup:
     kb = ReplyKeyboardBuilder()
     kb.button(text=texts.BTN_PENDING_REQUESTS)
-    kb.adjust(1)
+    kb.button(text=texts.BTN_SET_PRICE)
+    kb.button(text=texts.BTN_SET_CARD)
+    kb.adjust(1, 2)
     return kb.as_markup(resize_keyboard=True)
+
+
+def invoice_kb() -> InlineKeyboardMarkup:
+    kb = InlineKeyboardBuilder()
+    kb.button(text=texts.BTN_PAY, callback_data="topup_pay")
+    return kb.as_markup()
+
+
+def payment_methods_kb() -> InlineKeyboardMarkup:
+    kb = InlineKeyboardBuilder()
+    kb.button(text=texts.BTN_PAY_CARD, callback_data="pay_method:card")
+    return kb.as_markup()
 
 
 def approval_kb(request_id: int, admin_telegram_id: int) -> InlineKeyboardMarkup:

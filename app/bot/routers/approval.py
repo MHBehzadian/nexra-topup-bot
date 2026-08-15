@@ -4,25 +4,17 @@ and message any bot user directly through the bot."""
 from __future__ import annotations
 
 from aiogram import Bot, F, Router
-from aiogram.filters import BaseFilter
 from aiogram.fsm.context import FSMContext
 from aiogram.types import CallbackQuery, FSInputFile, Message
 
 from .. import keyboards, texts
+from ..filters import SuperadminFilter
 from ..states import MessageUser, RejectReason
 from ... import db
-from ...config import settings
 from ...services.nexra_panel import NexraPanelError, nexra_panel
 from ...units import bytes_to_gb
 
 router = Router(name="approval")
-
-
-class SuperadminFilter(BaseFilter):
-    async def __call__(self, event: Message | CallbackQuery) -> bool:
-        user = event.from_user
-        return user is not None and user.id in settings.superadmin_id_list
-
 
 router.message.filter(SuperadminFilter())
 router.callback_query.filter(SuperadminFilter())
@@ -39,9 +31,9 @@ async def list_pending(message: Message) -> None:
     for req in pending:
         caption = (
             f"درخواست شارژ حجم #{req.id}\n"
-            f"ادمین: {req.admin_username} (telegram_id: {req.admin_telegram_id})\n"
+            f"ادمین: {req.admin_username} (آیدی عددی: {req.admin_telegram_id})\n"
             f"حجم درخواستی: {req.requested_gb:g} گیگابایت\n"
-            f"مبلغ واریزی: {req.toman_amount:,} تومان"
+            f"مبلغ: {req.toman_amount:,} تومان"
         )
         markup = keyboards.approval_kb(req.id, req.admin_telegram_id)
         try:

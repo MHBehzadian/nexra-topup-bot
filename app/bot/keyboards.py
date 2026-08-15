@@ -26,8 +26,19 @@ def superadmin_menu_kb() -> ReplyKeyboardMarkup:
     kb.button(text=texts.BTN_PENDING_REQUESTS)
     kb.button(text=texts.BTN_SET_PRICE)
     kb.button(text=texts.BTN_SET_CARD)
-    kb.adjust(1, 2)
+    kb.button(text=texts.BTN_TOGGLE_FORCE_JOIN)
+    kb.button(text=texts.BTN_SET_FORCE_JOIN_CHANNEL)
+    kb.adjust(1, 2, 2)
     return kb.as_markup(resize_keyboard=True)
+
+
+def force_join_kb(channel: str) -> InlineKeyboardMarkup:
+    kb = InlineKeyboardBuilder()
+    handle = channel.lstrip("@")
+    kb.button(text="📢 عضویت در کانال", url=f"https://t.me/{handle}")
+    kb.button(text="✅ عضو شدم", callback_data="fj_check")
+    kb.adjust(1)
+    return kb.as_markup()
 
 
 def invoice_kb() -> InlineKeyboardMarkup:

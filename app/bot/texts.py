@@ -56,6 +56,17 @@ SUPERADMIN_WELCOME = (
 BTN_PENDING_REQUESTS = "📋 درخواست‌های در انتظار"
 NO_PENDING_REQUESTS = "در حال حاضر درخواست شارژ در انتظاری وجود ندارد."
 
+FORCE_JOIN_TEXT = "برای استفاده از ربات، ابتدا در کانال زیر عضو شوید و سپس «✅ عضو شدم» را بزنید."
+FORCE_JOIN_CONFIRMED = "عضویت شما تأیید شد. برای ادامه، دستور /start را ارسال نمایید."
+BTN_TOGGLE_FORCE_JOIN = "🔛 روشن/خاموش‌کردن جوین اجباری"
+BTN_SET_FORCE_JOIN_CHANNEL = "📢 تنظیم کانال جوین اجباری"
+ASK_FORCE_JOIN_CHANNEL = "لطفاً آیدی کانال را وارد نمایید (مثال: @channelusername):"
+INVALID_CHANNEL = "آیدی کانال معتبر نیست؛ باید با @ شروع شود."
+FORCE_JOIN_CHANNEL_SET = "کانال جوین اجباری با موفقیت روی {channel} تنظیم شد."
+FORCE_JOIN_NO_CHANNEL_YET = "ابتدا باید یک کانال برای جوین اجباری تنظیم نمایید."
+FORCE_JOIN_ENABLED_ON = "جوین اجباری فعال شد ✅"
+FORCE_JOIN_ENABLED_OFF = "جوین اجباری غیرفعال شد ⛔"
+
 BTN_SET_PRICE = "💰 تنظیم قیمت هر گیگابایت"
 ASK_PRICE_PER_GB = "لطفاً قیمت هر گیگابایت را به تومان وارد نمایید:"
 INVALID_PRICE = "عدد وارد شده معتبر نیست."

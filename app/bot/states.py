@@ -27,3 +27,7 @@ class SetPricePerGb(StatesGroup):
 
 class SetCardNumber(StatesGroup):
     value = State()
+
+
+class SetForceJoinChannel(StatesGroup):
+    value = State()

@@ -5,7 +5,7 @@ from __future__ import annotations
 
 from aiogram import Bot, F, Router
 from aiogram.filters import CommandStart
-from aiogram.types import Message
+from aiogram.types import CallbackQuery, Message
 
 from .. import keyboards, texts
 from ... import db
@@ -86,3 +86,10 @@ async def check_balance(message: Message) -> None:
 @router.message(F.text == texts.BTN_CREATE_PANEL)
 async def create_panel_stub(message: Message) -> None:
     await message.answer(texts.CREATE_PANEL_SOON)
+
+
+@router.callback_query(F.data == "fj_check")
+async def recheck_join(call: CallbackQuery) -> None:
+    # ForceJoinMiddleware only lets this callback through once membership is
+    # confirmed (or the gate is off), so reaching this handler already means OK.
+    await call.answer(texts.FORCE_JOIN_CONFIRMED, show_alert=True)

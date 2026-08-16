@@ -9,6 +9,7 @@ from aiogram.types import CallbackQuery, FSInputFile, Message
 
 from .. import keyboards, texts
 from ..filters import SuperadminFilter
+from ..nav import ALL_MENU_TEXTS
 from ..states import MessageUser, RejectReason
 from ... import db
 from ...services.nexra_panel import NexraPanelError, nexra_panel
@@ -99,10 +100,10 @@ async def start_reject(call: CallbackQuery, state: FSMContext) -> None:
         origin_message_id=call.message.message_id,
     )
     await call.answer()
-    await call.message.answer(texts.ASK_REJECT_REASON)
+    await call.message.answer(texts.ASK_REJECT_REASON, reply_markup=keyboards.cancel_kb())
 
 
-@router.message(RejectReason.reason)
+@router.message(RejectReason.reason, ~F.text.in_(ALL_MENU_TEXTS))
 async def finish_reject(message: Message, state: FSMContext, bot: Bot) -> None:
     data = await state.get_data()
     await state.clear()
@@ -113,7 +114,7 @@ async def finish_reject(message: Message, state: FSMContext, bot: Bot) -> None:
     if not db.mark_reviewed(
         request_id, status="rejected", reviewed_by=message.from_user.id, reason=reason
     ):
-        await message.answer(texts.ALREADY_HANDLED)
+        await message.answer(texts.ALREADY_HANDLED, reply_markup=keyboards.superadmin_menu_kb())
         return
 
     req = db.get_request(request_id)
@@ -127,7 +128,7 @@ async def finish_reject(message: Message, state: FSMContext, bot: Bot) -> None:
     except Exception:
         pass
 
-    await message.answer(texts.REJECTED_TOAST)
+    await message.answer(texts.REJECTED_TOAST, reply_markup=keyboards.superadmin_menu_kb())
     try:
         await bot.edit_message_reply_markup(
             chat_id=data["origin_chat_id"],
@@ -175,16 +176,16 @@ async def start_message_user(call: CallbackQuery, state: FSMContext) -> None:
     await state.set_state(MessageUser.text)
     await state.update_data(target_telegram_id=target_id)
     await call.answer()
-    await call.message.answer(texts.ASK_MESSAGE_TEXT)
+    await call.message.answer(texts.ASK_MESSAGE_TEXT, reply_markup=keyboards.cancel_kb())
 
 
-@router.message(MessageUser.text)
+@router.message(MessageUser.text, ~F.text.in_(ALL_MENU_TEXTS))
 async def finish_message_user(message: Message, state: FSMContext, bot: Bot) -> None:
     data = await state.get_data()
     await state.clear()
     target_id = data["target_telegram_id"]
     try:
         await bot.send_message(target_id, texts.INCOMING_MESSAGE_PREFIX + (message.text or ""))
-        await message.answer(texts.MESSAGE_SENT)
+        await message.answer(texts.MESSAGE_SENT, reply_markup=keyboards.superadmin_menu_kb())
     except Exception:
-        await message.answer(texts.MESSAGE_FAILED)
+        await message.answer(texts.MESSAGE_FAILED, reply_markup=keyboards.superadmin_menu_kb())

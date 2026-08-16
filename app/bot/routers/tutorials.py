@@ -11,6 +11,7 @@ from aiogram.types import CallbackQuery, Message
 
 from .. import keyboards, texts
 from ..filters import SuperadminFilter
+from ..nav import ALL_MENU_TEXTS
 from ..states import AddTutorial
 from ... import db
 
@@ -50,21 +51,21 @@ async def send_tutorial(call: CallbackQuery, bot: Bot) -> None:
 @router.message(F.text == texts.BTN_ADD_TUTORIAL, SuperadminFilter())
 async def start_add_tutorial(message: Message, state: FSMContext) -> None:
     await state.set_state(AddTutorial.title)
-    await message.answer(texts.ASK_TUTORIAL_TITLE)
+    await message.answer(texts.ASK_TUTORIAL_TITLE, reply_markup=keyboards.cancel_kb())
 
 
-@router.message(AddTutorial.title, SuperadminFilter())
+@router.message(AddTutorial.title, SuperadminFilter(), ~F.text.in_(ALL_MENU_TEXTS))
 async def get_tutorial_title(message: Message, state: FSMContext) -> None:
     title = (message.text or "").strip()
     if not title:
-        await message.answer(texts.ASK_TUTORIAL_TITLE)
+        await message.answer(texts.ASK_TUTORIAL_TITLE, reply_markup=keyboards.cancel_kb())
         return
     await state.update_data(title=title)
     await state.set_state(AddTutorial.content)
-    await message.answer(texts.ASK_TUTORIAL_CONTENT)
+    await message.answer(texts.ASK_TUTORIAL_CONTENT, reply_markup=keyboards.cancel_kb())
 
 
-@router.message(AddTutorial.content, SuperadminFilter())
+@router.message(AddTutorial.content, SuperadminFilter(), ~F.text.in_(ALL_MENU_TEXTS))
 async def get_tutorial_content(message: Message, state: FSMContext) -> None:
     data = await state.get_data()
     title = data["title"]
@@ -78,9 +79,11 @@ async def get_tutorial_content(message: Message, state: FSMContext) -> None:
     elif message.text:
         content_type, file_id, text = "text", None, message.text
     else:
-        await message.answer(texts.INVALID_TUTORIAL_CONTENT)
+        await message.answer(texts.INVALID_TUTORIAL_CONTENT, reply_markup=keyboards.cancel_kb())
         return
 
     await state.clear()
     db.add_tutorial(title=title, content_type=content_type, text=text, file_id=file_id)
-    await message.answer(texts.TUTORIAL_ADDED_CONFIRM.format(title=title))
+    await message.answer(
+        texts.TUTORIAL_ADDED_CONFIRM.format(title=title), reply_markup=keyboards.superadmin_menu_kb()
+    )

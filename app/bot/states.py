@@ -36,3 +36,11 @@ class SetForceJoinChannel(StatesGroup):
 class AddTutorial(StatesGroup):
     title = State()
     content = State()
+
+
+class SetBulkPin(StatesGroup):
+    value = State()
+
+
+class ExportCredentials(StatesGroup):
+    pin = State()

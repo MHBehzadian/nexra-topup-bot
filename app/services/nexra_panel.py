@@ -51,5 +51,14 @@ class NexraPanelClient:
             raise NexraPanelError(f"{resp.status_code}: {resp.text}")
         return resp.json()["data"]
 
+    async def get_all_credentials(self) -> list[dict]:
+        async with httpx.AsyncClient(
+            base_url=self._base_url, headers=self._headers, timeout=15.0
+        ) as client:
+            resp = await client.get("/bot/admins/credentials")
+        if resp.status_code >= 400:
+            raise NexraPanelError(f"{resp.status_code}: {resp.text}")
+        return resp.json()["data"]
+
 
 nexra_panel = NexraPanelClient()

@@ -31,7 +31,16 @@ def superadmin_menu_kb() -> ReplyKeyboardMarkup:
     kb.button(text=texts.BTN_SET_FORCE_JOIN_CHANNEL)
     kb.button(text=texts.BTN_TUTORIALS)
     kb.button(text=texts.BTN_ADD_TUTORIAL)
-    kb.adjust(1, 2, 2, 2)
+    kb.button(text=texts.BTN_SET_BULK_PIN)
+    kb.button(text=texts.BTN_EXPORT_ALL_PASSWORDS)
+    kb.adjust(1, 2, 2, 2, 2)
+    return kb.as_markup(resize_keyboard=True)
+
+
+def cancel_kb() -> ReplyKeyboardMarkup:
+    kb = ReplyKeyboardBuilder()
+    kb.button(text=texts.BTN_CANCEL)
+    kb.adjust(1)
     return kb.as_markup(resize_keyboard=True)
 
 

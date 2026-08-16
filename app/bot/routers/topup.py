@@ -13,6 +13,7 @@ from aiogram.fsm.context import FSMContext
 from aiogram.types import CallbackQuery, FSInputFile, Message
 
 from .. import keyboards, texts
+from ..nav import ALL_MENU_TEXTS
 from ..states import TopUp
 from ... import db
 from ...config import settings
@@ -28,10 +29,10 @@ async def start_topup(message: Message, state: FSMContext) -> None:
         await message.answer(texts.NOT_LINKED_RETRY)
         return
     await state.set_state(TopUp.amount_gb)
-    await message.answer(texts.ASK_AMOUNT_GB)
+    await message.answer(texts.ASK_AMOUNT_GB, reply_markup=keyboards.cancel_kb())
 
 
-@router.message(TopUp.amount_gb)
+@router.message(TopUp.amount_gb, ~F.text.in_(ALL_MENU_TEXTS))
 async def get_amount_gb(message: Message, state: FSMContext) -> None:
     try:
         amount = float((message.text or "").strip().replace(",", "."))
@@ -45,8 +46,8 @@ async def get_amount_gb(message: Message, state: FSMContext) -> None:
 
     price_per_gb_raw = db.get_setting("price_per_gb")
     if not price_per_gb_raw:
-        await message.answer(texts.PRICE_NOT_SET)
         await state.clear()
+        await message.answer(texts.PRICE_NOT_SET, reply_markup=keyboards.main_menu_kb())
         return
 
     total_price = round(amount * float(price_per_gb_raw))
@@ -78,11 +79,12 @@ async def show_card_payment(call: CallbackQuery, state: FSMContext) -> None:
     await call.answer()
     await state.set_state(TopUp.receipt)
     await call.message.answer(
-        texts.CARD_PAYMENT_INSTRUCTIONS.format(price=data["total_price"], card_number=card_number)
+        texts.CARD_PAYMENT_INSTRUCTIONS.format(price=data["total_price"], card_number=card_number),
+        reply_markup=keyboards.cancel_kb(),
     )
 
 
-@router.message(TopUp.receipt)
+@router.message(TopUp.receipt, ~F.text.in_(ALL_MENU_TEXTS))
 async def get_receipt(message: Message, state: FSMContext, bot: Bot) -> None:
     if not message.photo:
         await message.answer(texts.NOT_A_PHOTO)
@@ -93,7 +95,7 @@ async def get_receipt(message: Message, state: FSMContext, bot: Bot) -> None:
 
     admin = await nexra_panel.get_admin(message.from_user.id)
     if admin is None:
-        await message.answer(texts.NOT_LINKED_RETRY)
+        await message.answer(texts.NOT_LINKED_RETRY, reply_markup=keyboards.unlinked_menu_kb())
         return
 
     os.makedirs(settings.media_dir, exist_ok=True)
@@ -109,7 +111,7 @@ async def get_receipt(message: Message, state: FSMContext, bot: Bot) -> None:
         receipt_path=receipt_path,
     )
 
-    await message.answer(texts.REQUEST_SUBMITTED)
+    await message.answer(texts.REQUEST_SUBMITTED, reply_markup=keyboards.main_menu_kb())
 
     caption = (
         f"درخواست شارژ حجم جدید #{request_id}\n"

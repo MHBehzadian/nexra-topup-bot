@@ -5,9 +5,11 @@ from __future__ import annotations
 
 from aiogram import Bot, F, Router
 from aiogram.filters import CommandStart
+from aiogram.fsm.context import FSMContext
 from aiogram.types import CallbackQuery, Message
 
 from .. import keyboards, texts
+from ..nav import cancel_and_show_menu
 from ... import db
 from ...config import settings
 from ...services.nexra_panel import nexra_panel
@@ -86,6 +88,11 @@ async def check_balance(message: Message) -> None:
 @router.message(F.text == texts.BTN_CREATE_PANEL)
 async def create_panel_stub(message: Message) -> None:
     await message.answer(texts.CREATE_PANEL_SOON)
+
+
+@router.message(F.text == texts.BTN_CANCEL)
+async def cancel(message: Message, state: FSMContext) -> None:
+    await cancel_and_show_menu(message, state)
 
 
 @router.callback_query(F.data == "fj_check")

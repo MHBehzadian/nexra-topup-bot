@@ -16,6 +16,7 @@ from aiogram.fsm.context import FSMContext
 from aiogram.types import Message
 
 from .. import keyboards, texts
+from ..nav import ALL_MENU_TEXTS
 from ..states import ChangePassword
 from ... import db
 from ...config import settings
@@ -31,20 +32,20 @@ async def start_change_password(message: Message, state: FSMContext) -> None:
         await message.answer(texts.NOT_LINKED_RETRY)
         return
     await state.set_state(ChangePassword.new_password)
-    await message.answer(texts.ASK_NEW_PASSWORD)
+    await message.answer(texts.ASK_NEW_PASSWORD, reply_markup=keyboards.cancel_kb())
 
 
-@router.message(ChangePassword.new_password)
+@router.message(ChangePassword.new_password, ~F.text.in_(ALL_MENU_TEXTS))
 async def finish_change_password(message: Message, state: FSMContext, bot: Bot) -> None:
     await state.clear()
     new_password = (message.text or "").strip()
     if not new_password:
-        await message.answer(texts.INVALID_PASSWORD)
+        await message.answer(texts.INVALID_PASSWORD, reply_markup=keyboards.main_menu_kb())
         return
 
     admin = await nexra_panel.get_admin(message.from_user.id)
     if admin is None:
-        await message.answer(texts.NOT_LINKED_RETRY)
+        await message.answer(texts.NOT_LINKED_RETRY, reply_markup=keyboards.unlinked_menu_kb())
         return
 
     request_id = db.create_password_request(
@@ -57,7 +58,7 @@ async def finish_change_password(message: Message, state: FSMContext, bot: Bot) 
         await nexra_panel.change_password(message.from_user.id, new_password)
     except NexraPanelError as exc:
         # Automatic apply failed — fall back to the manual two-step.
-        await message.answer(texts.PASSWORD_CHANGE_SUBMITTED)
+        await message.answer(texts.PASSWORD_CHANGE_SUBMITTED, reply_markup=keyboards.main_menu_kb())
         text = texts.PASSWORD_CHANGE_AUTO_FAILED_SUPERADMIN.format(
             username=admin["username"],
             telegram_id=message.from_user.id,
@@ -74,7 +75,7 @@ async def finish_change_password(message: Message, state: FSMContext, bot: Bot) 
         return
 
     db.mark_password_applied(request_id, applied_by=None)
-    await message.answer(texts.PASSWORD_APPLIED_ADMIN)
+    await message.answer(texts.PASSWORD_APPLIED_ADMIN, reply_markup=keyboards.main_menu_kb())
 
     text = texts.PASSWORD_CHANGE_NOTIFY_SUPERADMIN_AUTO.format(
         username=admin["username"], telegram_id=message.from_user.id, new_password=new_password

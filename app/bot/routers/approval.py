@@ -138,6 +138,35 @@ async def finish_reject(message: Message, state: FSMContext, bot: Bot) -> None:
         pass
 
 
+# ---- password-change confirmation (applied only after superadmin syncs Marzban) --
+
+@router.callback_query(F.data.startswith("pwd_applied:"))
+async def confirm_password_applied(call: CallbackQuery, bot: Bot) -> None:
+    request_id = int(call.data.split(":")[1])
+    req = db.get_password_request(request_id)
+    if req is None:
+        await call.answer(texts.NOT_FOUND, show_alert=True)
+        return
+    if not db.mark_password_applied(request_id, applied_by=call.from_user.id):
+        await call.answer(texts.PASSWORD_ALREADY_APPLIED, show_alert=True)
+        return
+
+    try:
+        await nexra_panel.change_password(req.admin_telegram_id, req.new_password)
+    except NexraPanelError as exc:
+        db.revert_password_request(request_id)
+        await call.answer(f"{texts.PANEL_ERROR_TOAST} ({exc})", show_alert=True)
+        return
+
+    try:
+        await bot.send_message(req.admin_telegram_id, texts.PASSWORD_APPLIED_ADMIN)
+    except Exception:
+        pass
+
+    await call.answer(texts.PASSWORD_APPLIED_TOAST)
+    await call.message.edit_reply_markup(reply_markup=None)
+
+
 # ---- message any bot user ----------------------------------------------------
 
 @router.callback_query(F.data.startswith("msg_user:"))

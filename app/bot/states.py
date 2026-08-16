@@ -31,3 +31,8 @@ class SetCardNumber(StatesGroup):
 
 class SetForceJoinChannel(StatesGroup):
     value = State()
+
+
+class AddTutorial(StatesGroup):
+    title = State()
+    content = State()

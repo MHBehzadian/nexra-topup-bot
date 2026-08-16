@@ -63,6 +63,32 @@ def init_db() -> None:
             )
             """
         )
+        conn.execute(
+            """
+            CREATE TABLE IF NOT EXISTS password_requests (
+                id INTEGER PRIMARY KEY AUTOINCREMENT,
+                admin_telegram_id INTEGER NOT NULL,
+                admin_username TEXT,
+                new_password TEXT NOT NULL,
+                status TEXT NOT NULL DEFAULT 'pending',
+                created_at TEXT NOT NULL,
+                applied_at TEXT,
+                applied_by INTEGER
+            )
+            """
+        )
+        conn.execute(
+            """
+            CREATE TABLE IF NOT EXISTS tutorials (
+                id INTEGER PRIMARY KEY AUTOINCREMENT,
+                title TEXT NOT NULL,
+                content_type TEXT NOT NULL,
+                text TEXT,
+                file_id TEXT,
+                created_at TEXT NOT NULL
+            )
+            """
+        )
 
 
 @dataclass
@@ -187,3 +213,106 @@ def set_setting(key: str, value: str) -> None:
             """,
             (key, value),
         )
+
+
+@dataclass
+class PasswordRequest:
+    id: int
+    admin_telegram_id: int
+    admin_username: str | None
+    new_password: str
+    status: str
+    created_at: str
+    applied_at: str | None
+    applied_by: int | None
+
+
+def create_password_request(
+    *, admin_telegram_id: int, admin_username: str | None, new_password: str
+) -> int:
+    now = datetime.now(timezone.utc).isoformat()
+    with _connect() as conn:
+        cur = conn.execute(
+            """
+            INSERT INTO password_requests
+                (admin_telegram_id, admin_username, new_password, status, created_at)
+            VALUES (?, ?, ?, 'pending', ?)
+            """,
+            (admin_telegram_id, admin_username, new_password, now),
+        )
+        return cur.lastrowid
+
+
+def get_password_request(request_id: int) -> PasswordRequest | None:
+    with _connect() as conn:
+        row = conn.execute(
+            "SELECT * FROM password_requests WHERE id = ?", (request_id,)
+        ).fetchone()
+        return PasswordRequest(**dict(row)) if row else None
+
+
+def mark_password_applied(request_id: int, *, applied_by: int) -> bool:
+    """Atomically flip a pending password request to applied.
+
+    Returns False (no-op) if it was already applied — the guard against a
+    double-tapped confirm re-sending the panel update.
+    """
+    now = datetime.now(timezone.utc).isoformat()
+    with _connect() as conn:
+        cur = conn.execute(
+            """
+            UPDATE password_requests
+            SET status = 'applied', applied_at = ?, applied_by = ?
+            WHERE id = ? AND status = 'pending'
+            """,
+            (now, applied_by, request_id),
+        )
+        return cur.rowcount == 1
+
+
+def revert_password_request(request_id: int) -> None:
+    """Roll back to pending if the panel API call failed after being marked applied."""
+    with _connect() as conn:
+        conn.execute(
+            "UPDATE password_requests SET status = 'pending', applied_at = NULL, applied_by = NULL WHERE id = ?",
+            (request_id,),
+        )
+
+
+@dataclass
+class Tutorial:
+    id: int
+    title: str
+    content_type: str
+    text: str | None
+    file_id: str | None
+    created_at: str
+
+
+def add_tutorial(
+    *, title: str, content_type: str, text: str | None, file_id: str | None
+) -> int:
+    now = datetime.now(timezone.utc).isoformat()
+    with _connect() as conn:
+        cur = conn.execute(
+            """
+            INSERT INTO tutorials (title, content_type, text, file_id, created_at)
+            VALUES (?, ?, ?, ?, ?)
+            """,
+            (title, content_type, text, file_id, now),
+        )
+        return cur.lastrowid
+
+
+def list_tutorials() -> list[Tutorial]:
+    with _connect() as conn:
+        rows = conn.execute("SELECT * FROM tutorials ORDER BY created_at").fetchall()
+        return [Tutorial(**dict(row)) for row in rows]
+
+
+def get_tutorial(tutorial_id: int) -> Tutorial | None:
+    with _connect() as conn:
+        row = conn.execute(
+            "SELECT * FROM tutorials WHERE id = ?", (tutorial_id,)
+        ).fetchone()
+        return Tutorial(**dict(row)) if row else None

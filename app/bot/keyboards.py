@@ -10,7 +10,8 @@ def main_menu_kb() -> ReplyKeyboardMarkup:
     kb.button(text=texts.BTN_BALANCE)
     kb.button(text=texts.BTN_CHANGE_PASSWORD)
     kb.button(text=texts.BTN_CREATE_PANEL)
-    kb.adjust(2, 2)
+    kb.button(text=texts.BTN_TUTORIALS)
+    kb.adjust(2, 2, 1)
     return kb.as_markup(resize_keyboard=True)
 
 
@@ -28,7 +29,9 @@ def superadmin_menu_kb() -> ReplyKeyboardMarkup:
     kb.button(text=texts.BTN_SET_CARD)
     kb.button(text=texts.BTN_TOGGLE_FORCE_JOIN)
     kb.button(text=texts.BTN_SET_FORCE_JOIN_CHANNEL)
-    kb.adjust(1, 2, 2)
+    kb.button(text=texts.BTN_TUTORIALS)
+    kb.button(text=texts.BTN_ADD_TUTORIAL)
+    kb.adjust(1, 2, 2, 2)
     return kb.as_markup(resize_keyboard=True)
 
 
@@ -65,5 +68,19 @@ def approval_kb(request_id: int, admin_telegram_id: int) -> InlineKeyboardMarkup
 def message_user_kb(telegram_id: int) -> InlineKeyboardMarkup:
     kb = InlineKeyboardBuilder()
     kb.button(text=texts.BTN_MESSAGE_USER, callback_data=f"msg_user:{telegram_id}")
+    kb.adjust(1)
+    return kb.as_markup()
+
+
+def password_applied_kb(request_id: int) -> InlineKeyboardMarkup:
+    kb = InlineKeyboardBuilder()
+    kb.button(text=texts.BTN_PASSWORD_APPLIED, callback_data=f"pwd_applied:{request_id}")
+    return kb.as_markup()
+
+
+def tutorials_list_kb(tutorials) -> InlineKeyboardMarkup:
+    kb = InlineKeyboardBuilder()
+    for t in tutorials:
+        kb.button(text=t.title, callback_data=f"tutorial:{t.id}")
     kb.adjust(1)
     return kb.as_markup()

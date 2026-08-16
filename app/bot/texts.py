@@ -20,9 +20,15 @@ BTN_CHANGE_PASSWORD = "🔑 تغییر رمز پنل"
 ASK_NEW_PASSWORD = "لطفاً رمز عبور جدیدی که مایل به ثبت آن برای پنل مرزبان خود هستید را ارسال نمایید:"
 INVALID_PASSWORD = "رمز عبور نمی‌تواند خالی باشد. لطفاً یک رمز عبور معتبر ارسال نمایید."
 PASSWORD_CHANGE_SUBMITTED = "درخواست تغییر رمز عبور ثبت شد و به‌زودی اعمال خواهد شد."
-PASSWORD_CHANGE_NOTIFY_SUPERADMIN = (
-    "🔑 ادمین «{username}» (آیدی عددی: {telegram_id}) درخواست تغییر رمز عبور پنل خود را ثبت کرد.\n"
-    "رمز جدید: <code>{new_password}</code>\n\n"
+PASSWORD_CHANGE_NOTIFY_SUPERADMIN_AUTO = (
+    "🔑 رمز عبور پنل ادمین «{username}» (آیدی عددی: {telegram_id}) به‌صورت خودکار "
+    "در مرزبان و نکسرا پنل به‌روزرسانی شد.\n"
+    "رمز جدید: <code>{new_password}</code>"
+)
+PASSWORD_CHANGE_AUTO_FAILED_SUPERADMIN = (
+    "⚠️ اعمال خودکار تغییر رمز برای ادمین «{username}» (آیدی عددی: {telegram_id}) ناموفق بود.\n"
+    "خطا: {error}\n\n"
+    "رمز درخواستی: <code>{new_password}</code>\n\n"
     "لطفاً ابتدا همین رمز را در خود مرزبان برای ایشان ثبت نمایید، سپس دکمه‌ی زیر را بزنید "
     "تا در نکسرا پنل نیز اعمال شود."
 )

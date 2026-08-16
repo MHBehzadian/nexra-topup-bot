@@ -1,13 +1,12 @@
-"""Admin-facing: request a change to the Marzban password Nexra Panel uses to
-represent them.
+"""Admin-facing: change the password Nexra Panel uses to represent them in Marzban.
 
-Two-step by design: the Nexra-side copy (admins.marzban_password) is NOT
-updated the moment the admin submits it. If it were, Nexra would immediately
-start authenticating to the real Marzban API with a password Marzban doesn't
-recognize yet, breaking that admin's user-management in Nexra until manually
-fixed. Instead the superadmin is notified, changes it in real Marzban first,
-and only then taps "Applied" — which is what actually updates Nexra's copy,
-so the two are never out of sync.
+The panel API now changes the password directly in Marzban itself (using its
+stored sudo credentials) and mirrors it into Nexra's own copy in one atomic
+call, so this is applied immediately in the common case. If that automatic
+call fails for any reason (e.g. the panel's stored Marzban credentials aren't
+a sudo admin, or Marzban is unreachable), we fall back to the manual two-step:
+notify the superadmin with an "Applied" button so they can set it in Marzban
+by hand and confirm — see routers/approval.py's confirm_password_applied.
 """
 
 from __future__ import annotations
@@ -20,7 +19,7 @@ from .. import keyboards, texts
 from ..states import ChangePassword
 from ... import db
 from ...config import settings
-from ...services.nexra_panel import nexra_panel
+from ...services.nexra_panel import NexraPanelError, nexra_panel
 
 router = Router(name="change_password")
 
@@ -54,17 +53,34 @@ async def finish_change_password(message: Message, state: FSMContext, bot: Bot) 
         new_password=new_password,
     )
 
-    await message.answer(texts.PASSWORD_CHANGE_SUBMITTED)
+    try:
+        await nexra_panel.change_password(message.from_user.id, new_password)
+    except NexraPanelError as exc:
+        # Automatic apply failed — fall back to the manual two-step.
+        await message.answer(texts.PASSWORD_CHANGE_SUBMITTED)
+        text = texts.PASSWORD_CHANGE_AUTO_FAILED_SUPERADMIN.format(
+            username=admin["username"],
+            telegram_id=message.from_user.id,
+            new_password=new_password,
+            error=exc,
+        )
+        for superadmin_id in settings.superadmin_id_list:
+            try:
+                await bot.send_message(
+                    superadmin_id, text, reply_markup=keyboards.password_applied_kb(request_id)
+                )
+            except Exception:
+                continue
+        return
 
-    text = texts.PASSWORD_CHANGE_NOTIFY_SUPERADMIN.format(
-        username=admin["username"],
-        telegram_id=message.from_user.id,
-        new_password=new_password,
+    db.mark_password_applied(request_id, applied_by=None)
+    await message.answer(texts.PASSWORD_APPLIED_ADMIN)
+
+    text = texts.PASSWORD_CHANGE_NOTIFY_SUPERADMIN_AUTO.format(
+        username=admin["username"], telegram_id=message.from_user.id, new_password=new_password
     )
     for superadmin_id in settings.superadmin_id_list:
         try:
-            await bot.send_message(
-                superadmin_id, text, reply_markup=keyboards.password_applied_kb(request_id)
-            )
+            await bot.send_message(superadmin_id, text)
         except Exception:
             continue

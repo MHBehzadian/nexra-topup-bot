@@ -251,7 +251,7 @@ def get_password_request(request_id: int) -> PasswordRequest | None:
         return PasswordRequest(**dict(row)) if row else None
 
 
-def mark_password_applied(request_id: int, *, applied_by: int) -> bool:
+def mark_password_applied(request_id: int, *, applied_by: int | None) -> bool:
     """Atomically flip a pending password request to applied.
 
     Returns False (no-op) if it was already applied — the guard against a

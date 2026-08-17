@@ -91,6 +91,13 @@ ASK_CARD_NUMBER = "💳 لطفاً شماره کارت جدید را وارد ن
 INVALID_CARD_NUMBER = "⚠️ شماره کارت نمی‌تواند خالی باشد."
 CARD_SET_CONFIRM = "✅ شماره کارت با موفقیت به‌روزرسانی شد."
 
+BTN_SYNC_TELEGRAM_IDS = "🔄 همگام‌سازی آیدی از مرزبان"
+SYNC_RUNNING = "⏳ در حال دریافت اطلاعات از مرزبان..."
+SYNC_RESULT_NONE = "ℹ️ هیچ ادمین جدیدی برای همگام‌سازی پیدا نشد (یا آیدی‌ها از قبل ثبت شده، یا تو مرزبان هم خالی‌اند)."
+SYNC_RESULT_HEADER = "✅ {count} ادمین به‌روزرسانی شد:\n\n"
+SYNC_RESULT_LINE = "• {username} ← <code>{telegram_id}</code>\n"
+SYNC_FAILED = "⚠️ همگام‌سازی با خطا مواجه شد: {error}"
+
 BTN_SET_BULK_PIN = "🔐 تنظیم پین امنیتی"
 ASK_BULK_PIN_SET = "🔐 لطفاً یک پین امنیتی برای دریافت رمز ادمین‌ها تعیین نمایید:"
 INVALID_BULK_PIN = "⚠️ پین نمی‌تواند خالی باشد."

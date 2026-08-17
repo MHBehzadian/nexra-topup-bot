@@ -60,5 +60,14 @@ class NexraPanelClient:
             raise NexraPanelError(f"{resp.status_code}: {resp.text}")
         return resp.json()["data"]
 
+    async def sync_telegram_ids(self) -> dict:
+        async with httpx.AsyncClient(
+            base_url=self._base_url, headers=self._headers, timeout=30.0
+        ) as client:
+            resp = await client.post("/bot/admins/sync-telegram-ids")
+        if resp.status_code >= 400:
+            raise NexraPanelError(f"{resp.status_code}: {resp.text}")
+        return resp.json()["data"]
+
 
 nexra_panel = NexraPanelClient()

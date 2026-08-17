@@ -12,7 +12,7 @@ from ..filters import SuperadminFilter
 from ..nav import ALL_MENU_TEXTS
 from ..states import ExportCredentials, SetBulkPin, SetCardNumber, SetForceJoinChannel, SetPricePerGb
 from ... import db
-from ...services.nexra_panel import nexra_panel
+from ...services.nexra_panel import NexraPanelError, nexra_panel
 
 router = Router(name="admin_settings")
 router.message.filter(SuperadminFilter())
@@ -126,7 +126,13 @@ async def finish_export_credentials(message: Message, state: FSMContext) -> None
         await message.answer(texts.BULK_PIN_WRONG, reply_markup=keyboards.superadmin_menu_kb())
         return
 
-    credentials = await nexra_panel.get_all_credentials()
+    try:
+        credentials = await nexra_panel.get_all_credentials()
+    except NexraPanelError as exc:
+        await message.answer(
+            texts.SYNC_FAILED.format(error=exc), reply_markup=keyboards.superadmin_menu_kb()
+        )
+        return
     if not credentials:
         await message.answer(texts.NO_CREDENTIALS, reply_markup=keyboards.superadmin_menu_kb())
         return
@@ -149,3 +155,25 @@ async def finish_export_credentials(message: Message, state: FSMContext) -> None
     for i, chunk in enumerate(chunks):
         is_last = i == len(chunks) - 1
         await message.answer(chunk, reply_markup=keyboards.superadmin_menu_kb() if is_last else None)
+
+
+@router.message(F.text == texts.BTN_SYNC_TELEGRAM_IDS)
+async def sync_telegram_ids(message: Message) -> None:
+    await message.answer(texts.SYNC_RUNNING)
+    try:
+        result = await nexra_panel.sync_telegram_ids()
+    except NexraPanelError as exc:
+        await message.answer(
+            texts.SYNC_FAILED.format(error=exc), reply_markup=keyboards.superadmin_menu_kb()
+        )
+        return
+
+    updated = result.get("updated") or []
+    if not updated:
+        await message.answer(texts.SYNC_RESULT_NONE, reply_markup=keyboards.superadmin_menu_kb())
+        return
+
+    text = texts.SYNC_RESULT_HEADER.format(count=len(updated))
+    for a in updated:
+        text += texts.SYNC_RESULT_LINE.format(username=a["username"], telegram_id=a["telegram_id"])
+    await message.answer(text, reply_markup=keyboards.superadmin_menu_kb())

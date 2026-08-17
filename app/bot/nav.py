@@ -35,6 +35,7 @@ ALL_MENU_TEXTS = {
     texts.BTN_PAY,
     texts.BTN_PAY_CARD,
     texts.BTN_PASSWORD_APPLIED,
+    texts.BTN_SYNC_TELEGRAM_IDS,
 }
 
 

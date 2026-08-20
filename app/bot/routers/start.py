@@ -14,7 +14,6 @@ from ..nav import cancel_and_show_menu
 from ..panels import format_panel_line, safe_get_admins
 from ... import db
 from ...config import settings
-from ...units import bytes_to_gb
 
 router = Router(name="start")
 
@@ -64,14 +63,10 @@ async def start(message: Message, bot: Bot) -> None:
         )
         return
 
-    total_remaining = sum(bytes_to_gb(a.get("traffic")) for a in admins)
-    total_initial = sum(bytes_to_gb(a.get("initial_traffic")) for a in admins)
+    # Deliberately no volume figures here: with several panels a combined total
+    # is meaningless, and per-panel numbers belong in «🖥 پنل‌های من».
     await message.answer(
-        texts.START_LINKED.format(
-            username=admins[0]["username"] if len(admins) == 1 else message.from_user.full_name,
-            remaining_gb=total_remaining,
-            initial_gb=total_initial,
-        ),
+        texts.START_LINKED.format(name=message.from_user.full_name),
         reply_markup=keyboards.main_menu_kb(),
     )
 

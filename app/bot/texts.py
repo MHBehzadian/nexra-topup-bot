@@ -1,8 +1,9 @@
 """User-facing strings (formal Persian)."""
 
 START_LINKED = (
-    "با سلام {username} عزیز 👋\n"
-    "موجودی حجم شما: {remaining_gb:.2f} / {initial_gb:.2f} گیگابایت (باقی‌مانده / کل اعتبار)"
+    "با سلام {name} عزیز 👋\n"
+    "به ربات مدیریت پنل خوش آمدید.\n\n"
+    "برای مشاهده‌ی پنل‌ها و موجودی هرکدام، «🖥 پنل‌های من» را انتخاب نمایید."
 )
 BALANCE_TEXT = "📊 موجودی حجم شما: {remaining_gb:.2f} / {initial_gb:.2f} گیگابایت (باقی‌مانده / کل اعتبار)"
 START_UNLINKED = (

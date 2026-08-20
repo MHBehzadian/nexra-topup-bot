@@ -11,10 +11,9 @@ from aiogram.types import CallbackQuery, Message
 
 from .. import keyboards, texts
 from ..nav import cancel_and_show_menu
-from ..panels import format_panel_line
+from ..panels import format_panel_line, safe_get_admins
 from ... import db
 from ...config import settings
-from ...services.nexra_panel import nexra_panel
 from ...units import bytes_to_gb
 
 router = Router(name="start")
@@ -52,7 +51,9 @@ async def start(message: Message, bot: Bot) -> None:
         await message.answer(texts.SUPERADMIN_WELCOME, reply_markup=keyboards.superadmin_menu_kb())
         return
 
-    admins = await nexra_panel.get_admins(message.from_user.id)
+    admins = await safe_get_admins(message)
+    if admins is None:
+        return
     if is_new_user:
         await _notify_superadmins_of_new_user(bot, message, admins)
 
@@ -77,7 +78,9 @@ async def start(message: Message, bot: Bot) -> None:
 
 @router.message(F.text.in_({texts.BTN_MY_PANELS, texts.BTN_BALANCE}))
 async def my_panels(message: Message) -> None:
-    admins = await nexra_panel.get_admins(message.from_user.id)
+    admins = await safe_get_admins(message)
+    if admins is None:
+        return
     if not admins:
         await message.answer(texts.NO_PANELS)
         return

@@ -52,11 +52,18 @@ ALL_MENU_TEXTS = {
 
 
 async def menu_kb_for(user_id: int):
-    """The persistent reply keyboard this user should see outside any flow."""
+    """The persistent reply keyboard this user should see outside any flow.
+
+    Falls back to the main menu if the panel can't be reached — cancelling must
+    always return a usable keyboard, even during an outage.
+    """
     if user_id in settings.superadmin_id_list:
         return keyboards.superadmin_menu_kb()
-    admin = await nexra_panel.get_admin(user_id)
-    if admin is None:
+    try:
+        admins = await nexra_panel.get_admins(user_id)
+    except Exception:
+        return keyboards.main_menu_kb()
+    if not admins:
         return keyboards.unlinked_menu_kb()
     return keyboards.main_menu_kb()
 

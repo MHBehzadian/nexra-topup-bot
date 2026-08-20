@@ -9,9 +9,32 @@ from __future__ import annotations
 
 from aiogram.types import Message
 
+import logging
+
 from . import keyboards, texts
-from ..services.nexra_panel import nexra_panel
+from ..services.nexra_panel import NexraPanelError, nexra_panel
 from ..units import bytes_to_gb
+
+logger = logging.getLogger(__name__)
+
+
+async def safe_get_admins(message: Message) -> list[dict] | None:
+    """Their panels, or None if the panel API couldn't be reached.
+
+    None is distinct from []: an empty list means "no panels linked", None means
+    "we don't know". The caller must not treat an outage as an unlinked account,
+    and the user is told what happened rather than being met with silence.
+    """
+    try:
+        return await nexra_panel.get_admins(message.from_user.id)
+    except NexraPanelError as exc:
+        logger.error(f"panel lookup failed for {message.from_user.id}: {exc}")
+        await message.answer(texts.PANEL_UNREACHABLE)
+        return None
+    except Exception as exc:
+        logger.error(f"panel lookup errored for {message.from_user.id}: {exc}")
+        await message.answer(texts.PANEL_UNREACHABLE)
+        return None
 
 
 def format_expiry(expiry) -> str:
@@ -42,7 +65,9 @@ async def choose_panel(message: Message, action: str) -> dict | None:
     `action` is embedded in the picker's callback data so the tap comes back to
     the right flow (e.g. "topup" vs "pwd").
     """
-    admins = await nexra_panel.get_admins(message.from_user.id)
+    admins = await safe_get_admins(message)
+    if admins is None:
+        return None
     if not admins:
         await message.answer(texts.NOT_LINKED_RETRY)
         return None

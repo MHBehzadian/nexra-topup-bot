@@ -26,12 +26,20 @@ class NexraPanelClient:
         return resp.json()["data"]
 
     async def get_admins(self, telegram_id: int) -> list[dict]:
-        """Every panel this Telegram account owns — empty list if none."""
+        """Every panel this Telegram account owns — empty list if none.
+
+        Tolerates a panel still running the pre-multi-panel code, which answers
+        with a single admin object instead of a list; without this, a bot
+        deployed ahead of its panel breaks for every non-superadmin.
+        """
         async with self._client() as client:
             resp = await client.get(f"/bot/admin/{telegram_id}")
         if resp.status_code == 404:
             return []
-        return self._ok(resp)
+        data = self._ok(resp)
+        if isinstance(data, dict):
+            return [data]
+        return data or []
 
     async def get_admin(self, telegram_id: int) -> dict | None:
         """Their single panel, or None. Returns None when they own several, since

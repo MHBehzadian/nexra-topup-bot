@@ -79,6 +79,15 @@ def init_db() -> None:
         )
         conn.execute(
             """
+            CREATE TABLE IF NOT EXISTS traffic_warnings (
+                username TEXT PRIMARY KEY,
+                last_bucket TEXT NOT NULL,
+                notified_at TEXT NOT NULL
+            )
+            """
+        )
+        conn.execute(
+            """
             CREATE TABLE IF NOT EXISTS tutorials (
                 id INTEGER PRIMARY KEY AUTOINCREMENT,
                 title TEXT NOT NULL,
@@ -277,6 +286,41 @@ def revert_password_request(request_id: int) -> None:
             "UPDATE password_requests SET status = 'pending', applied_at = NULL, applied_by = NULL WHERE id = ?",
             (request_id,),
         )
+
+
+def get_warning_bucket(username: str) -> str | None:
+    with _connect() as conn:
+        row = conn.execute(
+            "SELECT last_bucket FROM traffic_warnings WHERE username = ?", (username,)
+        ).fetchone()
+        return row["last_bucket"] if row else None
+
+
+def set_warning_bucket(username: str, bucket: str) -> None:
+    now = datetime.now(timezone.utc).isoformat()
+    with _connect() as conn:
+        conn.execute(
+            """
+            INSERT INTO traffic_warnings (username, last_bucket, notified_at) VALUES (?, ?, ?)
+            ON CONFLICT(username) DO UPDATE SET
+                last_bucket = excluded.last_bucket,
+                notified_at = excluded.notified_at
+            """,
+            (username, bucket, now),
+        )
+
+
+def clear_warning_bucket(username: str) -> None:
+    """Called once a panel is topped back up, so the next drop warns again."""
+    with _connect() as conn:
+        conn.execute("DELETE FROM traffic_warnings WHERE username = ?", (username,))
+
+
+def list_known_users() -> list[int]:
+    """Telegram IDs of everyone who has ever started the bot (broadcast targets)."""
+    with _connect() as conn:
+        rows = conn.execute("SELECT telegram_id FROM bot_users").fetchall()
+        return [r["telegram_id"] for r in rows]
 
 
 @dataclass

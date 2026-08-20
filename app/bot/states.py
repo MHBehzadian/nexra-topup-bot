@@ -18,7 +18,17 @@ class MessageUser(StatesGroup):
 
 
 class ChangePassword(StatesGroup):
+    current_password = State()
     new_password = State()
+
+
+class Broadcast(StatesGroup):
+    text = State()
+
+
+class GrantTraffic(StatesGroup):
+    username = State()
+    amount = State()
 
 
 class SetPricePerGb(StatesGroup):

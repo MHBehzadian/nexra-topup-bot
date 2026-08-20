@@ -1,87 +1,101 @@
-"""Admin-facing: change the password Nexra Panel uses to represent them in Marzban.
+"""Admin-facing: change a panel's Marzban password.
 
-The panel API now changes the password directly in Marzban itself (using its
-stored sudo credentials) and mirrors it into Nexra's own copy in one atomic
-call, so this is applied immediately in the common case. If that automatic
-call fails for any reason (e.g. the panel's stored Marzban credentials aren't
-a sudo admin, or Marzban is unreachable), we fall back to the manual two-step:
-notify the superadmin with an "Applied" button so they can set it in Marzban
-by hand and confirm — see routers/approval.py's confirm_password_applied.
+The admin must prove they know the current password first — the panel API
+verifies it by authenticating to Marzban as that admin, then performs the change
+with its sudo credentials and mirrors it into Nexra. The panel's own service
+account is rejected server-side, so it can never be changed from here.
 """
 
 from __future__ import annotations
 
 from aiogram import Bot, F, Router
 from aiogram.fsm.context import FSMContext
-from aiogram.types import Message
+from aiogram.types import CallbackQuery, Message
 
 from .. import keyboards, texts
 from ..nav import ALL_MENU_TEXTS
+from ..panels import choose_panel, owned_panel
 from ..states import ChangePassword
-from ... import db
 from ...config import settings
 from ...services.nexra_panel import NexraPanelError, nexra_panel
 
 router = Router(name="change_password")
 
 
+async def _ask_current(message: Message, state: FSMContext, username: str) -> None:
+    await state.update_data(panel_username=username)
+    await state.set_state(ChangePassword.current_password)
+    await message.answer(texts.ASK_CURRENT_PASSWORD, reply_markup=keyboards.cancel_kb())
+
+
 @router.message(F.text == texts.BTN_CHANGE_PASSWORD)
 async def start_change_password(message: Message, state: FSMContext) -> None:
-    admin = await nexra_panel.get_admin(message.from_user.id)
-    if admin is None:
-        await message.answer(texts.NOT_LINKED_RETRY)
+    admin = await choose_panel(message, "pwd")
+    if admin:
+        await _ask_current(message, state, admin["username"])
+
+
+@router.callback_query(F.data.startswith("pick:pwd:"))
+async def picked_panel_for_password(call: CallbackQuery, state: FSMContext) -> None:
+    username = call.data.split(":", 2)[2]
+    target = await owned_panel(call.from_user.id, username)
+    if not target:
+        await call.answer(texts.NOT_LINKED_RETRY, show_alert=True)
         return
+    await call.answer()
+    await _ask_current(call.message, state, username)
+
+
+@router.message(ChangePassword.current_password, ~F.text.in_(ALL_MENU_TEXTS))
+async def get_current_password(message: Message, state: FSMContext) -> None:
+    current = (message.text or "").strip()
+    if not current:
+        await message.answer(texts.INVALID_PASSWORD)
+        return
+    await state.update_data(current_password=current)
     await state.set_state(ChangePassword.new_password)
     await message.answer(texts.ASK_NEW_PASSWORD, reply_markup=keyboards.cancel_kb())
 
 
 @router.message(ChangePassword.new_password, ~F.text.in_(ALL_MENU_TEXTS))
-async def finish_change_password(message: Message, state: FSMContext, bot: Bot) -> None:
-    await state.clear()
+async def get_new_password(message: Message, state: FSMContext, bot: Bot) -> None:
     new_password = (message.text or "").strip()
     if not new_password:
-        await message.answer(texts.INVALID_PASSWORD, reply_markup=keyboards.main_menu_kb())
+        await message.answer(texts.INVALID_PASSWORD)
         return
 
-    admin = await nexra_panel.get_admin(message.from_user.id)
-    if admin is None:
-        await message.answer(texts.NOT_LINKED_RETRY, reply_markup=keyboards.unlinked_menu_kb())
-        return
-
-    request_id = db.create_password_request(
-        admin_telegram_id=message.from_user.id,
-        admin_username=admin["username"],
-        new_password=new_password,
-    )
+    data = await state.get_data()
+    await state.clear()
+    username = data["panel_username"]
 
     try:
-        await nexra_panel.change_password(message.from_user.id, new_password)
-    except NexraPanelError as exc:
-        # Automatic apply failed — fall back to the manual two-step.
-        await message.answer(texts.PASSWORD_CHANGE_SUBMITTED, reply_markup=keyboards.main_menu_kb())
-        text = texts.PASSWORD_CHANGE_AUTO_FAILED_SUPERADMIN.format(
-            username=admin["username"],
+        await nexra_panel.change_password(
             telegram_id=message.from_user.id,
+            current_password=data["current_password"],
             new_password=new_password,
-            error=exc,
+            username=username,
         )
-        for superadmin_id in settings.superadmin_id_list:
-            try:
-                await bot.send_message(
-                    superadmin_id, text, reply_markup=keyboards.password_applied_kb(request_id)
-                )
-            except Exception:
-                continue
+    except NexraPanelError as exc:
+        # 403 from the panel means either a wrong current password or the
+        # protected service account; both should stop here without changing anything.
+        text = (
+            texts.CURRENT_PASSWORD_WRONG
+            if "Current password is incorrect" in str(exc)
+            else texts.PASSWORD_CHANGE_FAILED.format(error=exc)
+        )
+        await message.answer(text, reply_markup=keyboards.main_menu_kb())
         return
 
-    db.mark_password_applied(request_id, applied_by=None)
-    await message.answer(texts.PASSWORD_APPLIED_ADMIN, reply_markup=keyboards.main_menu_kb())
+    await message.answer(
+        texts.PASSWORD_APPLIED_ADMIN.format(username=username),
+        reply_markup=keyboards.main_menu_kb(),
+    )
 
-    text = texts.PASSWORD_CHANGE_NOTIFY_SUPERADMIN_AUTO.format(
-        username=admin["username"], telegram_id=message.from_user.id, new_password=new_password
+    notice = texts.PASSWORD_CHANGE_NOTIFY_SUPERADMIN.format(
+        username=username, telegram_id=message.from_user.id, new_password=new_password
     )
     for superadmin_id in settings.superadmin_id_list:
         try:
-            await bot.send_message(superadmin_id, text)
+            await bot.send_message(superadmin_id, notice)
         except Exception:
             continue

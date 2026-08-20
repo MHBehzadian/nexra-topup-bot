@@ -20,25 +20,16 @@ BTN_BALANCE = "📊 موجودی من"
 BTN_CREATE_PANEL = "🖥 ساخت پنل جدید"
 CREATE_PANEL_SOON = "⏳ این امکان به‌زودی فعال خواهد شد."
 BTN_CHANGE_PASSWORD = "🔑 تغییر رمز پنل"
-ASK_NEW_PASSWORD = "🔑 لطفاً رمز عبور جدیدی که مایل به ثبت آن برای پنل مرزبان خود هستید را ارسال نمایید:"
+ASK_CURRENT_PASSWORD = "🔒 برای تغییر رمز، ابتدا رمز عبور فعلی پنل خود را وارد نمایید:"
+ASK_NEW_PASSWORD = "🔑 اکنون رمز عبور جدید را وارد نمایید:"
 INVALID_PASSWORD = "⚠️ رمز عبور نمی‌تواند خالی باشد. لطفاً یک رمز عبور معتبر ارسال نمایید."
-PASSWORD_CHANGE_SUBMITTED = "⏳ درخواست تغییر رمز عبور ثبت شد و به‌زودی اعمال خواهد شد."
-PASSWORD_CHANGE_NOTIFY_SUPERADMIN_AUTO = (
-    "🔑 رمز عبور پنل ادمین «{username}» (آیدی عددی: {telegram_id}) به‌صورت خودکار "
-    "در مرزبان و نکسرا پنل به‌روزرسانی شد.\n"
+CURRENT_PASSWORD_WRONG = "⛔ رمز عبور فعلی نادرست است. عملیات لغو شد."
+PASSWORD_CHANGE_FAILED = "⚠️ تغییر رمز ناموفق بود: {error}"
+PASSWORD_APPLIED_ADMIN = "✅ رمز عبور پنل «{username}» با موفقیت تغییر کرد."
+PASSWORD_CHANGE_NOTIFY_SUPERADMIN = (
+    "🔑 ادمین «{username}» (آیدی عددی: {telegram_id}) رمز عبور پنل خود را تغییر داد.\n"
     "رمز جدید: <code>{new_password}</code>"
 )
-PASSWORD_CHANGE_AUTO_FAILED_SUPERADMIN = (
-    "⚠️ اعمال خودکار تغییر رمز برای ادمین «{username}» (آیدی عددی: {telegram_id}) ناموفق بود.\n"
-    "خطا: {error}\n\n"
-    "رمز درخواستی: <code>{new_password}</code>\n\n"
-    "لطفاً ابتدا همین رمز را در خود مرزبان برای ایشان ثبت نمایید، سپس دکمه‌ی زیر را بزنید "
-    "تا در نکسرا پنل نیز اعمال شود."
-)
-BTN_PASSWORD_APPLIED = "✅ اعمال شد"
-PASSWORD_APPLIED_TOAST = "اعمال شد ✅"
-PASSWORD_APPLIED_ADMIN = "✅ رمز عبور جدید شما با موفقیت اعمال شد."
-PASSWORD_ALREADY_APPLIED = "ℹ️ این درخواست قبلاً اعمال شده است."
 
 BTN_MESSAGE_USER = "✉️ پیام به کاربر"
 ASK_MESSAGE_TEXT = "✉️ لطفاً متن پیامی که مایل به ارسال آن هستید را بنویسید:"
@@ -148,6 +139,66 @@ NOT_FOUND = "⚠️ درخواست یافت نشد."
 APPROVED_TOAST = "تأیید شد ✅"
 REJECTED_TOAST = "رد شد ❌"
 PANEL_ERROR_TOAST = "⚠️ خطا در اتصال به پنل. درخواست به حالت در انتظار بازگشت."
+
+BTN_MY_PANELS = "🖥 پنل‌های من"
+NO_PANELS = "ℹ️ هیچ پنلی به حساب شما متصل نیست."
+PANELS_LIST_HEADER = "🖥 پنل‌های شما:\n\n"
+PANEL_LINE = (
+    "▫️ <b>{username}</b>\n"
+    "   📊 موجودی: {remaining_gb:.2f} / {initial_gb:.2f} گیگابایت\n"
+    "   {expiry_line}\n"
+)
+PANEL_EXPIRY_LINE = "📅 انقضا: {expiry}"
+PANEL_NO_EXPIRY = "📅 بدون تاریخ انقضا"
+CHOOSE_PANEL = "🖥 لطفاً پنل موردنظر را انتخاب نمایید:"
+
+WARN_100 = (
+    "⚠️ حجم پنل «{username}» رو به اتمام است.\n"
+    "📊 باقی‌مانده: {remaining_gb:.2f} گیگابایت\n\n"
+    "برای جلوگیری از قطعی، پنل خود را شارژ نمایید."
+)
+WARN_50 = (
+    "🔔 حجم پنل «{username}» کمتر از ۵۰ گیگابایت است.\n"
+    "📊 باقی‌مانده: {remaining_gb:.2f} گیگابایت\n\n"
+    "لطفاً نسبت به شارژ پنل اقدام نمایید."
+)
+WARN_10 = (
+    "🚨 حجم پنل «{username}» کمتر از ۱۰ گیگابایت است!\n"
+    "📊 باقی‌مانده: {remaining_gb:.2f} گیگابایت\n\n"
+    "در صورت عدم شارژ، به‌زودی امکان ساخت کاربر جدید را نخواهید داشت."
+)
+WARN_EMPTY = (
+    "⛔ حجم پنل «{username}» به پایان رسید.\n\n"
+    "برای ادامه‌ی سرویس‌دهی، لطفاً پنل خود را شارژ نمایید."
+)
+BTN_TOPUP_THIS_PANEL = "💳 شارژ پنل"
+
+BTN_ALL_PANELS = "🗂 همه پنل‌ها"
+ALL_PANELS_HEADER = "🗂 لیست کامل پنل‌ها ({count} مورد):\n\n"
+ADMIN_PANEL_LINE = (
+    "▫️ <b>{username}</b>{status}\n"
+    "   📊 {remaining_gb:.2f} / {initial_gb:.2f} گیگابایت\n"
+    "   👤 آیدی: {telegram_id}\n"
+)
+PANEL_INACTIVE_MARK = " (غیرفعال ⛔)"
+BTN_GRANT_TRAFFIC = "➕ افزودن حجم"
+ASK_GRANT_USERNAME = "➕ نام کاربری پنلی که می‌خواهید شارژ شود را وارد نمایید:"
+ASK_GRANT_AMOUNT = "➕ چند گیگابایت به پنل «{username}» اضافه شود؟"
+GRANT_SUCCESS = (
+    "✅ {added_gb:g} گیگابایت به پنل «{username}» اضافه شد.\n"
+    "📊 موجودی جدید: {new_gb:.2f} گیگابایت"
+)
+GRANT_FAILED = "⚠️ افزودن حجم ناموفق بود: {error}"
+GRANT_NOTIFY_ADMIN = (
+    "🎁 حجم پنل «{username}» توسط پشتیبانی افزایش یافت.\n"
+    "➕ {added_gb:g} گیگابایت اضافه شد.\n"
+    "📊 موجودی جدید: {new_gb:.2f} گیگابایت"
+)
+
+BTN_BROADCAST = "📣 پیام همگانی"
+ASK_BROADCAST_TEXT = "📣 متن پیامی که برای همه‌ی کاربران ارسال شود را بنویسید:"
+BROADCAST_RESULT = "📣 پیام همگانی ارسال شد.\n✅ موفق: {sent}\n❌ ناموفق: {failed}"
+BROADCAST_PREFIX = "📣 اطلاعیه:\n\n"
 
 BTN_TUTORIALS = "📚 آموزش‌ها"
 NO_TUTORIALS = "ℹ️ هنوز آموزشی ثبت نشده است."

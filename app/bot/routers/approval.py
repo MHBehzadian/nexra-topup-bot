@@ -31,10 +31,11 @@ async def list_pending(message: Message) -> None:
         return
     for req in pending:
         caption = (
-            f"درخواست شارژ حجم #{req.id}\n"
-            f"ادمین: {req.admin_username} (آیدی عددی: {req.admin_telegram_id})\n"
-            f"حجم درخواستی: {req.requested_gb:g} گیگابایت\n"
-            f"مبلغ: {req.toman_amount:,} تومان"
+            f"🧾 درخواست شارژ حجم #{req.id}\n"
+            f"🖥 پنل: {req.admin_username}\n"
+            f"👤 آیدی عددی: {req.admin_telegram_id}\n"
+            f"📶 حجم درخواستی: {req.requested_gb:g} گیگابایت\n"
+            f"💰 مبلغ: {req.toman_amount:,} تومان"
         )
         markup = keyboards.approval_kb(req.id, req.admin_telegram_id)
         try:
@@ -59,11 +60,16 @@ async def approve(call: CallbackQuery, bot: Bot) -> None:
         return
 
     try:
-        result = await nexra_panel.topup(req.admin_telegram_id, req.requested_gb)
+        result = await nexra_panel.topup(
+            req.admin_telegram_id, req.requested_gb, username=req.admin_username
+        )
     except NexraPanelError as exc:
         db.revert_to_pending(request_id)
         await call.answer(f"{texts.PANEL_ERROR_TOAST} ({exc})", show_alert=True)
         return
+
+    # A successful top-up rearms the low-traffic warnings for this panel.
+    db.clear_warning_bucket(req.admin_username)
 
     new_balance_gb = bytes_to_gb(result.get("new_traffic_bytes"))
     try:
@@ -137,35 +143,6 @@ async def finish_reject(message: Message, state: FSMContext, bot: Bot) -> None:
         )
     except Exception:
         pass
-
-
-# ---- password-change confirmation (applied only after superadmin syncs Marzban) --
-
-@router.callback_query(F.data.startswith("pwd_applied:"))
-async def confirm_password_applied(call: CallbackQuery, bot: Bot) -> None:
-    request_id = int(call.data.split(":")[1])
-    req = db.get_password_request(request_id)
-    if req is None:
-        await call.answer(texts.NOT_FOUND, show_alert=True)
-        return
-    if not db.mark_password_applied(request_id, applied_by=call.from_user.id):
-        await call.answer(texts.PASSWORD_ALREADY_APPLIED, show_alert=True)
-        return
-
-    try:
-        await nexra_panel.change_password(req.admin_telegram_id, req.new_password)
-    except NexraPanelError as exc:
-        db.revert_password_request(request_id)
-        await call.answer(f"{texts.PANEL_ERROR_TOAST} ({exc})", show_alert=True)
-        return
-
-    try:
-        await bot.send_message(req.admin_telegram_id, texts.PASSWORD_APPLIED_ADMIN)
-    except Exception:
-        pass
-
-    await call.answer(texts.PASSWORD_APPLIED_TOAST)
-    await call.message.edit_reply_markup(reply_markup=None)
 
 
 # ---- message any bot user ----------------------------------------------------

@@ -20,6 +20,9 @@ class Settings(BaseSettings):
     min_gb: float = 200.0
     max_gb: float = 10000.0
 
+    # How often to check every panel's remaining traffic for warnings.
+    warning_scan_interval_seconds: int = 1800
+
     @property
     def superadmin_id_list(self) -> list[int]:
         return [

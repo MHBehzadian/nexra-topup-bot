@@ -7,11 +7,12 @@ from . import texts
 def main_menu_kb() -> ReplyKeyboardMarkup:
     kb = ReplyKeyboardBuilder()
     kb.button(text=texts.BTN_TOPUP)
+    kb.button(text=texts.BTN_MY_PANELS)
     kb.button(text=texts.BTN_BALANCE)
     kb.button(text=texts.BTN_CHANGE_PASSWORD)
-    kb.button(text=texts.BTN_CREATE_PANEL)
     kb.button(text=texts.BTN_TUTORIALS)
-    kb.adjust(2, 2, 1)
+    kb.button(text=texts.BTN_CREATE_PANEL)
+    kb.adjust(2, 2, 2)
     return kb.as_markup(resize_keyboard=True)
 
 
@@ -31,10 +32,13 @@ def superadmin_menu_kb() -> ReplyKeyboardMarkup:
     kb.button(text=texts.BTN_SET_FORCE_JOIN_CHANNEL)
     kb.button(text=texts.BTN_TUTORIALS)
     kb.button(text=texts.BTN_ADD_TUTORIAL)
+    kb.button(text=texts.BTN_ALL_PANELS)
+    kb.button(text=texts.BTN_GRANT_TRAFFIC)
+    kb.button(text=texts.BTN_BROADCAST)
     kb.button(text=texts.BTN_SET_BULK_PIN)
     kb.button(text=texts.BTN_EXPORT_ALL_PASSWORDS)
     kb.button(text=texts.BTN_SYNC_TELEGRAM_IDS)
-    kb.adjust(1, 2, 2, 2, 2, 1)
+    kb.adjust(1, 2, 2, 2, 2, 2, 2)
     return kb.as_markup(resize_keyboard=True)
 
 
@@ -82,9 +86,20 @@ def message_user_kb(telegram_id: int) -> InlineKeyboardMarkup:
     return kb.as_markup()
 
 
-def password_applied_kb(request_id: int) -> InlineKeyboardMarkup:
+def panel_picker_kb(admins, action: str) -> InlineKeyboardMarkup:
+    """One button per panel. `action` routes the choice (e.g. 'topup', 'pwd')."""
     kb = InlineKeyboardBuilder()
-    kb.button(text=texts.BTN_PASSWORD_APPLIED, callback_data=f"pwd_applied:{request_id}")
+    for a in admins:
+        kb.button(text=f"🖥 {a['username']}", callback_data=f"pick:{action}:{a['username']}")
+    kb.adjust(1)
+    return kb.as_markup()
+
+
+def topup_panel_kb(username: str) -> InlineKeyboardMarkup:
+    """Attached to low-traffic warnings so the admin can jump straight to topping
+    up the panel the warning is about."""
+    kb = InlineKeyboardBuilder()
+    kb.button(text=texts.BTN_TOPUP_THIS_PANEL, callback_data=f"pick:topup:{username}")
     return kb.as_markup()
 
 

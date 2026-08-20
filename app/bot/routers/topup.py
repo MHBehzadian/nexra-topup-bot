@@ -1,6 +1,7 @@
 """Admin-facing top-up flow:
-GB amount -> auto-computed invoice (gb * price_per_gb) -> پرداخت -> payment
-method (card-to-card only, for now) -> card number + amount -> receipt -> submit.
+pick panel (skipped if they own one) -> GB amount -> auto-computed invoice
+-> پرداخت -> payment method (card-to-card only, for now) -> card number
+-> receipt -> submit for review.
 """
 
 from __future__ import annotations
@@ -14,22 +15,36 @@ from aiogram.types import CallbackQuery, FSInputFile, Message
 
 from .. import keyboards, texts
 from ..nav import ALL_MENU_TEXTS
+from ..panels import choose_panel, owned_panel
 from ..states import TopUp
 from ... import db
 from ...config import settings
-from ...services.nexra_panel import nexra_panel
 
 router = Router(name="topup")
 
 
-@router.message(F.text == texts.BTN_TOPUP)
-async def start_topup(message: Message, state: FSMContext) -> None:
-    admin = await nexra_panel.get_admin(message.from_user.id)
-    if admin is None:
-        await message.answer(texts.NOT_LINKED_RETRY)
-        return
+async def _ask_amount(message: Message, state: FSMContext, username: str) -> None:
+    await state.update_data(panel_username=username)
     await state.set_state(TopUp.amount_gb)
     await message.answer(texts.ASK_AMOUNT_GB, reply_markup=keyboards.cancel_kb())
+
+
+@router.message(F.text == texts.BTN_TOPUP)
+async def start_topup(message: Message, state: FSMContext) -> None:
+    admin = await choose_panel(message, "topup")
+    if admin:
+        await _ask_amount(message, state, admin["username"])
+
+
+@router.callback_query(F.data.startswith("pick:topup:"))
+async def picked_panel_for_topup(call: CallbackQuery, state: FSMContext) -> None:
+    username = call.data.split(":", 2)[2]
+    target = await owned_panel(call.from_user.id, username)
+    if not target:
+        await call.answer(texts.NOT_LINKED_RETRY, show_alert=True)
+        return
+    await call.answer()
+    await _ask_amount(call.message, state, username)
 
 
 @router.message(TopUp.amount_gb, ~F.text.in_(ALL_MENU_TEXTS))
@@ -92,20 +107,20 @@ async def get_receipt(message: Message, state: FSMContext, bot: Bot) -> None:
 
     data = await state.get_data()
     await state.clear()
+    username = data["panel_username"]
 
-    admin = await nexra_panel.get_admin(message.from_user.id)
-    if admin is None:
+    target = await owned_panel(message.from_user.id, username)
+    if not target:
         await message.answer(texts.NOT_LINKED_RETRY, reply_markup=keyboards.unlinked_menu_kb())
         return
 
     os.makedirs(settings.media_dir, exist_ok=True)
-    filename = f"receipt_{uuid.uuid4().hex}.jpg"
-    receipt_path = os.path.join(settings.media_dir, filename)
+    receipt_path = os.path.join(settings.media_dir, f"receipt_{uuid.uuid4().hex}.jpg")
     await bot.download(message.photo[-1], destination=receipt_path)
 
     request_id = db.create_request(
         admin_telegram_id=message.from_user.id,
-        admin_username=admin["username"],
+        admin_username=username,
         requested_gb=data["amount_gb"],
         toman_amount=data["total_price"],
         receipt_path=receipt_path,
@@ -114,10 +129,11 @@ async def get_receipt(message: Message, state: FSMContext, bot: Bot) -> None:
     await message.answer(texts.REQUEST_SUBMITTED, reply_markup=keyboards.main_menu_kb())
 
     caption = (
-        f"درخواست شارژ حجم جدید #{request_id}\n"
-        f"ادمین: {admin['username']} (آیدی عددی: {message.from_user.id})\n"
-        f"حجم درخواستی: {data['amount_gb']:g} گیگابایت\n"
-        f"مبلغ: {data['total_price']:,} تومان"
+        f"🧾 درخواست شارژ حجم جدید #{request_id}\n"
+        f"🖥 پنل: {username}\n"
+        f"👤 آیدی عددی: {message.from_user.id}\n"
+        f"📶 حجم درخواستی: {data['amount_gb']:g} گیگابایت\n"
+        f"💰 مبلغ: {data['total_price']:,} تومان"
     )
     for superadmin_id in settings.superadmin_id_list:
         try:

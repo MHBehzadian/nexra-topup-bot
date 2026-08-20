@@ -1,5 +1,6 @@
-"""/start: superadmin menu, linkage check, main menu, and a one-time heads-up
-to every superadmin the first time a given Telegram user ever starts the bot."""
+"""/start: superadmin menu, linkage check, main menu, the admin's panel list,
+and a one-time heads-up to every superadmin the first time a given Telegram
+user ever starts the bot."""
 
 from __future__ import annotations
 
@@ -10,6 +11,7 @@ from aiogram.types import CallbackQuery, Message
 
 from .. import keyboards, texts
 from ..nav import cancel_and_show_menu
+from ..panels import format_panel_line
 from ... import db
 from ...config import settings
 from ...services.nexra_panel import nexra_panel
@@ -18,15 +20,15 @@ from ...units import bytes_to_gb
 router = Router(name="start")
 
 
-async def _notify_superadmins_of_new_user(bot: Bot, message: Message, admin: dict | None) -> None:
+async def _notify_superadmins_of_new_user(bot: Bot, message: Message, admins: list[dict]) -> None:
     user = message.from_user
     username = f"@{user.username}" if user.username else "—"
-    if admin:
+    if admins:
         text = texts.NEW_START_NOTIFICATION_LINKED.format(
             full_name=user.full_name,
             username=username,
             telegram_id=user.id,
-            admin_username=admin["username"],
+            admin_username="، ".join(a["username"] for a in admins),
         )
     else:
         text = texts.NEW_START_NOTIFICATION_UNLINKED.format(
@@ -50,39 +52,37 @@ async def start(message: Message, bot: Bot) -> None:
         await message.answer(texts.SUPERADMIN_WELCOME, reply_markup=keyboards.superadmin_menu_kb())
         return
 
-    admin = await nexra_panel.get_admin(message.from_user.id)
+    admins = await nexra_panel.get_admins(message.from_user.id)
     if is_new_user:
-        await _notify_superadmins_of_new_user(bot, message, admin)
+        await _notify_superadmins_of_new_user(bot, message, admins)
 
-    if admin is None:
+    if not admins:
         await message.answer(
             texts.START_UNLINKED.format(telegram_id=message.from_user.id),
             reply_markup=keyboards.unlinked_menu_kb(),
         )
         return
 
+    total_remaining = sum(bytes_to_gb(a.get("traffic")) for a in admins)
+    total_initial = sum(bytes_to_gb(a.get("initial_traffic")) for a in admins)
     await message.answer(
         texts.START_LINKED.format(
-            username=admin["username"],
-            remaining_gb=bytes_to_gb(admin.get("traffic")),
-            initial_gb=bytes_to_gb(admin.get("initial_traffic")),
+            username=admins[0]["username"] if len(admins) == 1 else message.from_user.full_name,
+            remaining_gb=total_remaining,
+            initial_gb=total_initial,
         ),
         reply_markup=keyboards.main_menu_kb(),
     )
 
 
-@router.message(F.text == texts.BTN_BALANCE)
-async def check_balance(message: Message) -> None:
-    admin = await nexra_panel.get_admin(message.from_user.id)
-    if admin is None:
-        await message.answer(texts.NOT_LINKED_RETRY)
+@router.message(F.text.in_({texts.BTN_MY_PANELS, texts.BTN_BALANCE}))
+async def my_panels(message: Message) -> None:
+    admins = await nexra_panel.get_admins(message.from_user.id)
+    if not admins:
+        await message.answer(texts.NO_PANELS)
         return
-    await message.answer(
-        texts.BALANCE_TEXT.format(
-            remaining_gb=bytes_to_gb(admin.get("traffic")),
-            initial_gb=bytes_to_gb(admin.get("initial_traffic")),
-        )
-    )
+    text = texts.PANELS_LIST_HEADER + "".join(format_panel_line(a) for a in admins)
+    await message.answer(text)
 
 
 @router.message(F.text == texts.BTN_CREATE_PANEL)

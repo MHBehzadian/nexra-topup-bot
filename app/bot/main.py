@@ -14,6 +14,7 @@ from .. import db
 from ..config import settings
 from .middlewares import ForceJoinMiddleware
 from .routers import all_routers
+from .warnings import run_warning_scanner
 
 logger = logging.getLogger(__name__)
 
@@ -43,9 +44,11 @@ async def run() -> None:
     dp = build_dispatcher()
     logger.info("starting bot polling")
     await bot.delete_webhook(drop_pending_updates=True)
+    scanner = asyncio.create_task(run_warning_scanner(bot))
     try:
         await dp.start_polling(bot)
     finally:
+        scanner.cancel()
         await bot.session.close()
 
 

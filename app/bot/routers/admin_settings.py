@@ -7,12 +7,23 @@ from aiogram import F, Router
 from aiogram.fsm.context import FSMContext
 from aiogram.types import Message
 
+from aiogram import Bot
+
 from .. import keyboards, texts
 from ..filters import SuperadminFilter
 from ..nav import ALL_MENU_TEXTS
-from ..states import ExportCredentials, SetBulkPin, SetCardNumber, SetForceJoinChannel, SetPricePerGb
+from ..states import (
+    Broadcast,
+    ExportCredentials,
+    GrantTraffic,
+    SetBulkPin,
+    SetCardNumber,
+    SetForceJoinChannel,
+    SetPricePerGb,
+)
 from ... import db
 from ...services.nexra_panel import NexraPanelError, nexra_panel
+from ...units import bytes_to_gb
 
 router = Router(name="admin_settings")
 router.message.filter(SuperadminFilter())
@@ -155,6 +166,128 @@ async def finish_export_credentials(message: Message, state: FSMContext) -> None
     for i, chunk in enumerate(chunks):
         is_last = i == len(chunks) - 1
         await message.answer(chunk, reply_markup=keyboards.superadmin_menu_kb() if is_last else None)
+
+
+@router.message(F.text == texts.BTN_ALL_PANELS)
+async def list_all_panels(message: Message) -> None:
+    try:
+        admins = await nexra_panel.list_all_admins()
+    except NexraPanelError as exc:
+        await message.answer(texts.SYNC_FAILED.format(error=exc))
+        return
+    if not admins:
+        await message.answer(texts.NO_PANELS)
+        return
+
+    header = texts.ALL_PANELS_HEADER.format(count=len(admins))
+    chunks: list[str] = []
+    current = header
+    for a in admins:
+        line = texts.ADMIN_PANEL_LINE.format(
+            username=a["username"],
+            status="" if a.get("is_active") else texts.PANEL_INACTIVE_MARK,
+            remaining_gb=bytes_to_gb(a.get("traffic")),
+            initial_gb=bytes_to_gb(a.get("initial_traffic")),
+            telegram_id=a.get("telegram_id") or "—",
+        )
+        if len(current) + len(line) > 3500:
+            chunks.append(current)
+            current = ""
+        current += line
+    chunks.append(current)
+
+    for chunk in chunks:
+        await message.answer(chunk)
+
+
+@router.message(F.text == texts.BTN_GRANT_TRAFFIC)
+async def start_grant(message: Message, state: FSMContext) -> None:
+    await state.set_state(GrantTraffic.username)
+    await message.answer(texts.ASK_GRANT_USERNAME, reply_markup=keyboards.cancel_kb())
+
+
+@router.message(GrantTraffic.username, ~F.text.in_(ALL_MENU_TEXTS))
+async def get_grant_username(message: Message, state: FSMContext) -> None:
+    username = (message.text or "").strip()
+    if not username:
+        await message.answer(texts.ASK_GRANT_USERNAME, reply_markup=keyboards.cancel_kb())
+        return
+    await state.update_data(grant_username=username)
+    await state.set_state(GrantTraffic.amount)
+    await message.answer(
+        texts.ASK_GRANT_AMOUNT.format(username=username), reply_markup=keyboards.cancel_kb()
+    )
+
+
+@router.message(GrantTraffic.amount, ~F.text.in_(ALL_MENU_TEXTS))
+async def finish_grant(message: Message, state: FSMContext, bot: Bot) -> None:
+    raw = (message.text or "").strip().replace(",", ".")
+    try:
+        amount = float(raw)
+        if amount <= 0:
+            raise ValueError
+    except ValueError:
+        await message.answer(texts.INVALID_AMOUNT_GB)
+        return
+
+    data = await state.get_data()
+    await state.clear()
+    username = data["grant_username"]
+
+    try:
+        result = await nexra_panel.grant(username, amount)
+    except NexraPanelError as exc:
+        await message.answer(
+            texts.GRANT_FAILED.format(error=exc), reply_markup=keyboards.superadmin_menu_kb()
+        )
+        return
+
+    new_gb = bytes_to_gb(result.get("new_traffic_bytes"))
+    db.clear_warning_bucket(username)
+    await message.answer(
+        texts.GRANT_SUCCESS.format(added_gb=amount, username=username, new_gb=new_gb),
+        reply_markup=keyboards.superadmin_menu_kb(),
+    )
+
+    target_telegram_id = result.get("telegram_id")
+    if target_telegram_id:
+        try:
+            await bot.send_message(
+                target_telegram_id,
+                texts.GRANT_NOTIFY_ADMIN.format(
+                    username=username, added_gb=amount, new_gb=new_gb
+                ),
+            )
+        except Exception:
+            pass
+
+
+@router.message(F.text == texts.BTN_BROADCAST)
+async def start_broadcast(message: Message, state: FSMContext) -> None:
+    await state.set_state(Broadcast.text)
+    await message.answer(texts.ASK_BROADCAST_TEXT, reply_markup=keyboards.cancel_kb())
+
+
+@router.message(Broadcast.text, ~F.text.in_(ALL_MENU_TEXTS))
+async def finish_broadcast(message: Message, state: FSMContext, bot: Bot) -> None:
+    await state.clear()
+    body = message.text or ""
+    if not body.strip():
+        await message.answer(texts.INVALID_PASSWORD, reply_markup=keyboards.superadmin_menu_kb())
+        return
+
+    sent = failed = 0
+    for telegram_id in db.list_known_users():
+        try:
+            await bot.send_message(telegram_id, texts.BROADCAST_PREFIX + body)
+            sent += 1
+        except Exception:
+            failed += 1
+
+    await message.answer(
+        texts.BROADCAST_RESULT.format(sent=sent, failed=failed),
+        reply_markup=keyboards.superadmin_menu_kb(),
+    )
 
 
 @router.message(F.text == texts.BTN_SYNC_TELEGRAM_IDS)

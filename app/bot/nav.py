@@ -34,8 +34,12 @@ ALL_MENU_TEXTS = {
     texts.BTN_EXPORT_ALL_PASSWORDS,
     texts.BTN_PAY,
     texts.BTN_PAY_CARD,
-    texts.BTN_PASSWORD_APPLIED,
     texts.BTN_SYNC_TELEGRAM_IDS,
+    texts.BTN_MY_PANELS,
+    texts.BTN_ALL_PANELS,
+    texts.BTN_GRANT_TRAFFIC,
+    texts.BTN_BROADCAST,
+    texts.BTN_TOPUP_THIS_PANEL,
 }
 
 

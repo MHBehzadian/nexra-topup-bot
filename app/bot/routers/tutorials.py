@@ -37,6 +37,28 @@ async def send_tutorial(call: CallbackQuery, bot: Bot) -> None:
 
     await call.answer()
     chat_id = call.from_user.id
+
+    # Channel-backed tutorial: forward the original post, so editing it in the
+    # channel updates what everyone receives from then on.
+    if tutorial.source_chat_id and tutorial.source_message_id:
+        try:
+            await bot.forward_message(
+                chat_id,
+                from_chat_id=tutorial.source_chat_id,
+                message_id=tutorial.source_message_id,
+            )
+        except Exception:
+            # Channels with forwarding disabled still allow a plain copy.
+            try:
+                await bot.copy_message(
+                    chat_id,
+                    from_chat_id=tutorial.source_chat_id,
+                    message_id=tutorial.source_message_id,
+                )
+            except Exception:
+                await bot.send_message(chat_id, texts.TUTORIAL_UNAVAILABLE)
+        return
+
     caption = tutorial.text or None
     if tutorial.content_type == "video":
         await bot.send_video(chat_id, tutorial.file_id, caption=caption)
@@ -69,6 +91,25 @@ async def get_tutorial_title(message: Message, state: FSMContext) -> None:
 async def get_tutorial_content(message: Message, state: FSMContext) -> None:
     data = await state.get_data()
     title = data["title"]
+
+    # Forwarded from a channel: remember where it came from rather than copying
+    # the content, so the channel stays the single source of truth.
+    origin_chat = message.forward_from_chat
+    if origin_chat is not None and message.forward_from_message_id:
+        await state.clear()
+        db.add_tutorial(
+            title=title,
+            content_type="forward",
+            text=None,
+            file_id=None,
+            source_chat_id=origin_chat.id,
+            source_message_id=message.forward_from_message_id,
+        )
+        await message.answer(
+            texts.TUTORIAL_ADDED_CONFIRM.format(title=title),
+            reply_markup=keyboards.superadmin_menu_kb(),
+        )
+        return
 
     if message.video:
         content_type, file_id, text = "video", message.video.file_id, message.caption

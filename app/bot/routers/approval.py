@@ -33,9 +33,9 @@ async def list_pending(message: Message) -> None:
     for req in pending:
         caption = (
             f"🧾 درخواست شارژ حجم #{req.id}\n"
-            f"🖥 پنل: {req.admin_username}\n"
+            f"▪️ پنل: {req.admin_username}\n"
             f"👤 آیدی عددی: {req.admin_telegram_id}\n"
-            f"📶 حجم درخواستی: {req.requested_gb:g} گیگابایت\n"
+            f"📊 حجم درخواستی: {req.requested_gb:g} گیگابایت\n"
             f"💰 مبلغ: {req.toman_amount:,} تومان"
         )
         markup = keyboards.approval_kb(req.id, req.admin_telegram_id)

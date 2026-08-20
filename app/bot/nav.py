@@ -13,8 +13,8 @@ from aiogram.fsm.context import FSMContext
 from aiogram.types import Message
 
 from . import keyboards, texts
+from .. import db
 from ..config import settings
-from ..services.nexra_panel import nexra_panel
 
 ALL_MENU_TEXTS = {
     texts.BTN_CANCEL,
@@ -54,18 +54,16 @@ ALL_MENU_TEXTS = {
 async def menu_kb_for(user_id: int):
     """The persistent reply keyboard this user should see outside any flow.
 
-    Falls back to the main menu if the panel can't be reached — cancelling must
-    always return a usable keyboard, even during an outage.
+    Reads the linkage cached at their last successful panel lookup rather than
+    calling the panel again: cancelling an action must never depend on the panel
+    being reachable, and a momentary outage must not strip a linked admin's menu
+    down to the unlinked one.
     """
     if user_id in settings.superadmin_id_list:
         return keyboards.superadmin_menu_kb()
-    try:
-        admins = await nexra_panel.get_admins(user_id)
-    except Exception:
+    if db.is_user_linked(user_id):
         return keyboards.main_menu_kb()
-    if not admins:
-        return keyboards.unlinked_menu_kb()
-    return keyboards.main_menu_kb()
+    return keyboards.unlinked_menu_kb()
 
 
 async def cancel_and_show_menu(message: Message, state: FSMContext) -> None:

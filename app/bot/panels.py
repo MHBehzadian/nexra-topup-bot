@@ -12,7 +12,8 @@ from aiogram.types import Message
 import logging
 
 from . import keyboards, texts
-from ..services.nexra_panel import NexraPanelError, nexra_panel
+from .. import db
+from ..services.nexra_panel import nexra_panel
 from ..units import bytes_to_gb
 
 logger = logging.getLogger(__name__)
@@ -26,15 +27,13 @@ async def safe_get_admins(message: Message) -> list[dict] | None:
     and the user is told what happened rather than being met with silence.
     """
     try:
-        return await nexra_panel.get_admins(message.from_user.id)
-    except NexraPanelError as exc:
+        admins = await nexra_panel.get_admins(message.from_user.id)
+    except Exception as exc:
         logger.error(f"panel lookup failed for {message.from_user.id}: {exc}")
         await message.answer(texts.PANEL_UNREACHABLE)
         return None
-    except Exception as exc:
-        logger.error(f"panel lookup errored for {message.from_user.id}: {exc}")
-        await message.answer(texts.PANEL_UNREACHABLE)
-        return None
+    db.set_user_linked(message.from_user.id, bool(admins))
+    return admins
 
 
 def format_expiry(expiry) -> str:

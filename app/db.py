@@ -85,24 +85,11 @@ def init_db() -> None:
             )
             """
         )
-        # 'topup' = buying traffic; 'settlement' = paying off a weekly-credit debt.
-        _ensure_column(conn, "topup_requests", "kind", "TEXT NOT NULL DEFAULT 'topup'")
         conn.execute(
             """
             CREATE TABLE IF NOT EXISTS weekly_payment (
                 username TEXT PRIMARY KEY,
                 enabled INTEGER NOT NULL DEFAULT 0
-            )
-            """
-        )
-        # Wallet belongs to the person, not the panel: one human with several
-        # panels tops up once and spends it across all of them.
-        conn.execute(
-            """
-            CREATE TABLE IF NOT EXISTS wallets (
-                telegram_id INTEGER PRIMARY KEY,
-                balance INTEGER NOT NULL DEFAULT 0,
-                updated_at TEXT NOT NULL
             )
             """
         )
@@ -148,6 +135,18 @@ def init_db() -> None:
             )
             """
         )
+
+        # Columns added after the tables above first shipped. These must run last,
+        # once every CREATE TABLE has been applied, so a fresh database has
+        # something to alter.
+        # 'topup' = buying traffic; 'settlement' = paying off a weekly-credit debt;
+        # 'wallet' = topping up the wallet itself.
+        _ensure_column(conn, "topup_requests", "kind", "TEXT NOT NULL DEFAULT 'topup'")
+        # Cached last-known linkage, so building a menu never needs a network call.
+        _ensure_column(conn, "bot_users", "is_linked", "INTEGER NOT NULL DEFAULT 0")
+        # A tutorial either carries its own content or points at a channel post.
+        _ensure_column(conn, "tutorials", "source_chat_id", "INTEGER")
+        _ensure_column(conn, "tutorials", "source_message_id", "INTEGER")
 
 
 @dataclass
@@ -506,6 +505,31 @@ def clear_warning_bucket(username: str) -> None:
         conn.execute("DELETE FROM traffic_warnings WHERE username = ?", (username,))
 
 
+def set_user_linked(telegram_id: int, linked: bool) -> None:
+    with _connect() as conn:
+        conn.execute(
+            "UPDATE bot_users SET is_linked = ? WHERE telegram_id = ?",
+            (1 if linked else 0, telegram_id),
+        )
+
+
+def get_user(telegram_id: int) -> dict | None:
+    with _connect() as conn:
+        row = conn.execute(
+            "SELECT telegram_id, username, full_name FROM bot_users WHERE telegram_id = ?",
+            (telegram_id,),
+        ).fetchone()
+        return dict(row) if row else None
+
+
+def is_user_linked(telegram_id: int) -> bool:
+    with _connect() as conn:
+        row = conn.execute(
+            "SELECT is_linked FROM bot_users WHERE telegram_id = ?", (telegram_id,)
+        ).fetchone()
+        return bool(row["is_linked"]) if row else False
+
+
 def list_known_users() -> list[int]:
     """Telegram IDs of everyone who has ever started the bot (broadcast targets)."""
     with _connect() as conn:
@@ -521,21 +545,36 @@ class Tutorial:
     text: str | None
     file_id: str | None
     created_at: str
+    source_chat_id: int | None = None
+    source_message_id: int | None = None
 
 
 def add_tutorial(
-    *, title: str, content_type: str, text: str | None, file_id: str | None
+    *,
+    title: str,
+    content_type: str,
+    text: str | None,
+    file_id: str | None,
+    source_chat_id: int | None = None,
+    source_message_id: int | None = None,
 ) -> int:
     now = datetime.now(timezone.utc).isoformat()
     with _connect() as conn:
         cur = conn.execute(
             """
-            INSERT INTO tutorials (title, content_type, text, file_id, created_at)
-            VALUES (?, ?, ?, ?, ?)
+            INSERT INTO tutorials
+                (title, content_type, text, file_id, created_at, source_chat_id, source_message_id)
+            VALUES (?, ?, ?, ?, ?, ?, ?)
             """,
-            (title, content_type, text, file_id, now),
+            (title, content_type, text, file_id, now, source_chat_id, source_message_id),
         )
         return cur.lastrowid
+
+
+def delete_tutorial(tutorial_id: int) -> bool:
+    with _connect() as conn:
+        cur = conn.execute("DELETE FROM tutorials WHERE id = ?", (tutorial_id,))
+        return cur.rowcount == 1
 
 
 def list_tutorials() -> list[Tutorial]:

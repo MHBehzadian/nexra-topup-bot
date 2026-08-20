@@ -135,8 +135,8 @@ async def pay_from_wallet(call: CallbackQuery, state: FSMContext, bot: Bot) -> N
         try:
             await bot.send_message(
                 superadmin_id,
-                f"👛 خرید از کیف پول\n\n🖥 پنل: {username}\n👤 آیدی عددی: {telegram_id}\n"
-                f"📶 حجم: {gb:g} گیگابایت\n💰 مبلغ: {price:,} تومان",
+                f"💼 خرید از کیف پول\n\n▪️ پنل: {username}\n👤 آیدی عددی: {telegram_id}\n"
+                f"📊 حجم: {gb:g} گیگابایت\n💰 مبلغ: {price:,} تومان",
             )
         except Exception:
             continue
@@ -239,9 +239,9 @@ async def get_receipt(message: Message, state: FSMContext, bot: Bot) -> None:
 
     caption = (
         f"🧾 درخواست شارژ حجم جدید #{request_id}\n"
-        f"🖥 پنل: {username}\n"
+        f"▪️ پنل: {username}\n"
         f"👤 آیدی عددی: {message.from_user.id}\n"
-        f"📶 حجم درخواستی: {data['amount_gb']:g} گیگابایت\n"
+        f"📊 حجم درخواستی: {data['amount_gb']:g} گیگابایت\n"
         f"💰 مبلغ: {data['total_price']:,} تومان"
     )
     for superadmin_id in settings.superadmin_id_list:

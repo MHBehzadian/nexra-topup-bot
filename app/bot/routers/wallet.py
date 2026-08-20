@@ -110,7 +110,7 @@ async def get_wallet_receipt(message: Message, state: FSMContext, bot: Bot) -> N
     await _send_to_superadmins(
         bot,
         path,
-        f"👛 درخواست شارژ کیف پول #{request_id}\n"
+        f"💼 درخواست شارژ کیف پول #{request_id}\n"
         f"👤 آیدی عددی: {message.from_user.id}\n"
         f"💰 مبلغ: {amount:,} تومان",
         request_id,
@@ -168,7 +168,7 @@ async def get_debt_receipt(message: Message, state: FSMContext, bot: Bot) -> Non
         bot,
         path,
         f"🗓 رسید تسویه‌ی هفتگی #{request_id}\n"
-        f"🖥 پنل: {username}\n"
+        f"▪️ پنل: {username}\n"
         f"👤 آیدی عددی: {message.from_user.id}\n"
         f"💰 مبلغ: {amount:,} تومان",
         request_id,

@@ -271,10 +271,21 @@ async def show_debts(message: Message) -> None:
     if not debts:
         await message.answer(texts.NO_DEBTS_AT_ALL)
         return
-    text = texts.DEBTS_HEADER + "".join(
-        texts.DEBT_LINE.format(username=d["username"], amount=d["amount"]) for d in debts
-    )
-    await message.answer(text)
+    lines = []
+    for d in debts:
+        user = db.get_user(d["telegram_id"]) if d["telegram_id"] else None
+        mention = "—"
+        if user:
+            mention = f"@{user['username']}" if user.get("username") else (user.get("full_name") or "—")
+        lines.append(
+            texts.DEBT_LINE.format(
+                username=d["username"],
+                amount=d["amount"],
+                mention=mention,
+                telegram_id=d["telegram_id"] or "—",
+            )
+        )
+    await message.answer(texts.DEBTS_HEADER + "".join(lines))
 
 
 @router.message(F.text == texts.BTN_TOGGLE_WEEKLY)

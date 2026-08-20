@@ -111,7 +111,7 @@ def panel_picker_kb(admins, action: str) -> InlineKeyboardMarkup:
     """One button per panel. `action` routes the choice (e.g. 'topup', 'pwd')."""
     kb = InlineKeyboardBuilder()
     for a in admins:
-        kb.button(text=f"🖥 {a['username']}", callback_data=f"pick:{action}:{a['username']}")
+        kb.button(text=f"▪️ {a['username']}", callback_data=f"pick:{action}:{a['username']}")
     kb.adjust(1)
     return kb.as_markup()
 

@@ -3,7 +3,7 @@
 START_LINKED = (
     "با سلام {name} عزیز 👋\n"
     "به ربات مدیریت پنل خوش آمدید.\n\n"
-    "برای مشاهده‌ی پنل‌ها و موجودی هرکدام، «🖥 پنل‌های من» را انتخاب نمایید."
+    "برای مشاهده‌ی پنل‌ها و موجودی هرکدام، «🗄 پنل‌های من» را انتخاب نمایید."
 )
 BALANCE_TEXT = "📊 موجودی حجم شما: {remaining_gb:.2f} / {initial_gb:.2f} گیگابایت (باقی‌مانده / کل اعتبار)"
 START_UNLINKED = (
@@ -19,13 +19,13 @@ CANCELLED = "🚫 عملیات لغو شد."
 
 BTN_TOPUP = "💳 شارژ حجم"
 BTN_BALANCE = "📊 موجودی من"
-BTN_CREATE_PANEL = "🖥 ساخت پنل جدید"
+BTN_CREATE_PANEL = "➕ ساخت پنل جدید"
 CREATE_PANEL_SOON = "⏳ این امکان به‌زودی فعال خواهد شد."
 BTN_CHANGE_PASSWORD = "🔑 تغییر رمز پنل"
 ASK_CURRENT_PASSWORD = "🔒 برای تغییر رمز، ابتدا رمز عبور فعلی پنل خود را وارد نمایید:"
 ASK_NEW_PASSWORD = "🔑 اکنون رمز عبور جدید را وارد نمایید:"
 INVALID_PASSWORD = "⚠️ رمز عبور نمی‌تواند خالی باشد. لطفاً یک رمز عبور معتبر ارسال نمایید."
-CURRENT_PASSWORD_WRONG = "⛔ رمز عبور فعلی نادرست است. عملیات لغو شد."
+CURRENT_PASSWORD_WRONG = "🚫 رمز عبور فعلی نادرست است. عملیات لغو شد."
 PASSWORD_CHANGE_FAILED = "⚠️ تغییر رمز ناموفق بود: {error}"
 PASSWORD_APPLIED_ADMIN = "✅ رمز عبور پنل «{username}» با موفقیت تغییر کرد."
 PASSWORD_CHANGE_NOTIFY_SUPERADMIN = (
@@ -65,14 +65,14 @@ NO_PENDING_REQUESTS = "ℹ️ در حال حاضر درخواست شارژ در 
 
 FORCE_JOIN_TEXT = "📢 برای استفاده از ربات، ابتدا در کانال زیر عضو شوید و سپس «✅ عضو شدم» را بزنید."
 FORCE_JOIN_CONFIRMED = "✅ عضویت شما تأیید شد. برای ادامه، دستور /start را ارسال نمایید."
-BTN_TOGGLE_FORCE_JOIN = "🔛 روشن/خاموش‌کردن جوین اجباری"
+BTN_TOGGLE_FORCE_JOIN = "🔀 روشن/خاموش‌کردن جوین اجباری"
 BTN_SET_FORCE_JOIN_CHANNEL = "📢 تنظیم کانال جوین اجباری"
 ASK_FORCE_JOIN_CHANNEL = "📢 لطفاً آیدی کانال را وارد نمایید (مثال: @channelusername):"
 INVALID_CHANNEL = "⚠️ آیدی کانال معتبر نیست؛ باید با @ شروع شود."
 FORCE_JOIN_CHANNEL_SET = "✅ کانال جوین اجباری با موفقیت روی {channel} تنظیم شد."
 FORCE_JOIN_NO_CHANNEL_YET = "⚠️ ابتدا باید یک کانال برای جوین اجباری تنظیم نمایید."
 FORCE_JOIN_ENABLED_ON = "جوین اجباری فعال شد ✅"
-FORCE_JOIN_ENABLED_OFF = "جوین اجباری غیرفعال شد ⛔"
+FORCE_JOIN_ENABLED_OFF = "جوین اجباری غیرفعال شد 🚫"
 
 BTN_SET_PRICE = "💰 تنظیم قیمت هر گیگابایت"
 ASK_PRICE_PER_GB = "💰 لطفاً قیمت هر گیگابایت را به تومان وارد نمایید:"
@@ -98,12 +98,12 @@ BULK_PIN_SET_CONFIRM = "✅ پین امنیتی با موفقیت تنظیم ش�
 BTN_EXPORT_ALL_PASSWORDS = "🔑 دریافت رمز همه ادمین‌ها"
 ASK_BULK_PIN_ENTER = "🔐 برای دریافت رمزها، پین امنیتی را وارد نمایید:"
 BULK_PIN_NOT_SET = "⚠️ ابتدا باید یک پین امنیتی تنظیم نمایید."
-BULK_PIN_WRONG = "⛔ پین وارد شده نادرست است."
+BULK_PIN_WRONG = "🚫 پین وارد شده نادرست است."
 NO_CREDENTIALS = "ℹ️ هیچ ادمینی با رمز ثبت‌شده یافت نشد."
 CREDENTIALS_LIST_HEADER = "🔑 رمز عبور ادمین‌ها:\n\n"
 CREDENTIALS_LINE = "• {username} (آیدی: {telegram_id}): <code>{password}</code>\n"
 
-ASK_AMOUNT_GB = "📶 لطفاً میزان حجم موردنیاز خود را به گیگابایت وارد نمایید:"
+ASK_AMOUNT_GB = "📊 لطفاً میزان حجم موردنیاز خود را به گیگابایت وارد نمایید:"
 INVALID_AMOUNT_GB = "⚠️ عدد وارد شده معتبر نیست."
 PRICE_NOT_SET = "⚠️ قیمت‌گذاری هنوز توسط پشتیبانی تنظیم نشده است. لطفاً بعداً تلاش نمایید یا با پشتیبانی تماس بگیرید."
 
@@ -124,7 +124,7 @@ CARD_PAYMENT_INSTRUCTIONS = (
 )
 
 BTN_PAY_WEEKLY = "🗓 پرداخت سر هفته"
-WEEKLY_NOT_ENABLED = "⛔ این امکان برای شما فعال نیست!"
+WEEKLY_NOT_ENABLED = "🚫 این امکان برای شما فعال نیست!"
 WEEKLY_TOPUP_SUCCESS = (
     "✅ {added_gb:g} گیگابایت به پنل «{username}» اضافه شد.\n"
     "📊 موجودی جدید: {new_gb:.2f} گیگابایت\n\n"
@@ -134,7 +134,7 @@ WEEKLY_TOPUP_SUCCESS = (
 WEEKLY_TOPUP_FAILED = "⚠️ ثبت شارژ ناموفق بود: {error}"
 WEEKLY_REMINDER = (
     "🗓 یادآوری تسویه‌ی هفتگی\n\n"
-    "🖥 پنل: {username}\n"
+    "▪️ پنل: {username}\n"
     "💰 مبلغ قابل پرداخت: {amount:,} تومان\n\n"
     "لطفاً تا پایان هفته نسبت به تسویه اقدام نمایید."
 )
@@ -151,12 +151,12 @@ SETTLEMENT_APPROVED_ADMIN = "✅ تسویه‌ی شما تأیید شد. بده�
 BTN_TOGGLE_WEEKLY = "🗓 فعال/غیرفعال‌کردن پرداخت هفتگی"
 ASK_WEEKLY_USERNAME = "🗓 نام کاربری پنلی که می‌خواهید وضعیت پرداخت هفتگی‌اش تغییر کند را وارد نمایید:"
 WEEKLY_ENABLED_ON = "✅ پرداخت هفتگی برای پنل «{username}» فعال شد."
-WEEKLY_ENABLED_OFF = "⛔ پرداخت هفتگی برای پنل «{username}» غیرفعال شد."
+WEEKLY_ENABLED_OFF = "🚫 پرداخت هفتگی برای پنل «{username}» غیرفعال شد."
 WEEKLY_USED_NOTIFY_SUPERADMIN = (
     "🗓 خرید اعتباری (پرداخت سر هفته)\n\n"
-    "🖥 پنل: {username}\n"
+    "▪️ پنل: {username}\n"
     "👤 آیدی عددی: {telegram_id}\n"
-    "📶 حجم: {added_gb:g} گیگابایت\n"
+    "📊 حجم: {added_gb:g} گیگابایت\n"
     "💰 مبلغ: {price:,} تومان\n"
     "💳 مجموع بدهی: {debt:,} تومان"
 )
@@ -166,18 +166,18 @@ WEEKLY_SETTLEMENT_PAID_NOTE = " (از کیف پول تسویه شد ✅)"
 WEEKLY_SETTLEMENT_NONE = "🗓 تسویه‌ی هفتگی: هیچ بدهی‌ای برای این هفته ثبت نشده است."
 WEEKLY_WALLET_SETTLED = (
     "✅ بدهی هفتگی پنل «{username}» به مبلغ {paid:,} تومان از کیف پول شما تسویه شد.\n"
-    "👛 موجودی کیف پول: {balance:,} تومان"
+    "💼 موجودی کیف پول: {balance:,} تومان"
 )
 WEEKLY_WALLET_PARTIAL = (
     "🗓 زمان تسویه‌ی هفتگی رسید.\n\n"
-    "🖥 پنل: {username}\n"
-    "👛 از کیف پول کسر شد: {paid:,} تومان\n"
+    "▪️ پنل: {username}\n"
+    "💼 از کیف پول کسر شد: {paid:,} تومان\n"
     "💰 باقی‌مانده جهت پرداخت: {remaining:,} تومان"
 )
 
-BTN_WALLET = "👛 کیف پول"
-BTN_PAY_WALLET = "👛 پرداخت از کیف پول"
-WALLET_BALANCE = "👛 موجودی کیف پول شما: {balance:,} تومان"
+BTN_WALLET = "💼 کیف پول"
+BTN_PAY_WALLET = "💼 پرداخت از کیف پول"
+WALLET_BALANCE = "💼 موجودی کیف پول شما: {balance:,} تومان"
 BTN_CHARGE_WALLET = "➕ شارژ کیف پول"
 ASK_WALLET_AMOUNT = "➕ چه مبلغی (تومان) می‌خواهید به کیف پول اضافه کنید؟"
 INVALID_WALLET_AMOUNT = "⚠️ مبلغ وارد شده معتبر نیست."
@@ -188,26 +188,29 @@ WALLET_CHARGE_INSTRUCTIONS = (
 )
 WALLET_CHARGE_SUBMITTED = "⏳ رسید شارژ کیف پول ثبت شد و پس از بررسی اعمال خواهد شد."
 WALLET_CHARGED_ADMIN = (
-    "✅ کیف پول شما {amount:,} تومان شارژ شد.\n👛 موجودی جدید: {balance:,} تومان"
+    "✅ کیف پول شما {amount:,} تومان شارژ شد.\n💼 موجودی جدید: {balance:,} تومان"
 )
 WALLET_INSUFFICIENT = (
     "⚠️ موجودی کیف پول کافی نیست.\n"
     "💰 مبلغ فاکتور: {price:,} تومان\n"
-    "👛 موجودی شما: {balance:,} تومان"
+    "💼 موجودی شما: {balance:,} تومان"
 )
 WALLET_PAID_SUCCESS = (
     "✅ {added_gb:g} گیگابایت به پنل «{username}» اضافه شد.\n"
     "📊 موجودی جدید پنل: {new_gb:.2f} گیگابایت\n"
-    "👛 موجودی کیف پول: {balance:,} تومان"
+    "💼 موجودی کیف پول: {balance:,} تومان"
 )
-BTN_GRANT_WALLET = "👛 شارژ کیف پول کاربر"
-ASK_GRANT_WALLET_ID = "👛 آیدی عددی کاربری که می‌خواهید کیف پولش شارژ شود را وارد نمایید:"
-ASK_GRANT_WALLET_AMOUNT = "👛 چه مبلغی (تومان) به کیف پول این کاربر اضافه شود؟"
-GRANT_WALLET_SUCCESS = "✅ کیف پول کاربر {telegram_id} شارژ شد.\n👛 موجودی جدید: {balance:,} تومان"
+BTN_GRANT_WALLET = "💼 شارژ کیف پول کاربر"
+ASK_GRANT_WALLET_ID = "💼 آیدی عددی کاربری که می‌خواهید کیف پولش شارژ شود را وارد نمایید:"
+ASK_GRANT_WALLET_AMOUNT = "💼 چه مبلغی (تومان) به کیف پول این کاربر اضافه شود؟"
+GRANT_WALLET_SUCCESS = "✅ کیف پول کاربر {telegram_id} شارژ شد.\n💼 موجودی جدید: {balance:,} تومان"
 
 BTN_DEBTS = "💰 بدهی‌ها"
 DEBTS_HEADER = "💰 بدهی‌های تسویه‌نشده:\n\n"
-DEBT_LINE = "▫️ <b>{username}</b> — {amount:,} تومان\n"
+DEBT_LINE = (
+    "▫️ <b>{username}</b> — {amount:,} تومان\n"
+    "     ↳ {mention} · <code>{telegram_id}</code>\n"
+)
 NO_DEBTS_AT_ALL = "✅ هیچ بدهی تسویه‌نشده‌ای وجود ندارد."
 
 ASK_RECEIPT = "🧾 لطفاً تصویر رسید واریز را ارسال نمایید."
@@ -229,9 +232,9 @@ APPROVED_TOAST = "تأیید شد ✅"
 REJECTED_TOAST = "رد شد ❌"
 PANEL_ERROR_TOAST = "⚠️ خطا در اتصال به پنل. درخواست به حالت در انتظار بازگشت."
 
-BTN_MY_PANELS = "🖥 پنل‌های من"
+BTN_MY_PANELS = "🗄 پنل‌های من"
 NO_PANELS = "ℹ️ هیچ پنلی به حساب شما متصل نیست."
-PANELS_LIST_HEADER = "🖥 پنل‌های شما:\n\n"
+PANELS_LIST_HEADER = "▪️ پنل‌های شما:\n\n"
 PANEL_LINE = (
     "▫️ <b>{username}</b>\n"
     "   📊 موجودی: {remaining_gb:.2f} / {initial_gb:.2f} گیگابایت\n"
@@ -239,7 +242,7 @@ PANEL_LINE = (
 )
 PANEL_EXPIRY_LINE = "📅 انقضا: {expiry}"
 PANEL_NO_EXPIRY = "📅 بدون تاریخ انقضا"
-CHOOSE_PANEL = "🖥 لطفاً پنل موردنظر را انتخاب نمایید:"
+CHOOSE_PANEL = "▪️ لطفاً پنل موردنظر را انتخاب نمایید:"
 
 WARN_100 = (
     "⚠️ حجم پنل «{username}» رو به اتمام است.\n"
@@ -247,29 +250,29 @@ WARN_100 = (
     "برای جلوگیری از قطعی، پنل خود را شارژ نمایید."
 )
 WARN_50 = (
-    "🔔 حجم پنل «{username}» کمتر از ۵۰ گیگابایت است.\n"
+    "⚠️ حجم پنل «{username}» کمتر از ۵۰ گیگابایت است.\n"
     "📊 باقی‌مانده: {remaining_gb:.2f} گیگابایت\n\n"
     "لطفاً نسبت به شارژ پنل اقدام نمایید."
 )
 WARN_10 = (
-    "🚨 حجم پنل «{username}» کمتر از ۱۰ گیگابایت است!\n"
+    "⚠️ حجم پنل «{username}» کمتر از ۱۰ گیگابایت است!\n"
     "📊 باقی‌مانده: {remaining_gb:.2f} گیگابایت\n\n"
     "در صورت عدم شارژ، به‌زودی امکان ساخت کاربر جدید را نخواهید داشت."
 )
 WARN_EMPTY = (
-    "⛔ حجم پنل «{username}» به پایان رسید.\n\n"
+    "🚫 حجم پنل «{username}» به پایان رسید.\n\n"
     "برای ادامه‌ی سرویس‌دهی، لطفاً پنل خود را شارژ نمایید."
 )
 BTN_TOPUP_THIS_PANEL = "💳 شارژ پنل"
 
-BTN_ALL_PANELS = "🗂 همه پنل‌ها"
-ALL_PANELS_HEADER = "🗂 لیست کامل پنل‌ها ({count} مورد):\n\n"
+BTN_ALL_PANELS = "🗄 همه پنل‌ها"
+ALL_PANELS_HEADER = "📋 لیست کامل پنل‌ها ({count} مورد):\n\n"
 ADMIN_PANEL_LINE = (
     "▫️ <b>{username}</b>{status}\n"
     "   📊 {remaining_gb:.2f} / {initial_gb:.2f} گیگابایت\n"
     "   👤 آیدی: {telegram_id}\n"
 )
-PANEL_INACTIVE_MARK = " (غیرفعال ⛔)"
+PANEL_INACTIVE_MARK = " (غیرفعال 🚫)"
 BTN_GRANT_TRAFFIC = "➕ افزودن حجم"
 ASK_GRANT_USERNAME = "➕ نام کاربری پنلی که می‌خواهید شارژ شود را وارد نمایید:"
 ASK_GRANT_AMOUNT = "➕ چند گیگابایت به پنل «{username}» اضافه شود؟"
@@ -279,7 +282,7 @@ GRANT_SUCCESS = (
 )
 GRANT_FAILED = "⚠️ افزودن حجم ناموفق بود: {error}"
 GRANT_NOTIFY_ADMIN = (
-    "🎁 حجم پنل «{username}» توسط پشتیبانی افزایش یافت.\n"
+    "✨ حجم پنل «{username}» توسط پشتیبانی افزایش یافت.\n"
     "➕ {added_gb:g} گیگابایت اضافه شد.\n"
     "📊 موجودی جدید: {new_gb:.2f} گیگابایت"
 )
@@ -295,8 +298,13 @@ TUTORIALS_LIST_TEXT = "📚 لطفاً آموزش موردنظر را انتخا
 BTN_ADD_TUTORIAL = "➕ افزودن آموزش"
 ASK_TUTORIAL_TITLE = "📚 لطفاً عنوان آموزش را وارد نمایید:"
 ASK_TUTORIAL_CONTENT = (
-    "📎 لطفاً محتوای آموزش را ارسال نمایید. می‌تواند متن، عکس، ویدیو یا فایل باشد "
-    "(برای عکس/ویدیو/فایل می‌توانید توضیح هم اضافه نمایید)."
+    "📎 محتوای آموزش را ارسال نمایید.\n\n"
+    "▫️ می‌توانید پست موردنظر را از کانال آموزش‌ها فوروارد کنید (پیشنهادی — "
+    "با ویرایش پست در کانال، آموزش هم به‌روز می‌شود)\n"
+    "▫️ یا مستقیماً متن، عکس، ویدیو یا فایل بفرستید"
 )
 INVALID_TUTORIAL_CONTENT = "⚠️ نوع محتوای ارسالی پشتیبانی نمی‌شود. لطفاً متن، عکس، ویدیو یا فایل ارسال نمایید."
 TUTORIAL_ADDED_CONFIRM = "✅ آموزش «{title}» با موفقیت اضافه شد."
+TUTORIAL_UNAVAILABLE = (
+    "⚠️ در حال حاضر این آموزش در دسترس نیست. لطفاً به پشتیبانی اطلاع دهید."
+)

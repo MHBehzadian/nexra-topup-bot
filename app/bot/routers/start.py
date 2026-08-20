@@ -64,7 +64,7 @@ async def start(message: Message, bot: Bot) -> None:
         return
 
     # Deliberately no volume figures here: with several panels a combined total
-    # is meaningless, and per-panel numbers belong in «🖥 پنل‌های من».
+    # is meaningless, and per-panel numbers belong in «🗄 پنل‌های من».
     await message.answer(
         texts.START_LINKED.format(name=message.from_user.full_name),
         reply_markup=keyboards.main_menu_kb(),

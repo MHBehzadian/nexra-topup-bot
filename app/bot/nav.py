@@ -40,6 +40,14 @@ ALL_MENU_TEXTS = {
     texts.BTN_GRANT_TRAFFIC,
     texts.BTN_BROADCAST,
     texts.BTN_TOPUP_THIS_PANEL,
+    texts.BTN_WALLET,
+    texts.BTN_CHARGE_WALLET,
+    texts.BTN_PAY_WALLET,
+    texts.BTN_PAY_WEEKLY,
+    texts.BTN_PAY_DEBT,
+    texts.BTN_DEBTS,
+    texts.BTN_TOGGLE_WEEKLY,
+    texts.BTN_GRANT_WALLET,
 }
 
 

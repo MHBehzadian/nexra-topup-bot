@@ -16,12 +16,15 @@ from ..states import (
     Broadcast,
     ExportCredentials,
     GrantTraffic,
+    GrantWallet,
     SetBulkPin,
     SetCardNumber,
     SetForceJoinChannel,
     SetPricePerGb,
+    ToggleWeekly,
 )
 from ... import db
+from ...billing import apply_wallet_to_debts
 from ...services.nexra_panel import NexraPanelError, nexra_panel
 from ...units import bytes_to_gb
 
@@ -260,6 +263,85 @@ async def finish_grant(message: Message, state: FSMContext, bot: Bot) -> None:
             )
         except Exception:
             pass
+
+
+@router.message(F.text == texts.BTN_DEBTS)
+async def show_debts(message: Message) -> None:
+    debts = db.list_outstanding_debts()
+    if not debts:
+        await message.answer(texts.NO_DEBTS_AT_ALL)
+        return
+    text = texts.DEBTS_HEADER + "".join(
+        texts.DEBT_LINE.format(username=d["username"], amount=d["amount"]) for d in debts
+    )
+    await message.answer(text)
+
+
+@router.message(F.text == texts.BTN_TOGGLE_WEEKLY)
+async def start_toggle_weekly(message: Message, state: FSMContext) -> None:
+    await state.set_state(ToggleWeekly.username)
+    enabled = db.list_weekly_enabled()
+    current = ("\n\nفعال‌ها: " + "، ".join(enabled)) if enabled else ""
+    await message.answer(texts.ASK_WEEKLY_USERNAME + current, reply_markup=keyboards.cancel_kb())
+
+
+@router.message(ToggleWeekly.username, ~F.text.in_(ALL_MENU_TEXTS))
+async def finish_toggle_weekly(message: Message, state: FSMContext) -> None:
+    await state.clear()
+    username = (message.text or "").strip()
+    if not username:
+        await message.answer(texts.ASK_WEEKLY_USERNAME, reply_markup=keyboards.superadmin_menu_kb())
+        return
+    now_on = not db.is_weekly_enabled(username)
+    db.set_weekly_enabled(username, now_on)
+    template = texts.WEEKLY_ENABLED_ON if now_on else texts.WEEKLY_ENABLED_OFF
+    await message.answer(
+        template.format(username=username), reply_markup=keyboards.superadmin_menu_kb()
+    )
+
+
+@router.message(F.text == texts.BTN_GRANT_WALLET)
+async def start_grant_wallet(message: Message, state: FSMContext) -> None:
+    await state.set_state(GrantWallet.telegram_id)
+    await message.answer(texts.ASK_GRANT_WALLET_ID, reply_markup=keyboards.cancel_kb())
+
+
+@router.message(GrantWallet.telegram_id, ~F.text.in_(ALL_MENU_TEXTS))
+async def get_grant_wallet_id(message: Message, state: FSMContext) -> None:
+    raw = (message.text or "").strip()
+    if not raw.lstrip("-").isdigit():
+        await message.answer(texts.INVALID_WALLET_AMOUNT)
+        return
+    await state.update_data(target_telegram_id=int(raw))
+    await state.set_state(GrantWallet.amount)
+    await message.answer(texts.ASK_GRANT_WALLET_AMOUNT, reply_markup=keyboards.cancel_kb())
+
+
+@router.message(GrantWallet.amount, ~F.text.in_(ALL_MENU_TEXTS))
+async def finish_grant_wallet(message: Message, state: FSMContext, bot: Bot) -> None:
+    raw = (message.text or "").strip().replace(",", "")
+    if not raw.isdigit() or int(raw) <= 0:
+        await message.answer(texts.INVALID_WALLET_AMOUNT)
+        return
+
+    data = await state.get_data()
+    await state.clear()
+    target_id, amount = data["target_telegram_id"], int(raw)
+
+    db.add_wallet_balance(target_id, amount)
+    apply_wallet_to_debts(target_id)
+    balance = db.get_wallet_balance(target_id)
+
+    await message.answer(
+        texts.GRANT_WALLET_SUCCESS.format(telegram_id=target_id, balance=balance),
+        reply_markup=keyboards.superadmin_menu_kb(),
+    )
+    try:
+        await bot.send_message(
+            target_id, texts.WALLET_CHARGED_ADMIN.format(amount=amount, balance=balance)
+        )
+    except Exception:
+        pass
 
 
 @router.message(F.text == texts.BTN_BROADCAST)

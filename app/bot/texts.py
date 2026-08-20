@@ -121,6 +121,93 @@ CARD_PAYMENT_INSTRUCTIONS = (
     "پس از واریز، تصویر رسید را ارسال نمایید."
 )
 
+BTN_PAY_WEEKLY = "🗓 پرداخت سر هفته"
+WEEKLY_NOT_ENABLED = "⛔ این امکان برای شما فعال نیست!"
+WEEKLY_TOPUP_SUCCESS = (
+    "✅ {added_gb:g} گیگابایت به پنل «{username}» اضافه شد.\n"
+    "📊 موجودی جدید: {new_gb:.2f} گیگابایت\n\n"
+    "🗓 مبلغ {price:,} تومان به حساب این هفته‌ی شما اضافه شد.\n"
+    "💳 بدهی فعلی: {debt:,} تومان"
+)
+WEEKLY_TOPUP_FAILED = "⚠️ ثبت شارژ ناموفق بود: {error}"
+WEEKLY_REMINDER = (
+    "🗓 یادآوری تسویه‌ی هفتگی\n\n"
+    "🖥 پنل: {username}\n"
+    "💰 مبلغ قابل پرداخت: {amount:,} تومان\n\n"
+    "لطفاً تا پایان هفته نسبت به تسویه اقدام نمایید."
+)
+BTN_PAY_DEBT = "💳 پرداخت"
+DEBT_PAYMENT_INSTRUCTIONS = (
+    "💳 لطفاً مبلغ {amount:,} تومان را به شماره کارت زیر واریز نمایید:\n\n"
+    "<code>{card_number}</code>\n\n"
+    "پس از واریز، تصویر رسید را ارسال نمایید."
+)
+NO_DEBT = "✅ در حال حاضر بدهی‌ای ثبت نشده است."
+SETTLEMENT_SUBMITTED = "⏳ رسید تسویه ثبت شد. پس از بررسی، بدهی شما تسویه خواهد شد."
+SETTLEMENT_APPROVED_ADMIN = "✅ تسویه‌ی شما تأیید شد. بدهی پنل «{username}» صفر شد."
+
+BTN_TOGGLE_WEEKLY = "🗓 فعال/غیرفعال‌کردن پرداخت هفتگی"
+ASK_WEEKLY_USERNAME = "🗓 نام کاربری پنلی که می‌خواهید وضعیت پرداخت هفتگی‌اش تغییر کند را وارد نمایید:"
+WEEKLY_ENABLED_ON = "✅ پرداخت هفتگی برای پنل «{username}» فعال شد."
+WEEKLY_ENABLED_OFF = "⛔ پرداخت هفتگی برای پنل «{username}» غیرفعال شد."
+WEEKLY_USED_NOTIFY_SUPERADMIN = (
+    "🗓 خرید اعتباری (پرداخت سر هفته)\n\n"
+    "🖥 پنل: {username}\n"
+    "👤 آیدی عددی: {telegram_id}\n"
+    "📶 حجم: {added_gb:g} گیگابایت\n"
+    "💰 مبلغ: {price:,} تومان\n"
+    "💳 مجموع بدهی: {debt:,} تومان"
+)
+WEEKLY_SETTLEMENT_LIST_HEADER = "🗓 تسویه‌ی هفتگی — وضعیت بدهی‌ها:\n\n"
+WEEKLY_SETTLEMENT_LINE = "▫️ <b>{username}</b> — {amount:,} تومان{note}\n"
+WEEKLY_SETTLEMENT_PAID_NOTE = " (از کیف پول تسویه شد ✅)"
+WEEKLY_SETTLEMENT_NONE = "🗓 تسویه‌ی هفتگی: هیچ بدهی‌ای برای این هفته ثبت نشده است."
+WEEKLY_WALLET_SETTLED = (
+    "✅ بدهی هفتگی پنل «{username}» به مبلغ {paid:,} تومان از کیف پول شما تسویه شد.\n"
+    "👛 موجودی کیف پول: {balance:,} تومان"
+)
+WEEKLY_WALLET_PARTIAL = (
+    "🗓 زمان تسویه‌ی هفتگی رسید.\n\n"
+    "🖥 پنل: {username}\n"
+    "👛 از کیف پول کسر شد: {paid:,} تومان\n"
+    "💰 باقی‌مانده جهت پرداخت: {remaining:,} تومان"
+)
+
+BTN_WALLET = "👛 کیف پول"
+BTN_PAY_WALLET = "👛 پرداخت از کیف پول"
+WALLET_BALANCE = "👛 موجودی کیف پول شما: {balance:,} تومان"
+BTN_CHARGE_WALLET = "➕ شارژ کیف پول"
+ASK_WALLET_AMOUNT = "➕ چه مبلغی (تومان) می‌خواهید به کیف پول اضافه کنید؟"
+INVALID_WALLET_AMOUNT = "⚠️ مبلغ وارد شده معتبر نیست."
+WALLET_CHARGE_INSTRUCTIONS = (
+    "💳 لطفاً مبلغ {amount:,} تومان را به شماره کارت زیر واریز نمایید:\n\n"
+    "<code>{card_number}</code>\n\n"
+    "پس از واریز، تصویر رسید را ارسال نمایید."
+)
+WALLET_CHARGE_SUBMITTED = "⏳ رسید شارژ کیف پول ثبت شد و پس از بررسی اعمال خواهد شد."
+WALLET_CHARGED_ADMIN = (
+    "✅ کیف پول شما {amount:,} تومان شارژ شد.\n👛 موجودی جدید: {balance:,} تومان"
+)
+WALLET_INSUFFICIENT = (
+    "⚠️ موجودی کیف پول کافی نیست.\n"
+    "💰 مبلغ فاکتور: {price:,} تومان\n"
+    "👛 موجودی شما: {balance:,} تومان"
+)
+WALLET_PAID_SUCCESS = (
+    "✅ {added_gb:g} گیگابایت به پنل «{username}» اضافه شد.\n"
+    "📊 موجودی جدید پنل: {new_gb:.2f} گیگابایت\n"
+    "👛 موجودی کیف پول: {balance:,} تومان"
+)
+BTN_GRANT_WALLET = "👛 شارژ کیف پول کاربر"
+ASK_GRANT_WALLET_ID = "👛 آیدی عددی کاربری که می‌خواهید کیف پولش شارژ شود را وارد نمایید:"
+ASK_GRANT_WALLET_AMOUNT = "👛 چه مبلغی (تومان) به کیف پول این کاربر اضافه شود؟"
+GRANT_WALLET_SUCCESS = "✅ کیف پول کاربر {telegram_id} شارژ شد.\n👛 موجودی جدید: {balance:,} تومان"
+
+BTN_DEBTS = "💰 بدهی‌ها"
+DEBTS_HEADER = "💰 بدهی‌های تسویه‌نشده:\n\n"
+DEBT_LINE = "▫️ <b>{username}</b> — {amount:,} تومان\n"
+NO_DEBTS_AT_ALL = "✅ هیچ بدهی تسویه‌نشده‌ای وجود ندارد."
+
 ASK_RECEIPT = "🧾 لطفاً تصویر رسید واریز را ارسال نمایید."
 NOT_A_PHOTO = "⚠️ فایل ارسالی تصویر نیست. لطفاً تصویر رسید را ارسال نمایید."
 

@@ -1,3 +1,6 @@
 aiogram==3.29.1
 httpx==0.28.1
 pydantic-settings==2.14.2
+# Ships the IANA timezone database: the slim base image has none, and weekly
+# billing runs on Asia/Tehran local time.
+tzdata==2025.2

@@ -25,6 +25,14 @@ def _connect() -> sqlite3.Connection:
     return conn
 
 
+def _ensure_column(conn: sqlite3.Connection, table: str, column: str, ddl: str) -> None:
+    """Add a column to an already-created table. There are no migrations here,
+    so this is what lets an existing deployment pick up new columns on restart."""
+    existing = [r["name"] for r in conn.execute(f"PRAGMA table_info({table})")]
+    if column not in existing:
+        conn.execute(f"ALTER TABLE {table} ADD COLUMN {column} {ddl}")
+
+
 def init_db() -> None:
     with _connect() as conn:
         conn.execute(
@@ -77,6 +85,48 @@ def init_db() -> None:
             )
             """
         )
+        # 'topup' = buying traffic; 'settlement' = paying off a weekly-credit debt.
+        _ensure_column(conn, "topup_requests", "kind", "TEXT NOT NULL DEFAULT 'topup'")
+        conn.execute(
+            """
+            CREATE TABLE IF NOT EXISTS weekly_payment (
+                username TEXT PRIMARY KEY,
+                enabled INTEGER NOT NULL DEFAULT 0
+            )
+            """
+        )
+        # Wallet belongs to the person, not the panel: one human with several
+        # panels tops up once and spends it across all of them.
+        conn.execute(
+            """
+            CREATE TABLE IF NOT EXISTS wallets (
+                telegram_id INTEGER PRIMARY KEY,
+                balance INTEGER NOT NULL DEFAULT 0,
+                updated_at TEXT NOT NULL
+            )
+            """
+        )
+        # Money belongs to the person, so the wallet is keyed by Telegram ID —
+        # unlike debts, which are per-panel because traffic is per-panel.
+        conn.execute(
+            """
+            CREATE TABLE IF NOT EXISTS wallets (
+                telegram_id INTEGER PRIMARY KEY,
+                balance INTEGER NOT NULL DEFAULT 0,
+                updated_at TEXT NOT NULL
+            )
+            """
+        )
+        conn.execute(
+            """
+            CREATE TABLE IF NOT EXISTS debts (
+                username TEXT PRIMARY KEY,
+                telegram_id INTEGER,
+                amount INTEGER NOT NULL DEFAULT 0,
+                updated_at TEXT NOT NULL
+            )
+            """
+        )
         conn.execute(
             """
             CREATE TABLE IF NOT EXISTS traffic_warnings (
@@ -113,6 +163,7 @@ class TopupRequest:
     reject_reason: str | None
     created_at: str
     reviewed_at: str | None
+    kind: str = "topup"
 
 
 def create_request(
@@ -122,16 +173,18 @@ def create_request(
     requested_gb: float,
     toman_amount: int,
     receipt_path: str,
+    kind: str = "topup",
 ) -> int:
     now = datetime.now(timezone.utc).isoformat()
     with _connect() as conn:
         cur = conn.execute(
             """
             INSERT INTO topup_requests
-                (admin_telegram_id, admin_username, requested_gb, toman_amount, receipt_path, status, created_at)
-            VALUES (?, ?, ?, ?, ?, 'pending', ?)
+                (admin_telegram_id, admin_username, requested_gb, toman_amount, receipt_path,
+                 status, created_at, kind)
+            VALUES (?, ?, ?, ?, ?, 'pending', ?, ?)
             """,
-            (admin_telegram_id, admin_username, requested_gb, toman_amount, receipt_path, now),
+            (admin_telegram_id, admin_username, requested_gb, toman_amount, receipt_path, now, kind),
         )
         return cur.lastrowid
 
@@ -286,6 +339,143 @@ def revert_password_request(request_id: int) -> None:
             "UPDATE password_requests SET status = 'pending', applied_at = NULL, applied_by = NULL WHERE id = ?",
             (request_id,),
         )
+
+
+def get_wallet_balance(telegram_id: int) -> int:
+    with _connect() as conn:
+        row = conn.execute(
+            "SELECT balance FROM wallets WHERE telegram_id = ?", (telegram_id,)
+        ).fetchone()
+        return row["balance"] if row else 0
+
+
+def add_wallet_balance(telegram_id: int, amount: int) -> int:
+    """Credit the wallet and return the new balance."""
+    now = datetime.now(timezone.utc).isoformat()
+    with _connect() as conn:
+        conn.execute(
+            """
+            INSERT INTO wallets (telegram_id, balance, updated_at) VALUES (?, ?, ?)
+            ON CONFLICT(telegram_id) DO UPDATE SET
+                balance = balance + excluded.balance,
+                updated_at = excluded.updated_at
+            """,
+            (telegram_id, amount, now),
+        )
+        row = conn.execute(
+            "SELECT balance FROM wallets WHERE telegram_id = ?", (telegram_id,)
+        ).fetchone()
+        return row["balance"]
+
+
+def spend_wallet(telegram_id: int, amount: int) -> bool:
+    """Deduct the full amount, or nothing at all if the balance won't cover it.
+
+    The balance check and the write happen in one statement so two concurrent
+    spends can't both pass a check that only one of them could afford.
+    """
+    now = datetime.now(timezone.utc).isoformat()
+    with _connect() as conn:
+        cur = conn.execute(
+            "UPDATE wallets SET balance = balance - ?, updated_at = ? "
+            "WHERE telegram_id = ? AND balance >= ?",
+            (amount, now, telegram_id, amount),
+        )
+        return cur.rowcount == 1
+
+
+def drain_wallet(telegram_id: int, up_to: int) -> int:
+    """Spend as much of `up_to` as the wallet holds; returns the amount taken."""
+    now = datetime.now(timezone.utc).isoformat()
+    with _connect() as conn:
+        row = conn.execute(
+            "SELECT balance FROM wallets WHERE telegram_id = ?", (telegram_id,)
+        ).fetchone()
+        available = row["balance"] if row else 0
+        taken = min(available, up_to)
+        if taken > 0:
+            conn.execute(
+                "UPDATE wallets SET balance = balance - ?, updated_at = ? WHERE telegram_id = ?",
+                (taken, now, telegram_id),
+            )
+        return taken
+
+
+def is_weekly_enabled(username: str) -> bool:
+    with _connect() as conn:
+        row = conn.execute(
+            "SELECT enabled FROM weekly_payment WHERE username = ?", (username,)
+        ).fetchone()
+        return bool(row["enabled"]) if row else False
+
+
+def set_weekly_enabled(username: str, enabled: bool) -> None:
+    with _connect() as conn:
+        conn.execute(
+            """
+            INSERT INTO weekly_payment (username, enabled) VALUES (?, ?)
+            ON CONFLICT(username) DO UPDATE SET enabled = excluded.enabled
+            """,
+            (username, 1 if enabled else 0),
+        )
+
+
+def list_weekly_enabled() -> list[str]:
+    with _connect() as conn:
+        rows = conn.execute("SELECT username FROM weekly_payment WHERE enabled = 1").fetchall()
+        return [r["username"] for r in rows]
+
+
+def get_debt(username: str) -> int:
+    with _connect() as conn:
+        row = conn.execute("SELECT amount FROM debts WHERE username = ?", (username,)).fetchone()
+        return row["amount"] if row else 0
+
+
+def add_debt(username: str, telegram_id: int, amount: int) -> int:
+    """Add to what this panel owes and return the new total."""
+    now = datetime.now(timezone.utc).isoformat()
+    with _connect() as conn:
+        conn.execute(
+            """
+            INSERT INTO debts (username, telegram_id, amount, updated_at) VALUES (?, ?, ?, ?)
+            ON CONFLICT(username) DO UPDATE SET
+                amount = amount + excluded.amount,
+                telegram_id = excluded.telegram_id,
+                updated_at = excluded.updated_at
+            """,
+            (username, telegram_id, amount, now),
+        )
+        row = conn.execute("SELECT amount FROM debts WHERE username = ?", (username,)).fetchone()
+        return row["amount"]
+
+
+def reduce_debt(username: str, amount: int) -> int:
+    """Pay part of a debt down (never below zero); returns what's still owed."""
+    now = datetime.now(timezone.utc).isoformat()
+    with _connect() as conn:
+        conn.execute(
+            "UPDATE debts SET amount = MAX(0, amount - ?), updated_at = ? WHERE username = ?",
+            (amount, now, username),
+        )
+        row = conn.execute("SELECT amount FROM debts WHERE username = ?", (username,)).fetchone()
+        return row["amount"] if row else 0
+
+
+def clear_debt(username: str) -> None:
+    now = datetime.now(timezone.utc).isoformat()
+    with _connect() as conn:
+        conn.execute(
+            "UPDATE debts SET amount = 0, updated_at = ? WHERE username = ?", (now, username)
+        )
+
+
+def list_outstanding_debts() -> list[dict]:
+    with _connect() as conn:
+        rows = conn.execute(
+            "SELECT username, telegram_id, amount FROM debts WHERE amount > 0 ORDER BY username"
+        ).fetchall()
+        return [dict(r) for r in rows]
 
 
 def get_warning_bucket(username: str) -> str | None:

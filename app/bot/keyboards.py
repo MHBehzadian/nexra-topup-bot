@@ -8,7 +8,7 @@ def main_menu_kb() -> ReplyKeyboardMarkup:
     kb = ReplyKeyboardBuilder()
     kb.button(text=texts.BTN_TOPUP)
     kb.button(text=texts.BTN_MY_PANELS)
-    kb.button(text=texts.BTN_BALANCE)
+    kb.button(text=texts.BTN_WALLET)
     kb.button(text=texts.BTN_CHANGE_PASSWORD)
     kb.button(text=texts.BTN_TUTORIALS)
     kb.button(text=texts.BTN_CREATE_PANEL)
@@ -35,10 +35,13 @@ def superadmin_menu_kb() -> ReplyKeyboardMarkup:
     kb.button(text=texts.BTN_ALL_PANELS)
     kb.button(text=texts.BTN_GRANT_TRAFFIC)
     kb.button(text=texts.BTN_BROADCAST)
+    kb.button(text=texts.BTN_DEBTS)
+    kb.button(text=texts.BTN_TOGGLE_WEEKLY)
+    kb.button(text=texts.BTN_GRANT_WALLET)
     kb.button(text=texts.BTN_SET_BULK_PIN)
     kb.button(text=texts.BTN_EXPORT_ALL_PASSWORDS)
     kb.button(text=texts.BTN_SYNC_TELEGRAM_IDS)
-    kb.adjust(1, 2, 2, 2, 2, 2, 2)
+    kb.adjust(1, 2, 2, 2, 2, 2, 2, 2, 1)
     return kb.as_markup(resize_keyboard=True)
 
 
@@ -65,8 +68,26 @@ def invoice_kb() -> InlineKeyboardMarkup:
 
 
 def payment_methods_kb() -> InlineKeyboardMarkup:
+    """Weekly credit is only usable by panels the superadmin enabled it for, but
+    the button is shown to everyone so those without it get a clear explanation
+    rather than silently missing an option."""
     kb = InlineKeyboardBuilder()
     kb.button(text=texts.BTN_PAY_CARD, callback_data="pay_method:card")
+    kb.button(text=texts.BTN_PAY_WALLET, callback_data="pay_method:wallet")
+    kb.button(text=texts.BTN_PAY_WEEKLY, callback_data="pay_method:weekly")
+    kb.adjust(1)
+    return kb.as_markup()
+
+
+def pay_debt_kb(username: str) -> InlineKeyboardMarkup:
+    kb = InlineKeyboardBuilder()
+    kb.button(text=texts.BTN_PAY_DEBT, callback_data=f"pay_debt:{username}")
+    return kb.as_markup()
+
+
+def wallet_kb() -> InlineKeyboardMarkup:
+    kb = InlineKeyboardBuilder()
+    kb.button(text=texts.BTN_CHARGE_WALLET, callback_data="wallet_charge")
     return kb.as_markup()
 
 

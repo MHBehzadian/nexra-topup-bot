@@ -19,6 +19,8 @@ from ..panels import choose_panel, owned_panel
 from ..states import TopUp
 from ... import db
 from ...config import settings
+from ...services.nexra_panel import NexraPanelError, nexra_panel
+from ...units import bytes_to_gb
 
 router = Router(name="topup")
 
@@ -80,6 +82,113 @@ async def show_payment_methods(call: CallbackQuery) -> None:
     await call.message.answer(
         texts.PAYMENT_METHODS_TEXT, reply_markup=keyboards.payment_methods_kb()
     )
+
+
+@router.callback_query(F.data == "pay_method:wallet", TopUp.awaiting_payment)
+async def pay_from_wallet(call: CallbackQuery, state: FSMContext, bot: Bot) -> None:
+    data = await state.get_data()
+    username, price, gb = data["panel_username"], data["total_price"], data["amount_gb"]
+    telegram_id = call.from_user.id
+
+    balance = db.get_wallet_balance(telegram_id)
+    if balance < price:
+        await call.answer()
+        await call.message.answer(
+            texts.WALLET_INSUFFICIENT.format(price=price, balance=balance),
+            reply_markup=keyboards.wallet_kb(),
+        )
+        return
+
+    # Take the money first: if crediting the panel then fails we refund, which is
+    # safer than crediting traffic we might never manage to charge for.
+    if not db.spend_wallet(telegram_id, price):
+        await call.answer()
+        await call.message.answer(
+            texts.WALLET_INSUFFICIENT.format(price=price, balance=db.get_wallet_balance(telegram_id)),
+            reply_markup=keyboards.wallet_kb(),
+        )
+        return
+
+    try:
+        result = await nexra_panel.topup(telegram_id, gb, username=username)
+    except NexraPanelError as exc:
+        db.add_wallet_balance(telegram_id, price)  # refund
+        await call.answer()
+        await call.message.answer(
+            texts.WEEKLY_TOPUP_FAILED.format(error=exc), reply_markup=keyboards.main_menu_kb()
+        )
+        return
+
+    await state.clear()
+    db.clear_warning_bucket(username)
+    new_gb = bytes_to_gb(result.get("new_traffic_bytes"))
+    balance = db.get_wallet_balance(telegram_id)
+
+    await call.answer()
+    await call.message.answer(
+        texts.WALLET_PAID_SUCCESS.format(
+            added_gb=gb, username=username, new_gb=new_gb, balance=balance
+        ),
+        reply_markup=keyboards.main_menu_kb(),
+    )
+    for superadmin_id in settings.superadmin_id_list:
+        try:
+            await bot.send_message(
+                superadmin_id,
+                f"👛 خرید از کیف پول\n\n🖥 پنل: {username}\n👤 آیدی عددی: {telegram_id}\n"
+                f"📶 حجم: {gb:g} گیگابایت\n💰 مبلغ: {price:,} تومان",
+            )
+        except Exception:
+            continue
+
+
+@router.callback_query(F.data == "pay_method:weekly", TopUp.awaiting_payment)
+async def pay_weekly_credit(call: CallbackQuery, state: FSMContext, bot: Bot) -> None:
+    data = await state.get_data()
+    username, price, gb = data["panel_username"], data["total_price"], data["amount_gb"]
+    telegram_id = call.from_user.id
+
+    if not db.is_weekly_enabled(username):
+        await call.answer(texts.WEEKLY_NOT_ENABLED, show_alert=True)
+        return
+
+    # Credit is the whole point here: the traffic lands now and is billed at the
+    # end of the week, so there's no receipt or approval step.
+    try:
+        result = await nexra_panel.topup(telegram_id, gb, username=username)
+    except NexraPanelError as exc:
+        await call.answer()
+        await call.message.answer(
+            texts.WEEKLY_TOPUP_FAILED.format(error=exc), reply_markup=keyboards.main_menu_kb()
+        )
+        return
+
+    await state.clear()
+    db.clear_warning_bucket(username)
+    debt = db.add_debt(username, telegram_id, price)
+    new_gb = bytes_to_gb(result.get("new_traffic_bytes"))
+
+    await call.answer()
+    await call.message.answer(
+        texts.WEEKLY_TOPUP_SUCCESS.format(
+            added_gb=gb, username=username, new_gb=new_gb, price=price, debt=debt
+        ),
+        reply_markup=keyboards.main_menu_kb(),
+    )
+    for superadmin_id in settings.superadmin_id_list:
+        try:
+            await bot.send_message(
+                superadmin_id,
+                texts.WEEKLY_USED_NOTIFY_SUPERADMIN.format(
+                    username=username,
+                    telegram_id=telegram_id,
+                    added_gb=gb,
+                    price=price,
+                    debt=debt,
+                ),
+            )
+        except Exception:
+            continue
 
 
 @router.callback_query(F.data == "pay_method:card", TopUp.awaiting_payment)

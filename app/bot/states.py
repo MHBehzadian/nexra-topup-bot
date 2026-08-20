@@ -31,6 +31,24 @@ class GrantTraffic(StatesGroup):
     amount = State()
 
 
+class WalletTopUp(StatesGroup):
+    amount = State()
+    receipt = State()
+
+
+class DebtPayment(StatesGroup):
+    receipt = State()
+
+
+class ToggleWeekly(StatesGroup):
+    username = State()
+
+
+class GrantWallet(StatesGroup):
+    telegram_id = State()
+    amount = State()
+
+
 class SetPricePerGb(StatesGroup):
     value = State()
 

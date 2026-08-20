@@ -12,6 +12,7 @@ from ..filters import SuperadminFilter
 from ..nav import ALL_MENU_TEXTS
 from ..states import MessageUser, RejectReason
 from ... import db
+from ...billing import apply_wallet_to_debts
 from ...services.nexra_panel import NexraPanelError, nexra_panel
 from ...units import bytes_to_gb
 
@@ -57,6 +58,36 @@ async def approve(call: CallbackQuery, bot: Bot) -> None:
         return
     if not db.mark_reviewed(request_id, status="approved", reviewed_by=call.from_user.id):
         await call.answer(texts.ALREADY_HANDLED, show_alert=True)
+        return
+
+    # A wallet top-up or a debt settlement moves money, not traffic.
+    if req.kind == "wallet":
+        db.add_wallet_balance(req.admin_telegram_id, req.toman_amount)
+        # Newly arrived money clears any outstanding weekly debt immediately.
+        apply_wallet_to_debts(req.admin_telegram_id)
+        balance = db.get_wallet_balance(req.admin_telegram_id)
+        try:
+            await bot.send_message(
+                req.admin_telegram_id,
+                texts.WALLET_CHARGED_ADMIN.format(amount=req.toman_amount, balance=balance),
+            )
+        except Exception:
+            pass
+        await call.answer(texts.APPROVED_TOAST)
+        await call.message.edit_reply_markup(reply_markup=None)
+        return
+
+    if req.kind == "settlement":
+        db.clear_debt(req.admin_username)
+        try:
+            await bot.send_message(
+                req.admin_telegram_id,
+                texts.SETTLEMENT_APPROVED_ADMIN.format(username=req.admin_username),
+            )
+        except Exception:
+            pass
+        await call.answer(texts.APPROVED_TOAST)
+        await call.message.edit_reply_markup(reply_markup=None)
         return
 
     try:

@@ -48,6 +48,7 @@ ALL_MENU_TEXTS = {
     texts.BTN_DEBTS,
     texts.BTN_TOGGLE_WEEKLY,
     texts.BTN_GRANT_WALLET,
+    texts.BTN_BACKUP,
 }
 
 

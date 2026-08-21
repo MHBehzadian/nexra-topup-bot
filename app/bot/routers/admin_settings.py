@@ -10,6 +10,7 @@ from aiogram.types import Message
 from aiogram import Bot
 
 from .. import keyboards, texts
+from ..backups import send_backup
 from ..filters import SuperadminFilter
 from ..nav import ALL_MENU_TEXTS
 from ..states import (
@@ -263,6 +264,13 @@ async def finish_grant(message: Message, state: FSMContext, bot: Bot) -> None:
             )
         except Exception:
             pass
+
+
+@router.message(F.text == texts.BTN_BACKUP)
+async def manual_backup(message: Message, bot: Bot) -> None:
+    await message.answer(texts.BACKUP_RUNNING)
+    if not await send_backup(bot, targets=[message.from_user.id]):
+        await message.answer(texts.BACKUP_FAILED, reply_markup=keyboards.superadmin_menu_kb())
 
 
 @router.message(F.text == texts.BTN_DEBTS)

@@ -23,6 +23,9 @@ class Settings(BaseSettings):
     # How often to check every panel's remaining traffic for warnings.
     warning_scan_interval_seconds: int = 1800
 
+    # Hour (Asia/Tehran) at which the daily backup is sent to the superadmins.
+    backup_hour: int = 0
+
     @property
     def superadmin_id_list(self) -> list[int]:
         return [

@@ -287,6 +287,18 @@ GRANT_NOTIFY_ADMIN = (
     "📊 موجودی جدید: {new_gb:.2f} گیگابایت"
 )
 
+BTN_BACKUP = "📦 دریافت بکاپ"
+BACKUP_CAPTION = (
+    "📦 بکاپ ربات\n\n"
+    "🗓 تاریخ: {date}\n"
+    "📁 حجم: {size:.2f} مگابایت\n"
+    "{media}"
+)
+BACKUP_WITH_MEDIA = "🧾 شامل دیتابیس و رسیدها"
+BACKUP_WITHOUT_MEDIA = "⚠️ فقط دیتابیس (حجم رسیدها از حد مجاز تلگرام بیشتر بود)"
+BACKUP_RUNNING = "⏳ در حال تهیه‌ی بکاپ..."
+BACKUP_FAILED = "⚠️ تهیه‌ی بکاپ ناموفق بود."
+
 BTN_BROADCAST = "📣 پیام همگانی"
 ASK_BROADCAST_TEXT = "📣 متن پیامی که برای همه‌ی کاربران ارسال شود را بنویسید:"
 BROADCAST_RESULT = "📣 پیام همگانی ارسال شد.\n✅ موفق: {sent}\n❌ ناموفق: {failed}"

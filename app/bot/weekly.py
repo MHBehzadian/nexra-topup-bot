@@ -60,6 +60,36 @@ async def send_reminders(bot: Bot) -> int:
     return sent
 
 
+async def send_overdue_reminders(bot: Bot) -> int:
+    """Chase every debt that survived its settlement date, once a day.
+
+    Only debts already stamped overdue are chased: someone who bought on
+    Saturday has until Friday to pay and must not be nagged in between.
+    """
+    sent = 0
+    now = datetime.now(TEHRAN)
+    for debt in db.list_outstanding_debts():
+        if not debt["telegram_id"] or not debt.get("overdue_since"):
+            continue
+        try:
+            since = datetime.fromisoformat(debt["overdue_since"])
+            days = max(1, (now - since.astimezone(TEHRAN)).days)
+        except Exception:
+            days = 1
+        try:
+            await bot.send_message(
+                debt["telegram_id"],
+                texts.OVERDUE_REMINDER.format(
+                    username=debt["username"], amount=debt["amount"], days=days
+                ),
+                reply_markup=keyboards.pay_debt_kb(debt["username"]),
+            )
+            sent += 1
+        except Exception:
+            continue
+    return sent
+
+
 async def run_settlement(bot: Bot) -> None:
     """Friday: draw down wallets, tell each debtor where they stand, then report."""
     debts = db.list_outstanding_debts()
@@ -83,6 +113,9 @@ async def run_settlement(bot: Bot) -> None:
         telegram_id = debt["telegram_id"]
         paid = paid_by_panel.get(username, 0)
         remaining = db.get_debt(username)
+        if remaining > 0:
+            # Survived its settlement date — from now on it gets chased daily.
+            db.mark_overdue(username)
 
         if telegram_id:
             try:
@@ -137,6 +170,16 @@ async def tick(bot: Bot) -> None:
         await run_settlement(bot)
         db.set_setting("weekly_settlement_week", stamp)
         logger.info("weekly settlement completed")
+
+    # Every other day, chase whatever is still unpaid. Wednesday and Friday are
+    # skipped because those days already send their own message.
+    if now.weekday() not in (REMINDER_WEEKDAY, SETTLEMENT_WEEKDAY):
+        day_stamp = now.strftime("%Y-%m-%d")
+        if db.get_setting("overdue_reminder_date") != day_stamp:
+            count = await send_overdue_reminders(bot)
+            db.set_setting("overdue_reminder_date", day_stamp)
+            if count:
+                logger.info(f"overdue reminders sent: {count}")
 
 
 async def run_weekly_scheduler(bot: Bot) -> None:

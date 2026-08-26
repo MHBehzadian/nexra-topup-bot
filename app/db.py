@@ -147,6 +147,8 @@ def init_db() -> None:
         # A tutorial either carries its own content or points at a channel post.
         _ensure_column(conn, "tutorials", "source_chat_id", "INTEGER")
         _ensure_column(conn, "tutorials", "source_message_id", "INTEGER")
+        # When a debt passed its settlement date unpaid — drives daily chasing.
+        _ensure_column(conn, "debts", "overdue_since", "TEXT")
 
 
 @dataclass
@@ -450,12 +452,19 @@ def add_debt(username: str, telegram_id: int, amount: int) -> int:
 
 
 def reduce_debt(username: str, amount: int) -> int:
-    """Pay part of a debt down (never below zero); returns what's still owed."""
+    """Pay part of a debt down (never below zero); returns what's still owed.
+
+    Clearing the balance also clears the overdue flag, so a panel that settles
+    and later buys again starts from a clean slate instead of being chased.
+    """
     now = datetime.now(timezone.utc).isoformat()
     with _connect() as conn:
         conn.execute(
             "UPDATE debts SET amount = MAX(0, amount - ?), updated_at = ? WHERE username = ?",
             (amount, now, username),
+        )
+        conn.execute(
+            "UPDATE debts SET overdue_since = NULL WHERE username = ? AND amount <= 0", (username,)
         )
         row = conn.execute("SELECT amount FROM debts WHERE username = ?", (username,)).fetchone()
         return row["amount"] if row else 0
@@ -465,14 +474,27 @@ def clear_debt(username: str) -> None:
     now = datetime.now(timezone.utc).isoformat()
     with _connect() as conn:
         conn.execute(
-            "UPDATE debts SET amount = 0, updated_at = ? WHERE username = ?", (now, username)
+            "UPDATE debts SET amount = 0, overdue_since = NULL, updated_at = ? WHERE username = ?",
+            (now, username),
+        )
+
+
+def mark_overdue(username: str) -> None:
+    """Stamp a debt as past due. Keeps the original date if already stamped, so
+    the 'days overdue' counter keeps climbing across weeks."""
+    now = datetime.now(timezone.utc).isoformat()
+    with _connect() as conn:
+        conn.execute(
+            "UPDATE debts SET overdue_since = ? WHERE username = ? AND overdue_since IS NULL",
+            (now, username),
         )
 
 
 def list_outstanding_debts() -> list[dict]:
     with _connect() as conn:
         rows = conn.execute(
-            "SELECT username, telegram_id, amount FROM debts WHERE amount > 0 ORDER BY username"
+            "SELECT username, telegram_id, amount, overdue_since FROM debts "
+            "WHERE amount > 0 ORDER BY username"
         ).fetchall()
         return [dict(r) for r in rows]
 

@@ -42,7 +42,8 @@ def superadmin_menu_kb() -> ReplyKeyboardMarkup:
     kb.button(text=texts.BTN_EXPORT_ALL_PASSWORDS)
     kb.button(text=texts.BTN_SYNC_TELEGRAM_IDS)
     kb.button(text=texts.BTN_BACKUP)
-    kb.adjust(1, 2, 2, 2, 2, 2, 2, 2, 2)
+    kb.button(text=texts.BTN_CREATE_ADMIN)
+    kb.adjust(1, 2, 2, 2, 2, 2, 2, 2, 2, 1)
     return kb.as_markup(resize_keyboard=True)
 
 
@@ -113,6 +114,15 @@ def panel_picker_kb(admins, action: str) -> InlineKeyboardMarkup:
     kb = InlineKeyboardBuilder()
     for a in admins:
         kb.button(text=f"▪️ {a['username']}", callback_data=f"pick:{action}:{a['username']}")
+    kb.adjust(1)
+    return kb.as_markup()
+
+
+def panel_name_picker_kb(panel_names) -> InlineKeyboardMarkup:
+    """Choose which Marzban panel a newly provisioned reseller belongs to."""
+    kb = InlineKeyboardBuilder()
+    for name in panel_names:
+        kb.button(text=f"▪️ {name}", callback_data=f"newadmin_panel:{name}")
     kb.adjust(1)
     return kb.as_markup()
 

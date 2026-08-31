@@ -60,6 +60,34 @@ class NexraPanelClient:
             )
         return self._ok(resp)
 
+    async def create_admin(
+        self,
+        username: str,
+        password: str,
+        panel: str,
+        traffic_gb: float,
+        expiry_days: int | None,
+        telegram_id: int | None,
+    ) -> dict:
+        async with self._client(30.0) as client:
+            resp = await client.post(
+                "/bot/admin/create",
+                json={
+                    "username": username,
+                    "password": password,
+                    "panel": panel,
+                    "traffic_gb": traffic_gb,
+                    "expiry_days": expiry_days,
+                    "telegram_id": telegram_id,
+                },
+            )
+        return self._ok(resp)
+
+    async def list_panels(self) -> list[dict]:
+        """Distinct Marzban panels, derived from the admins already on them."""
+        admins = await self.list_all_admins()
+        return sorted({a["panel"] for a in admins if a.get("panel")})
+
     async def grant(self, username: str, added_gb: float) -> dict:
         async with self._client() as client:
             resp = await client.post(

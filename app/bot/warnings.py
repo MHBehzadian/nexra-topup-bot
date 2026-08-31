@@ -24,7 +24,7 @@ logger = logging.getLogger(__name__)
 # Ordered most-severe first; the first match wins.
 _THRESHOLDS: list[tuple[str, float, str]] = [
     ("empty", 0.0, texts.WARN_EMPTY),
-    ("10", 10.0, texts.WARN_10),
+    ("20", 20.0, texts.WARN_20),
     ("50", 50.0, texts.WARN_50),
     ("100", 100.0, texts.WARN_100),
 ]

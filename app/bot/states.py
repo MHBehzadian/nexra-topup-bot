@@ -49,6 +49,15 @@ class GrantWallet(StatesGroup):
     amount = State()
 
 
+class CreateAdmin(StatesGroup):
+    username = State()
+    password = State()
+    panel = State()
+    traffic = State()
+    expiry = State()
+    telegram_id = State()
+
+
 class SetPricePerGb(StatesGroup):
     value = State()
 

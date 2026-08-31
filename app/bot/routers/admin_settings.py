@@ -3,11 +3,9 @@ force-join channel, and the bulk-credentials-export PIN."""
 
 from __future__ import annotations
 
-from aiogram import F, Router
+from aiogram import Bot, F, Router
 from aiogram.fsm.context import FSMContext
-from aiogram.types import Message
-
-from aiogram import Bot
+from aiogram.types import CallbackQuery, Message
 
 from .. import keyboards, texts
 from ..backups import send_backup
@@ -15,6 +13,7 @@ from ..filters import SuperadminFilter
 from ..nav import ALL_MENU_TEXTS
 from ..states import (
     Broadcast,
+    CreateAdmin,
     ExportCredentials,
     GrantTraffic,
     GrantWallet,
@@ -31,6 +30,7 @@ from ...units import bytes_to_gb
 
 router = Router(name="admin_settings")
 router.message.filter(SuperadminFilter())
+router.callback_query.filter(SuperadminFilter())
 
 
 @router.message(F.text == texts.BTN_SET_PRICE)
@@ -260,6 +260,153 @@ async def finish_grant(message: Message, state: FSMContext, bot: Bot) -> None:
                 target_telegram_id,
                 texts.GRANT_NOTIFY_ADMIN.format(
                     username=username, added_gb=amount, new_gb=new_gb
+                ),
+            )
+        except Exception:
+            pass
+
+
+@router.message(F.text == texts.BTN_CREATE_ADMIN)
+async def start_create_admin(message: Message, state: FSMContext) -> None:
+    await state.set_state(CreateAdmin.username)
+    await message.answer(texts.ASK_NEW_ADMIN_USERNAME, reply_markup=keyboards.cancel_kb())
+
+
+@router.message(CreateAdmin.username, ~F.text.in_(ALL_MENU_TEXTS))
+async def create_admin_username(message: Message, state: FSMContext) -> None:
+    username = (message.text or "").strip()
+    if not username:
+        await message.answer(texts.ASK_NEW_ADMIN_USERNAME)
+        return
+    await state.update_data(new_username=username)
+    await state.set_state(CreateAdmin.password)
+    await message.answer(texts.ASK_NEW_ADMIN_PASSWORD, reply_markup=keyboards.cancel_kb())
+
+
+@router.message(CreateAdmin.password, ~F.text.in_(ALL_MENU_TEXTS))
+async def create_admin_password(message: Message, state: FSMContext) -> None:
+    password = (message.text or "").strip()
+    if not password:
+        await message.answer(texts.INVALID_PASSWORD)
+        return
+    await state.update_data(new_password=password)
+
+    try:
+        panels = await nexra_panel.list_panels()
+    except NexraPanelError as exc:
+        await state.clear()
+        await message.answer(
+            texts.CREATE_ADMIN_FAILED.format(error=exc),
+            reply_markup=keyboards.superadmin_menu_kb(),
+        )
+        return
+
+    if not panels:
+        await state.clear()
+        await message.answer(texts.NO_MARZBAN_PANELS, reply_markup=keyboards.superadmin_menu_kb())
+        return
+
+    # A single panel needs no choosing; skip straight to the next question.
+    if len(panels) == 1:
+        await state.update_data(new_panel=panels[0])
+        await state.set_state(CreateAdmin.traffic)
+        await message.answer(texts.ASK_NEW_ADMIN_TRAFFIC, reply_markup=keyboards.cancel_kb())
+        return
+
+    await state.set_state(CreateAdmin.panel)
+    await message.answer(
+        texts.ASK_NEW_ADMIN_PANEL, reply_markup=keyboards.panel_name_picker_kb(panels)
+    )
+
+
+@router.callback_query(F.data.startswith("newadmin_panel:"), CreateAdmin.panel)
+async def create_admin_panel(call: CallbackQuery, state: FSMContext) -> None:
+    await state.update_data(new_panel=call.data.split(":", 1)[1])
+    await state.set_state(CreateAdmin.traffic)
+    await call.answer()
+    await call.message.answer(texts.ASK_NEW_ADMIN_TRAFFIC, reply_markup=keyboards.cancel_kb())
+
+
+@router.message(CreateAdmin.traffic, ~F.text.in_(ALL_MENU_TEXTS))
+async def create_admin_traffic(message: Message, state: FSMContext) -> None:
+    try:
+        traffic = float((message.text or "").strip().replace(",", "."))
+        if traffic < 0:
+            raise ValueError
+    except ValueError:
+        await message.answer(texts.INVALID_AMOUNT_GB)
+        return
+    await state.update_data(new_traffic=traffic)
+    await state.set_state(CreateAdmin.expiry)
+    await message.answer(texts.ASK_NEW_ADMIN_EXPIRY, reply_markup=keyboards.cancel_kb())
+
+
+@router.message(CreateAdmin.expiry, ~F.text.in_(ALL_MENU_TEXTS))
+async def create_admin_expiry(message: Message, state: FSMContext) -> None:
+    raw = (message.text or "").strip()
+    if raw == "-":
+        expiry = None
+    elif raw.isdigit() and int(raw) > 0:
+        expiry = int(raw)
+    else:
+        await message.answer(texts.ASK_NEW_ADMIN_EXPIRY)
+        return
+    await state.update_data(new_expiry=expiry)
+    await state.set_state(CreateAdmin.telegram_id)
+    await message.answer(texts.ASK_NEW_ADMIN_TELEGRAM, reply_markup=keyboards.cancel_kb())
+
+
+@router.message(CreateAdmin.telegram_id, ~F.text.in_(ALL_MENU_TEXTS))
+async def create_admin_finish(message: Message, state: FSMContext, bot: Bot) -> None:
+    raw = (message.text or "").strip()
+    if raw == "-":
+        target_id = None
+    elif raw.lstrip("-").isdigit():
+        target_id = int(raw)
+    else:
+        await message.answer(texts.ASK_NEW_ADMIN_TELEGRAM)
+        return
+
+    data = await state.get_data()
+    await state.clear()
+    await message.answer(texts.CREATING_ADMIN)
+
+    try:
+        result = await nexra_panel.create_admin(
+            username=data["new_username"],
+            password=data["new_password"],
+            panel=data["new_panel"],
+            traffic_gb=data["new_traffic"],
+            expiry_days=data["new_expiry"],
+            telegram_id=target_id,
+        )
+    except NexraPanelError as exc:
+        await message.answer(
+            texts.CREATE_ADMIN_FAILED.format(error=exc),
+            reply_markup=keyboards.superadmin_menu_kb(),
+        )
+        return
+
+    expiry = result.get("expiry_date")
+    await message.answer(
+        texts.CREATE_ADMIN_SUCCESS.format(
+            username=data["new_username"],
+            password=data["new_password"],
+            traffic_gb=data["new_traffic"],
+            expiry=expiry[:10] if expiry else "بدون انقضا",
+        ),
+        reply_markup=keyboards.superadmin_menu_kb(),
+    )
+
+    if target_id:
+        try:
+            await bot.send_message(
+                target_id,
+                texts.CREATE_ADMIN_SUCCESS.format(
+                    username=data["new_username"],
+                    password=data["new_password"],
+                    traffic_gb=data["new_traffic"],
+                    expiry=expiry[:10] if expiry else "بدون انقضا",
                 ),
             )
         except Exception:

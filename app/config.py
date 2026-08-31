@@ -21,7 +21,7 @@ class Settings(BaseSettings):
     max_gb: float = 10000.0
 
     # How often to check every panel's remaining traffic for warnings.
-    warning_scan_interval_seconds: int = 1800
+    warning_scan_interval_seconds: int = 3600
 
     # Hour (Asia/Tehran) at which the daily backup is sent to the superadmins.
     backup_hour: int = 0

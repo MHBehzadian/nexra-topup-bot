@@ -294,6 +294,62 @@ GRANT_NOTIFY_ADMIN = (
     "📊 موجودی جدید: {new_gb:.2f} گیگابایت"
 )
 
+BTN_NEW_INVOICE = "🧾 صدور فاکتور"
+ASK_INVOICE_TARGET = "🧾 آیدی عددی تلگرام شخصی که فاکتور برایش صادر می‌شود را وارد نمایید:"
+ASK_INVOICE_AMOUNT = "💰 مبلغ فاکتور را به تومان وارد نمایید:"
+ASK_INVOICE_DESCRIPTION = "📝 توضیحات فاکتور را بنویسید (بابت چه خدماتی است؟):"
+ASK_INVOICE_DUE = "⏳ مهلت پرداخت را انتخاب نمایید:"
+DUE_IMMEDIATE = "⚡️ فوری"
+DUE_TODAY = "🕐 تا پایان امروز"
+DUE_3_DAYS = "📅 ۳ روز"
+DUE_1_WEEK = "📅 یک هفته"
+DUE_NONE = "♾ بدون مهلت"
+INVOICE_CREATED = (
+    "✅ فاکتور #{id} صادر شد.\n\n"
+    "👤 آیدی عددی: {telegram_id}\n"
+    "💰 مبلغ: {amount:,} تومان\n"
+    "⏳ مهلت: {due}\n\n"
+    "فاکتور برای ایشان ارسال شد."
+)
+INVOICE_CREATE_NOT_DELIVERED = "⚠️ فاکتور ثبت شد اما ارسال آن به کاربر ناموفق بود (احتمالاً ربات را استارت نکرده)."
+INVOICE_FOR_CUSTOMER = (
+    "🧾 فاکتور جدید #{id}\n\n"
+    "💰 مبلغ قابل پرداخت: {amount:,} تومان\n"
+    "📝 بابت: {description}\n"
+    "⏳ مهلت پرداخت: {due}\n\n"
+    "برای پرداخت، دکمه‌ی زیر را بزنید."
+)
+INVOICE_REMINDER = (
+    "⚠️ یادآوری فاکتور پرداخت‌نشده #{id}\n\n"
+    "💰 مبلغ: {amount:,} تومان\n"
+    "📝 بابت: {description}\n"
+    "⏳ مهلت: {due}\n\n"
+    "لطفاً در اسرع وقت نسبت به پرداخت اقدام نمایید."
+)
+BTN_PAY_INVOICE = "💳 پرداخت فاکتور"
+INVOICE_PAYMENT_INSTRUCTIONS = (
+    "💳 لطفاً مبلغ {amount:,} تومان را به شماره کارت زیر واریز نمایید:\n\n"
+    "<code>{card_number}</code>\n\n"
+    "پس از واریز، تصویر رسید را ارسال نمایید."
+)
+INVOICE_RECEIPT_SUBMITTED = "⏳ رسید فاکتور ثبت شد. پس از بررسی، فاکتور تسویه خواهد شد."
+INVOICE_PAID_CUSTOMER = "✅ فاکتور #{id} تسویه شد. سپاس از پرداخت شما."
+INVOICE_ALREADY_PAID = "ℹ️ این فاکتور قبلاً تسویه شده است."
+INVOICE_NOT_FOUND = "⚠️ فاکتور یافت نشد."
+
+BTN_INVOICES = "🧾 فاکتورهای باز"
+INVOICES_HEADER = "🧾 فاکتورهای پرداخت‌نشده:\n\n"
+INVOICE_LINE = (
+    "▫️ فاکتور #{id} — {amount:,} تومان\n"
+    "     ↳ {mention} · <code>{telegram_id}</code>\n"
+    "     ↳ 📝 {description}\n"
+    "     ↳ ⏳ {due}\n"
+)
+NO_INVOICES = "✅ هیچ فاکتور پرداخت‌نشده‌ای وجود ندارد."
+MY_INVOICES_HEADER = "🧾 فاکتورهای پرداخت‌نشده‌ی شما:\n\n"
+BTN_MY_INVOICES = "🧾 فاکتورهای من"
+NO_MY_INVOICES = "✅ فاکتور پرداخت‌نشده‌ای ندارید."
+
 BTN_CREATE_ADMIN = "🆕 ساخت پنل جدید (ادمین)"
 ASK_NEW_ADMIN_USERNAME = "🆕 نام کاربری پنل جدید را وارد نمایید:"
 ASK_NEW_ADMIN_PASSWORD = "🔑 رمز عبور پنل جدید را وارد نمایید:"

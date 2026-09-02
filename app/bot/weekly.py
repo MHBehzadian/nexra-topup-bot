@@ -19,6 +19,7 @@ from zoneinfo import ZoneInfo
 from aiogram import Bot
 
 from . import keyboards, texts
+from .invoices import describe_due, is_due
 from .. import db
 from ..billing import apply_wallet_to_debts
 from ..config import settings
@@ -87,6 +88,36 @@ async def send_overdue_reminders(bot: Bot) -> int:
             sent += 1
         except Exception:
             continue
+    return sent
+
+
+async def send_invoice_reminders(bot: Bot) -> int:
+    """Chase manual invoices once their deadline has arrived, once a day.
+
+    Invoices with no deadline are never chased automatically — an open-ended
+    invoice is a record, not a demand.
+    """
+    sent = 0
+    day_stamp = datetime.now(TEHRAN).strftime("%Y-%m-%d")
+    for invoice in db.list_pending_invoices():
+        if not is_due(invoice.due_at) or invoice.last_reminded_date == day_stamp:
+            continue
+        try:
+            await bot.send_message(
+                invoice.telegram_id,
+                texts.INVOICE_REMINDER.format(
+                    id=invoice.id,
+                    amount=invoice.amount,
+                    description=invoice.description or "—",
+                    due=describe_due(invoice.due_at),
+                ),
+                reply_markup=keyboards.pay_invoice_kb(invoice.id),
+            )
+            sent += 1
+        except Exception:
+            pass
+        # Stamped either way, so a blocked chat isn't retried every tick.
+        db.set_invoice_reminded(invoice.id, day_stamp)
     return sent
 
 
@@ -160,6 +191,12 @@ async def tick(bot: Bot) -> None:
     if now.hour != RUN_HOUR:
         return
     stamp = _week_stamp(now)
+
+    # Manual invoices are chased every day their deadline has passed, including
+    # Wednesday and Friday — they're unrelated to the weekly panel billing cycle.
+    invoice_count = await send_invoice_reminders(bot)
+    if invoice_count:
+        logger.info(f"invoice reminders sent: {invoice_count}")
 
     if now.weekday() == REMINDER_WEEKDAY and not _already_ran("weekly_reminder_week", stamp):
         count = await send_reminders(bot)

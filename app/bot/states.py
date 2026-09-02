@@ -49,6 +49,17 @@ class GrantWallet(StatesGroup):
     amount = State()
 
 
+class NewInvoice(StatesGroup):
+    target = State()
+    amount = State()
+    description = State()
+    due = State()
+
+
+class InvoicePayment(StatesGroup):
+    receipt = State()
+
+
 class CreateAdmin(StatesGroup):
     username = State()
     password = State()

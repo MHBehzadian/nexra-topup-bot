@@ -50,6 +50,10 @@ ALL_MENU_TEXTS = {
     texts.BTN_GRANT_WALLET,
     texts.BTN_BACKUP,
     texts.BTN_CREATE_ADMIN,
+    texts.BTN_NEW_INVOICE,
+    texts.BTN_INVOICES,
+    texts.BTN_PAY_INVOICE,
+    texts.BTN_MY_INVOICES,
 }
 
 

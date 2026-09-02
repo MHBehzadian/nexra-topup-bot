@@ -15,8 +15,9 @@ from aiogram.fsm.context import FSMContext
 from aiogram.types import CallbackQuery, FSInputFile, Message
 
 from .. import keyboards, texts
+from ..invoices import describe_due
 from ..nav import ALL_MENU_TEXTS
-from ..states import DebtPayment, WalletTopUp
+from ..states import DebtPayment, InvoicePayment, WalletTopUp
 from ... import db
 from ...config import settings
 
@@ -111,6 +112,91 @@ async def get_wallet_receipt(message: Message, state: FSMContext, bot: Bot) -> N
         bot,
         path,
         f"💼 درخواست شارژ کیف پول #{request_id}\n"
+        f"👤 آیدی عددی: {message.from_user.id}\n"
+        f"💰 مبلغ: {amount:,} تومان",
+        request_id,
+        message.from_user.id,
+    )
+
+
+# ---- manual invoices ---------------------------------------------------------
+
+@router.message(F.text == texts.BTN_MY_INVOICES)
+async def my_invoices(message: Message) -> None:
+    invoices = db.list_pending_invoices(message.from_user.id)
+    if not invoices:
+        await message.answer(texts.NO_MY_INVOICES)
+        return
+    for inv in invoices:
+        await message.answer(
+            texts.INVOICE_FOR_CUSTOMER.format(
+                id=inv.id,
+                amount=inv.amount,
+                description=inv.description or "—",
+                due=describe_due(inv.due_at),
+            ),
+            reply_markup=keyboards.pay_invoice_kb(inv.id),
+        )
+
+
+@router.callback_query(F.data.startswith("pay_invoice:"))
+async def start_invoice_payment(call: CallbackQuery, state: FSMContext) -> None:
+    invoice_id = int(call.data.split(":", 1)[1])
+    invoice = db.get_invoice(invoice_id)
+    if invoice is None:
+        await call.answer(texts.INVOICE_NOT_FOUND, show_alert=True)
+        return
+    # An invoice belongs to one person; nobody else may pay or even see it.
+    if invoice.telegram_id != call.from_user.id:
+        await call.answer(texts.INVOICE_NOT_FOUND, show_alert=True)
+        return
+    if invoice.status != "pending":
+        await call.answer(texts.INVOICE_ALREADY_PAID, show_alert=True)
+        return
+
+    card_number = db.get_setting("card_number")
+    if not card_number:
+        await call.answer()
+        await call.message.answer(texts.CARD_NOT_CONFIGURED)
+        return
+
+    await call.answer()
+    await state.set_state(InvoicePayment.receipt)
+    await state.update_data(invoice_id=invoice_id, invoice_amount=invoice.amount)
+    await call.message.answer(
+        texts.INVOICE_PAYMENT_INSTRUCTIONS.format(
+            amount=invoice.amount, card_number=card_number
+        ),
+        reply_markup=keyboards.cancel_kb(),
+    )
+
+
+@router.message(InvoicePayment.receipt, ~F.text.in_(ALL_MENU_TEXTS))
+async def get_invoice_receipt(message: Message, state: FSMContext, bot: Bot) -> None:
+    if not message.photo:
+        await message.answer(texts.NOT_A_PHOTO)
+        return
+
+    data = await state.get_data()
+    await state.clear()
+    invoice_id, amount = data["invoice_id"], data["invoice_amount"]
+    path = await _save_receipt(message, bot)
+
+    request_id = db.create_request(
+        admin_telegram_id=message.from_user.id,
+        admin_username=None,
+        requested_gb=0,
+        toman_amount=amount,
+        receipt_path=path,
+        kind="invoice",
+        invoice_id=invoice_id,
+    )
+
+    await message.answer(texts.INVOICE_RECEIPT_SUBMITTED, reply_markup=keyboards.main_menu_kb())
+    await _send_to_superadmins(
+        bot,
+        path,
+        f"🧾 رسید فاکتور #{invoice_id} (درخواست #{request_id})\n"
         f"👤 آیدی عددی: {message.from_user.id}\n"
         f"💰 مبلغ: {amount:,} تومان",
         request_id,

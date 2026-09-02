@@ -10,6 +10,7 @@ from aiogram.types import CallbackQuery, Message
 from .. import keyboards, texts
 from ..backups import send_backup
 from ..filters import SuperadminFilter
+from ..invoices import describe_due, due_at_for
 from ..nav import ALL_MENU_TEXTS
 from ..states import (
     Broadcast,
@@ -17,6 +18,7 @@ from ..states import (
     ExportCredentials,
     GrantTraffic,
     GrantWallet,
+    NewInvoice,
     SetBulkPin,
     SetCardNumber,
     SetForceJoinChannel,
@@ -264,6 +266,114 @@ async def finish_grant(message: Message, state: FSMContext, bot: Bot) -> None:
             )
         except Exception:
             pass
+
+
+@router.message(F.text == texts.BTN_NEW_INVOICE)
+async def start_invoice(message: Message, state: FSMContext) -> None:
+    await state.set_state(NewInvoice.target)
+    await message.answer(texts.ASK_INVOICE_TARGET, reply_markup=keyboards.cancel_kb())
+
+
+@router.message(NewInvoice.target, ~F.text.in_(ALL_MENU_TEXTS))
+async def invoice_target(message: Message, state: FSMContext) -> None:
+    raw = (message.text or "").strip()
+    if not raw.lstrip("-").isdigit():
+        await message.answer(texts.ASK_INVOICE_TARGET)
+        return
+    await state.update_data(invoice_target=int(raw))
+    await state.set_state(NewInvoice.amount)
+    await message.answer(texts.ASK_INVOICE_AMOUNT, reply_markup=keyboards.cancel_kb())
+
+
+@router.message(NewInvoice.amount, ~F.text.in_(ALL_MENU_TEXTS))
+async def invoice_amount(message: Message, state: FSMContext) -> None:
+    raw = (message.text or "").strip().replace(",", "").replace("٬", "")
+    if not raw.isdigit() or int(raw) <= 0:
+        await message.answer(texts.INVALID_WALLET_AMOUNT)
+        return
+    await state.update_data(invoice_amount=int(raw))
+    await state.set_state(NewInvoice.description)
+    await message.answer(texts.ASK_INVOICE_DESCRIPTION, reply_markup=keyboards.cancel_kb())
+
+
+@router.message(NewInvoice.description, ~F.text.in_(ALL_MENU_TEXTS))
+async def invoice_description(message: Message, state: FSMContext) -> None:
+    description = (message.text or "").strip()
+    if not description:
+        await message.answer(texts.ASK_INVOICE_DESCRIPTION)
+        return
+    await state.update_data(invoice_description=description)
+    await state.set_state(NewInvoice.due)
+    await message.answer(texts.ASK_INVOICE_DUE, reply_markup=keyboards.invoice_due_kb())
+
+
+@router.callback_query(F.data.startswith("invoice_due:"), NewInvoice.due)
+async def invoice_due(call: CallbackQuery, state: FSMContext, bot: Bot) -> None:
+    key = call.data.split(":", 1)[1]
+    data = await state.get_data()
+    await state.clear()
+    await call.answer()
+
+    due_at = due_at_for(key)
+    target_id = data["invoice_target"]
+    invoice_id = db.create_invoice(
+        telegram_id=target_id,
+        amount=data["invoice_amount"],
+        description=data["invoice_description"],
+        due_at=due_at,
+    )
+
+    delivered = True
+    try:
+        await bot.send_message(
+            target_id,
+            texts.INVOICE_FOR_CUSTOMER.format(
+                id=invoice_id,
+                amount=data["invoice_amount"],
+                description=data["invoice_description"],
+                due=describe_due(due_at),
+            ),
+            reply_markup=keyboards.pay_invoice_kb(invoice_id),
+        )
+    except Exception:
+        delivered = False
+
+    await call.message.answer(
+        texts.INVOICE_CREATED.format(
+            id=invoice_id,
+            telegram_id=target_id,
+            amount=data["invoice_amount"],
+            due=describe_due(due_at),
+        ),
+        reply_markup=keyboards.superadmin_menu_kb(),
+    )
+    if not delivered:
+        await call.message.answer(texts.INVOICE_CREATE_NOT_DELIVERED)
+
+
+@router.message(F.text == texts.BTN_INVOICES)
+async def list_invoices(message: Message) -> None:
+    invoices = db.list_pending_invoices()
+    if not invoices:
+        await message.answer(texts.NO_INVOICES)
+        return
+    lines = []
+    for inv in invoices:
+        user = db.get_user(inv.telegram_id)
+        mention = "—"
+        if user:
+            mention = f"@{user['username']}" if user.get("username") else (user.get("full_name") or "—")
+        lines.append(
+            texts.INVOICE_LINE.format(
+                id=inv.id,
+                amount=inv.amount,
+                mention=mention,
+                telegram_id=inv.telegram_id,
+                description=inv.description or "—",
+                due=describe_due(inv.due_at),
+            )
+        )
+    await message.answer(texts.INVOICES_HEADER + "".join(lines))
 
 
 @router.message(F.text == texts.BTN_CREATE_ADMIN)

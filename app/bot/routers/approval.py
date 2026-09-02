@@ -77,6 +77,21 @@ async def approve(call: CallbackQuery, bot: Bot) -> None:
         await call.message.edit_reply_markup(reply_markup=None)
         return
 
+    if req.kind == "invoice":
+        if not db.mark_invoice_paid(req.invoice_id):
+            await call.answer(texts.INVOICE_ALREADY_PAID, show_alert=True)
+            await call.message.edit_reply_markup(reply_markup=None)
+            return
+        try:
+            await bot.send_message(
+                req.admin_telegram_id, texts.INVOICE_PAID_CUSTOMER.format(id=req.invoice_id)
+            )
+        except Exception:
+            pass
+        await call.answer(texts.APPROVED_TOAST)
+        await call.message.edit_reply_markup(reply_markup=None)
+        return
+
     if req.kind == "settlement":
         db.clear_debt(req.admin_username)
         try:

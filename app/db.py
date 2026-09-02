@@ -114,6 +114,24 @@ def init_db() -> None:
             )
             """
         )
+        # Manual invoices: ad-hoc charges for services given outside the panel
+        # flow, so they carry their own description and deadline and are not
+        # tied to any panel.
+        conn.execute(
+            """
+            CREATE TABLE IF NOT EXISTS invoices (
+                id INTEGER PRIMARY KEY AUTOINCREMENT,
+                telegram_id INTEGER NOT NULL,
+                amount INTEGER NOT NULL,
+                description TEXT,
+                due_at TEXT,
+                status TEXT NOT NULL DEFAULT 'pending',
+                created_at TEXT NOT NULL,
+                paid_at TEXT,
+                last_reminded_date TEXT
+            )
+            """
+        )
         conn.execute(
             """
             CREATE TABLE IF NOT EXISTS traffic_warnings (
@@ -149,6 +167,8 @@ def init_db() -> None:
         _ensure_column(conn, "tutorials", "source_message_id", "INTEGER")
         # When a debt passed its settlement date unpaid — drives daily chasing.
         _ensure_column(conn, "debts", "overdue_since", "TEXT")
+        # Links a settlement receipt back to the manual invoice it pays off.
+        _ensure_column(conn, "topup_requests", "invoice_id", "INTEGER")
 
 
 @dataclass
@@ -165,6 +185,7 @@ class TopupRequest:
     created_at: str
     reviewed_at: str | None
     kind: str = "topup"
+    invoice_id: int | None = None
 
 
 def create_request(
@@ -175,6 +196,7 @@ def create_request(
     toman_amount: int,
     receipt_path: str,
     kind: str = "topup",
+    invoice_id: int | None = None,
 ) -> int:
     now = datetime.now(timezone.utc).isoformat()
     with _connect() as conn:
@@ -182,10 +204,19 @@ def create_request(
             """
             INSERT INTO topup_requests
                 (admin_telegram_id, admin_username, requested_gb, toman_amount, receipt_path,
-                 status, created_at, kind)
-            VALUES (?, ?, ?, ?, ?, 'pending', ?, ?)
+                 status, created_at, kind, invoice_id)
+            VALUES (?, ?, ?, ?, ?, 'pending', ?, ?, ?)
             """,
-            (admin_telegram_id, admin_username, requested_gb, toman_amount, receipt_path, now, kind),
+            (
+                admin_telegram_id,
+                admin_username,
+                requested_gb,
+                toman_amount,
+                receipt_path,
+                now,
+                kind,
+                invoice_id,
+            ),
         )
         return cur.lastrowid
 
@@ -497,6 +528,78 @@ def list_outstanding_debts() -> list[dict]:
             "WHERE amount > 0 ORDER BY username"
         ).fetchall()
         return [dict(r) for r in rows]
+
+
+@dataclass
+class Invoice:
+    id: int
+    telegram_id: int
+    amount: int
+    description: str | None
+    due_at: str | None
+    status: str
+    created_at: str
+    paid_at: str | None
+    last_reminded_date: str | None
+
+
+def create_invoice(
+    *, telegram_id: int, amount: int, description: str | None, due_at: str | None
+) -> int:
+    now = datetime.now(timezone.utc).isoformat()
+    with _connect() as conn:
+        cur = conn.execute(
+            """
+            INSERT INTO invoices (telegram_id, amount, description, due_at, status, created_at)
+            VALUES (?, ?, ?, ?, 'pending', ?)
+            """,
+            (telegram_id, amount, description, due_at, now),
+        )
+        return cur.lastrowid
+
+
+def get_invoice(invoice_id: int) -> Invoice | None:
+    with _connect() as conn:
+        row = conn.execute("SELECT * FROM invoices WHERE id = ?", (invoice_id,)).fetchone()
+        return Invoice(**dict(row)) if row else None
+
+
+def list_pending_invoices(telegram_id: int | None = None) -> list[Invoice]:
+    query = "SELECT * FROM invoices WHERE status = 'pending'"
+    params: tuple = ()
+    if telegram_id is not None:
+        query += " AND telegram_id = ?"
+        params = (telegram_id,)
+    query += " ORDER BY created_at"
+    with _connect() as conn:
+        return [Invoice(**dict(r)) for r in conn.execute(query, params).fetchall()]
+
+
+def mark_invoice_paid(invoice_id: int) -> bool:
+    """Atomically settle a pending invoice; False if it was already handled."""
+    now = datetime.now(timezone.utc).isoformat()
+    with _connect() as conn:
+        cur = conn.execute(
+            "UPDATE invoices SET status = 'paid', paid_at = ? WHERE id = ? AND status = 'pending'",
+            (now, invoice_id),
+        )
+        return cur.rowcount == 1
+
+
+def cancel_invoice(invoice_id: int) -> bool:
+    with _connect() as conn:
+        cur = conn.execute(
+            "UPDATE invoices SET status = 'cancelled' WHERE id = ? AND status = 'pending'",
+            (invoice_id,),
+        )
+        return cur.rowcount == 1
+
+
+def set_invoice_reminded(invoice_id: int, date_stamp: str) -> None:
+    with _connect() as conn:
+        conn.execute(
+            "UPDATE invoices SET last_reminded_date = ? WHERE id = ?", (date_stamp, invoice_id)
+        )
 
 
 def get_warning_bucket(username: str) -> str | None:

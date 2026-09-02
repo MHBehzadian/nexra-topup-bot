@@ -11,8 +11,9 @@ def main_menu_kb() -> ReplyKeyboardMarkup:
     kb.button(text=texts.BTN_WALLET)
     kb.button(text=texts.BTN_CHANGE_PASSWORD)
     kb.button(text=texts.BTN_TUTORIALS)
+    kb.button(text=texts.BTN_MY_INVOICES)
     kb.button(text=texts.BTN_CREATE_PANEL)
-    kb.adjust(2, 2, 2)
+    kb.adjust(2, 2, 2, 2)
     return kb.as_markup(resize_keyboard=True)
 
 
@@ -43,7 +44,9 @@ def superadmin_menu_kb() -> ReplyKeyboardMarkup:
     kb.button(text=texts.BTN_SYNC_TELEGRAM_IDS)
     kb.button(text=texts.BTN_BACKUP)
     kb.button(text=texts.BTN_CREATE_ADMIN)
-    kb.adjust(1, 2, 2, 2, 2, 2, 2, 2, 2, 1)
+    kb.button(text=texts.BTN_NEW_INVOICE)
+    kb.button(text=texts.BTN_INVOICES)
+    kb.adjust(1, 2, 2, 2, 2, 2, 2, 2, 2, 1, 2)
     return kb.as_markup(resize_keyboard=True)
 
 
@@ -78,6 +81,23 @@ def payment_methods_kb() -> InlineKeyboardMarkup:
     kb.button(text=texts.BTN_PAY_WALLET, callback_data="pay_method:wallet")
     kb.button(text=texts.BTN_PAY_WEEKLY, callback_data="pay_method:weekly")
     kb.adjust(1)
+    return kb.as_markup()
+
+
+def invoice_due_kb() -> InlineKeyboardMarkup:
+    """Preset payment deadlines, so the superadmin picks instead of typing a date."""
+    from .invoices import DUE_OPTIONS
+
+    kb = InlineKeyboardBuilder()
+    for key, (label, _) in DUE_OPTIONS.items():
+        kb.button(text=label, callback_data=f"invoice_due:{key}")
+    kb.adjust(1)
+    return kb.as_markup()
+
+
+def pay_invoice_kb(invoice_id: int) -> InlineKeyboardMarkup:
+    kb = InlineKeyboardBuilder()
+    kb.button(text=texts.BTN_PAY_INVOICE, callback_data=f"pay_invoice:{invoice_id}")
     return kb.as_markup()
 
 

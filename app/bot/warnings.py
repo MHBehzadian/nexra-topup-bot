@@ -14,6 +14,7 @@ import logging
 from aiogram import Bot
 
 from . import keyboards, texts
+from .forecast import today_stamp
 from .. import db
 from ..config import settings
 from ..services.nexra_panel import NexraPanelError, nexra_panel
@@ -56,6 +57,14 @@ async def scan_once(bot: Bot) -> int:
         telegram_id = admin.get("telegram_id")
         if not username or not telegram_id or not admin.get("is_active", True):
             continue
+
+        # The hourly pass doubles as the sampler that feeds usage forecasting.
+        db.record_traffic_snapshot(
+            username,
+            today_stamp(),
+            int(admin.get("traffic") or 0),
+            int(admin.get("initial_traffic") or 0),
+        )
 
         remaining_gb = bytes_to_gb(admin.get("traffic"))
         result = bucket_for(remaining_gb)

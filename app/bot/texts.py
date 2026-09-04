@@ -272,6 +272,27 @@ WARN_EMPTY = (
 )
 BTN_TOPUP_THIS_PANEL = "💳 شارژ پنل"
 
+BTN_FORECAST = "📈 پیش‌بینی مصرف"
+FORECAST_TITLE = "📈 پیش بینی مصرف شما:\n\n"
+FORECAST_BODY = (
+    "▪️ پنل: <b>{username}</b>\n"
+    "📊 مصرف {span_days} روز اخیر: {used_gb:.2f} گیگابایت\n"
+    "📉 میانگین مصرف روزانه: {daily_gb:.2f} گیگابایت\n"
+    "💾 موجودی فعلی: {remaining_gb:.2f} گیگابایت\n\n"
+    "⏳ با این روند، حجم شما تا حدود <b>{days_left} روز</b> دیگر به پایان می‌رسد."
+)
+FORECAST_NO_DATA = (
+    "▪️ پنل: <b>{username}</b>\n"
+    "💾 موجودی فعلی: {remaining_gb:.2f} گیگابایت\n\n"
+    "ℹ️ هنوز داده‌ی کافی برای پیش‌بینی جمع نشده است. از فردا در دسترس خواهد بود."
+)
+FORECAST_NO_USAGE = (
+    "▪️ پنل: <b>{username}</b>\n"
+    "💾 موجودی فعلی: {remaining_gb:.2f} گیگابایت\n\n"
+    "✅ در روزهای اخیر مصرفی ثبت نشده است."
+)
+FORECAST_NO_PANELS = "ℹ️ پنلی برای پیش‌بینی مصرف یافت نشد."
+
 BTN_ALL_PANELS = "🗄 همه پنل‌ها"
 ALL_PANELS_HEADER = "📋 لیست کامل پنل‌ها ({count} مورد):\n\n"
 ADMIN_PANEL_LINE = (
@@ -293,6 +314,49 @@ GRANT_NOTIFY_ADMIN = (
     "➕ {added_gb:g} گیگابایت اضافه شد.\n"
     "📊 موجودی جدید: {new_gb:.2f} گیگابایت"
 )
+
+BTN_SEARCH_USER = "🔍 جستجوی کاربر"
+ASK_SEARCH_QUERY = "🔍 آیدی عددی تلگرام، یوزرنیم تلگرام یا نام کاربری پنل را وارد نمایید:"
+USER_NOT_FOUND = "⚠️ کاربری با این مشخصات یافت نشد."
+USER_PROFILE = (
+    "👤 <b>{name}</b>\n"
+    "🆔 آیدی عددی: <code>{telegram_id}</code>\n"
+    "📎 یوزرنیم: {mention}\n"
+    "💼 موجودی کیف پول: {wallet:,} تومان\n"
+)
+USER_PROFILE_PANELS = "\n▪️ پنل‌ها:\n{panels}"
+USER_PROFILE_PANEL_LINE = "   • <b>{username}</b> — {remaining_gb:.2f} / {initial_gb:.2f} گیگابایت\n"
+USER_PROFILE_NO_PANELS = "\n▪️ پنلی متصل نیست.\n"
+USER_PROFILE_DEBTS = "\n💰 بدهی‌ها:\n{debts}"
+USER_PROFILE_DEBT_LINE = "   • {username}: {amount:,} تومان\n"
+USER_PROFILE_NO_DEBTS = "\n✅ بدهی ندارد.\n"
+USER_PROFILE_INVOICES = "\n🧾 فاکتورهای باز:\n{invoices}"
+USER_PROFILE_INVOICE_LINE = "   • #{id} — {amount:,} تومان ({description})\n"
+USER_PROFILE_NO_INVOICES = "\n✅ فاکتور بازی ندارد.\n"
+USER_PROFILE_HISTORY = "\n📜 آخرین تراکنش‌ها:\n{history}"
+USER_PROFILE_HISTORY_LINE = "   • {kind} — {amount:,} تومان — {status} ({date})\n"
+USER_PROFILE_NO_HISTORY = "\n📜 تراکنشی ثبت نشده.\n"
+
+BTN_DEDUCT_WALLET = "➖ کسر از کیف پول"
+BTN_INVOICE_FOR_USER = "🧾 صدور فاکتور"
+BTN_DELETE_INVOICE = "🗑 حذف فاکتور"
+ASK_DEDUCT_AMOUNT = "➖ چه مبلغی (تومان) از کیف پول این کاربر کسر شود؟"
+DEDUCT_SUCCESS = "✅ {amount:,} تومان کسر شد.\n💼 موجودی جدید: {balance:,} تومان"
+CHOOSE_INVOICE_TO_DELETE = "🗑 کدام فاکتور حذف شود؟"
+INVOICE_DELETED = "✅ فاکتور #{id} حذف شد."
+INVOICE_DELETE_FAILED = "⚠️ حذف فاکتور ممکن نبود (شاید قبلاً تسویه شده)."
+
+KIND_LABELS = {
+    "topup": "شارژ حجم",
+    "wallet": "شارژ کیف پول",
+    "settlement": "تسویه هفتگی",
+    "invoice": "پرداخت فاکتور",
+}
+STATUS_LABELS = {
+    "pending": "در انتظار ⏳",
+    "approved": "تأیید ✅",
+    "rejected": "رد ❌",
+}
 
 BTN_NEW_INVOICE = "🧾 صدور فاکتور"
 ASK_INVOICE_TARGET = "🧾 آیدی عددی تلگرام شخصی که فاکتور برایش صادر می‌شود را وارد نمایید:"

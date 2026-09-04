@@ -49,6 +49,14 @@ class GrantWallet(StatesGroup):
     amount = State()
 
 
+class SearchUser(StatesGroup):
+    query = State()
+
+
+class DeductWallet(StatesGroup):
+    amount = State()
+
+
 class NewInvoice(StatesGroup):
     target = State()
     amount = State()

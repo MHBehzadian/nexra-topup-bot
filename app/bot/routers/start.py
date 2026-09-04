@@ -10,6 +10,7 @@ from aiogram.fsm.context import FSMContext
 from aiogram.types import CallbackQuery, Message
 
 from .. import keyboards, texts
+from ..forecast import render
 from ..nav import cancel_and_show_menu
 from ..panels import format_panel_line, safe_get_admins
 from ... import db
@@ -81,6 +82,25 @@ async def my_panels(message: Message) -> None:
         return
     text = texts.PANELS_LIST_HEADER + "".join(format_panel_line(a) for a in admins)
     await message.answer(text)
+
+
+@router.message(F.text == texts.BTN_FORECAST)
+async def show_forecast(message: Message) -> None:
+    admins = await safe_get_admins(message)
+    if admins is None:
+        return
+    if not admins:
+        await message.answer(texts.FORECAST_NO_PANELS)
+        return
+    for admin in admins:
+        rendered = render(admin["username"], admin.get("traffic") or 0)
+        if rendered is None:
+            continue
+        body, show_buy = rendered
+        await message.answer(
+            texts.FORECAST_TITLE + body,
+            reply_markup=keyboards.topup_panel_kb(admin["username"]) if show_buy else None,
+        )
 
 
 @router.message(F.text == texts.BTN_CREATE_PANEL)

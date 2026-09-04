@@ -132,6 +132,20 @@ def init_db() -> None:
             )
             """
         )
+        # One row per panel per day. Both figures are needed because remaining
+        # traffic also goes *up* when a panel is topped up, so consumption can
+        # only be derived by comparing it against the granted total.
+        conn.execute(
+            """
+            CREATE TABLE IF NOT EXISTS traffic_history (
+                username TEXT NOT NULL,
+                date TEXT NOT NULL,
+                traffic_bytes INTEGER NOT NULL,
+                initial_bytes INTEGER NOT NULL,
+                PRIMARY KEY (username, date)
+            )
+            """
+        )
         conn.execute(
             """
             CREATE TABLE IF NOT EXISTS traffic_warnings (
@@ -600,6 +614,64 @@ def set_invoice_reminded(invoice_id: int, date_stamp: str) -> None:
         conn.execute(
             "UPDATE invoices SET last_reminded_date = ? WHERE id = ?", (date_stamp, invoice_id)
         )
+
+
+def record_traffic_snapshot(
+    username: str, date_stamp: str, traffic_bytes: int, initial_bytes: int
+) -> None:
+    """Store today's reading, overwriting any earlier one for the same day."""
+    with _connect() as conn:
+        conn.execute(
+            """
+            INSERT INTO traffic_history (username, date, traffic_bytes, initial_bytes)
+            VALUES (?, ?, ?, ?)
+            ON CONFLICT(username, date) DO UPDATE SET
+                traffic_bytes = excluded.traffic_bytes,
+                initial_bytes = excluded.initial_bytes
+            """,
+            (username, date_stamp, traffic_bytes, initial_bytes),
+        )
+
+
+def get_traffic_history(username: str, since_date: str) -> list[dict]:
+    with _connect() as conn:
+        rows = conn.execute(
+            "SELECT date, traffic_bytes, initial_bytes FROM traffic_history "
+            "WHERE username = ? AND date >= ? ORDER BY date",
+            (username, since_date),
+        ).fetchall()
+        return [dict(r) for r in rows]
+
+
+def prune_traffic_history(before_date: str) -> None:
+    """Only a rolling window is ever used, so older rows are dead weight."""
+    with _connect() as conn:
+        conn.execute("DELETE FROM traffic_history WHERE date < ?", (before_date,))
+
+
+def list_requests_for(telegram_id: int, limit: int = 10) -> list[TopupRequest]:
+    with _connect() as conn:
+        rows = conn.execute(
+            "SELECT * FROM topup_requests WHERE admin_telegram_id = ? "
+            "ORDER BY created_at DESC LIMIT ?",
+            (telegram_id, limit),
+        ).fetchall()
+        return [TopupRequest(**dict(r)) for r in rows]
+
+
+def deduct_wallet(telegram_id: int, amount: int) -> int:
+    """Superadmin correction: take up to `amount`, never past zero. Returns the
+    new balance."""
+    now = datetime.now(timezone.utc).isoformat()
+    with _connect() as conn:
+        conn.execute(
+            "UPDATE wallets SET balance = MAX(0, balance - ?), updated_at = ? WHERE telegram_id = ?",
+            (amount, now, telegram_id),
+        )
+        row = conn.execute(
+            "SELECT balance FROM wallets WHERE telegram_id = ?", (telegram_id,)
+        ).fetchone()
+        return row["balance"] if row else 0
 
 
 def get_warning_bucket(username: str) -> str | None:

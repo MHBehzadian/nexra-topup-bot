@@ -11,9 +11,10 @@ def main_menu_kb() -> ReplyKeyboardMarkup:
     kb.button(text=texts.BTN_WALLET)
     kb.button(text=texts.BTN_CHANGE_PASSWORD)
     kb.button(text=texts.BTN_TUTORIALS)
+    kb.button(text=texts.BTN_FORECAST)
     kb.button(text=texts.BTN_MY_INVOICES)
     kb.button(text=texts.BTN_CREATE_PANEL)
-    kb.adjust(2, 2, 2, 2)
+    kb.adjust(2, 2, 2, 2, 1)
     return kb.as_markup(resize_keyboard=True)
 
 
@@ -46,7 +47,8 @@ def superadmin_menu_kb() -> ReplyKeyboardMarkup:
     kb.button(text=texts.BTN_CREATE_ADMIN)
     kb.button(text=texts.BTN_NEW_INVOICE)
     kb.button(text=texts.BTN_INVOICES)
-    kb.adjust(1, 2, 2, 2, 2, 2, 2, 2, 2, 1, 2)
+    kb.button(text=texts.BTN_SEARCH_USER)
+    kb.adjust(1, 2, 2, 2, 2, 2, 2, 2, 2, 1, 2, 1)
     return kb.as_markup(resize_keyboard=True)
 
 
@@ -98,6 +100,24 @@ def invoice_due_kb() -> InlineKeyboardMarkup:
 def pay_invoice_kb(invoice_id: int) -> InlineKeyboardMarkup:
     kb = InlineKeyboardBuilder()
     kb.button(text=texts.BTN_PAY_INVOICE, callback_data=f"pay_invoice:{invoice_id}")
+    return kb.as_markup()
+
+
+def user_actions_kb(telegram_id: int) -> InlineKeyboardMarkup:
+    kb = InlineKeyboardBuilder()
+    kb.button(text=texts.BTN_DEDUCT_WALLET, callback_data=f"usr_deduct:{telegram_id}")
+    kb.button(text=texts.BTN_INVOICE_FOR_USER, callback_data=f"usr_invoice:{telegram_id}")
+    kb.button(text=texts.BTN_DELETE_INVOICE, callback_data=f"usr_delinv:{telegram_id}")
+    kb.button(text=texts.BTN_MESSAGE_USER, callback_data=f"msg_user:{telegram_id}")
+    kb.adjust(2, 2)
+    return kb.as_markup()
+
+
+def invoice_delete_kb(invoices) -> InlineKeyboardMarkup:
+    kb = InlineKeyboardBuilder()
+    for inv in invoices:
+        kb.button(text=f"🗑 #{inv.id} — {inv.amount:,}", callback_data=f"delinv:{inv.id}")
+    kb.adjust(1)
     return kb.as_markup()
 
 

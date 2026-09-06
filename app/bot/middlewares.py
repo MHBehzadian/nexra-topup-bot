@@ -2,6 +2,8 @@
 
 from __future__ import annotations
 
+import logging
+
 from aiogram import BaseMiddleware
 from aiogram.types import CallbackQuery
 from aiogram.types import User as TgUser
@@ -9,6 +11,8 @@ from aiogram.types import User as TgUser
 from .. import db
 from ..config import settings
 from . import keyboards, texts
+
+logger = logging.getLogger(__name__)
 
 _MEMBER_OK = {"member", "administrator", "creator"}
 
@@ -34,7 +38,10 @@ class ForceJoinMiddleware(BaseMiddleware):
         try:
             member = await bot.get_chat_member(channel, tg_user.id)
             ok = member.status in _MEMBER_OK
-        except Exception:
+        except Exception as exc:
+            # Fail open: a misconfigured channel must not lock everyone out of a
+            # paid service. Logged loudly because it silently disables the gate.
+            logger.warning("force-join check failed for channel %s: %s", channel, exc)
             ok = True
 
         if ok:
@@ -42,7 +49,12 @@ class ForceJoinMiddleware(BaseMiddleware):
 
         if isinstance(event, CallbackQuery):
             await event.answer(texts.FORCE_JOIN_TEXT, show_alert=True)
-        await bot.send_message(
-            tg_user.id, texts.FORCE_JOIN_TEXT, reply_markup=keyboards.force_join_kb(channel)
-        )
+        try:
+            await bot.send_message(
+                tg_user.id, texts.FORCE_JOIN_TEXT, reply_markup=keyboards.force_join_kb(channel)
+            )
+        except Exception:
+            # Nothing left to do if we can't even message them — swallowing it
+            # keeps one blocked user from raising out of every update.
+            pass
         return None

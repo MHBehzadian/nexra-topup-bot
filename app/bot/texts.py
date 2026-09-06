@@ -71,6 +71,13 @@ ASK_FORCE_JOIN_CHANNEL = "📢 لطفاً آیدی کانال را وارد نم
 INVALID_CHANNEL = "⚠️ آیدی کانال معتبر نیست؛ باید با @ شروع شود."
 FORCE_JOIN_CHANNEL_SET = "✅ کانال جوین اجباری با موفقیت روی {channel} تنظیم شد."
 FORCE_JOIN_NO_CHANNEL_YET = "⚠️ ابتدا باید یک کانال برای جوین اجباری تنظیم نمایید."
+FORCE_JOIN_BOT_NOT_ADMIN = (
+    "⚠️ ربات در کانال {channel} دسترسی لازم را ندارد، بنابراین عضویت "
+    "کاربران قابل بررسی نیست و همه بدون محدودیت وارد می‌شوند.\n\n"
+    "لطفاً ربات را در آن کانال ادمین کنید و دوباره تلاش نمایید.\n"
+    "علت: {error}"
+)
+FORCE_JOIN_CHECK_OK = "✅ دسترسی ربات به کانال {channel} بررسی و تأیید شد."
 FORCE_JOIN_ENABLED_ON = "جوین اجباری فعال شد ✅"
 FORCE_JOIN_ENABLED_OFF = "جوین اجباری غیرفعال شد 🚫"
 
@@ -104,6 +111,12 @@ CREDENTIALS_LIST_HEADER = "🔑 رمز عبور ادمین‌ها:\n\n"
 CREDENTIALS_LINE = "• {username} (آیدی: {telegram_id}): <code>{password}</code>\n"
 
 ASK_AMOUNT_GB = "📊 لطفاً میزان حجم موردنیاز خود را به گیگابایت وارد نمایید:"
+TOPUP_PRESETS = [500, 1000, 2000, 5000]
+BTN_TOPUP_CUSTOM = "✏️ حجم دلخواه"
+ASK_AMOUNT_GB_CHOICE = "📊 لطفاً میزان حجم موردنیاز خود را انتخاب نمایید:"
+ASK_AMOUNT_GB_CUSTOM = "📊 حجم موردنظر را به گیگابایت وارد کنید:"
+BELOW_MIN_GB = "⚠️ حداقل حجم قابل خرید {min_gb:g} گیگابایت است."
+ABOVE_MAX_GB = "⚠️ حداکثر حجم قابل خرید {max_gb:g} گیگابایت است."
 INVALID_AMOUNT_GB = "⚠️ عدد وارد شده معتبر نیست."
 PRICE_NOT_SET = "⚠️ قیمت‌گذاری هنوز توسط پشتیبانی تنظیم نشده است. لطفاً بعداً تلاش نمایید یا با پشتیبانی تماس بگیرید."
 
@@ -491,6 +504,17 @@ BTN_TUTORIALS = "📚 آموزش‌ها"
 NO_TUTORIALS = "ℹ️ هنوز آموزشی ثبت نشده است."
 TUTORIALS_LIST_TEXT = "📚 لطفاً آموزش موردنظر را انتخاب نمایید:"
 BTN_ADD_TUTORIAL = "➕ افزودن آموزش"
+BTN_DELETE_TUTORIAL = "🗑 حذف آموزش"
+TUTORIALS_DELETE_TEXT = "🗑 کدام آموزش حذف شود؟"
+CONFIRM_DELETE_TUTORIAL = (
+    "🗑 حذف آموزش «{title}»\n\n"
+    "این عمل قابل بازگشت نیست؛ آیا مطمئن هستید؟"
+)
+BTN_CONFIRM_DELETE = "🗑 بله، حذف شود"
+BTN_KEEP = "↩️ انصراف"
+TUTORIAL_DELETED = "✅ آموزش «{title}» حذف شد."
+TUTORIAL_NOT_FOUND = "⚠️ این آموزش پیش‌تر حذف شده است."
+DELETE_CANCELLED = "↩️ حذف لغو شد."
 ASK_TUTORIAL_TITLE = "📚 لطفاً عنوان آموزش را وارد نمایید:"
 ASK_TUTORIAL_CONTENT = (
     "📎 محتوای آموزش را ارسال نمایید.\n\n"

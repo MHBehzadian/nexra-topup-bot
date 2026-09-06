@@ -35,6 +35,7 @@ def superadmin_menu_kb() -> ReplyKeyboardMarkup:
     kb.button(text=texts.BTN_SET_FORCE_JOIN_CHANNEL)
     kb.button(text=texts.BTN_TUTORIALS)
     kb.button(text=texts.BTN_ADD_TUTORIAL)
+    kb.button(text=texts.BTN_DELETE_TUTORIAL)
     kb.button(text=texts.BTN_ALL_PANELS)
     kb.button(text=texts.BTN_GRANT_TRAFFIC)
     kb.button(text=texts.BTN_BROADCAST)
@@ -49,7 +50,7 @@ def superadmin_menu_kb() -> ReplyKeyboardMarkup:
     kb.button(text=texts.BTN_NEW_INVOICE)
     kb.button(text=texts.BTN_INVOICES)
     kb.button(text=texts.BTN_SEARCH_USER)
-    kb.adjust(1, 2, 2, 2, 2, 2, 2, 2, 2, 1, 2, 1)
+    kb.adjust(1, 2, 2, 3, 2, 2, 2, 2, 2, 2, 2)
     return kb.as_markup(resize_keyboard=True)
 
 
@@ -138,6 +139,16 @@ def wallet_amount_kb() -> InlineKeyboardMarkup:
     return kb.as_markup()
 
 
+def topup_amount_kb() -> InlineKeyboardMarkup:
+    """Common purchase sizes, plus an escape hatch for anything else."""
+    kb = InlineKeyboardBuilder()
+    for gb in texts.TOPUP_PRESETS:
+        kb.button(text=f"{gb:,} GB", callback_data=f"topup_gb:{gb}")
+    kb.button(text=texts.BTN_TOPUP_CUSTOM, callback_data="topup_gb:custom")
+    kb.adjust(2, 2, 1)
+    return kb.as_markup()
+
+
 def partner_volume_kb() -> InlineKeyboardMarkup:
     kb = InlineKeyboardBuilder()
     for key, label in [
@@ -192,6 +203,23 @@ def panel_name_picker_kb(panel_names) -> InlineKeyboardMarkup:
     kb = InlineKeyboardBuilder()
     for index, name in enumerate(panel_names):
         kb.button(text=f"▪️ {name}", callback_data=f"newadmin_panel:{index}")
+    kb.adjust(1)
+    return kb.as_markup()
+
+
+def tutorials_delete_kb(tutorials) -> InlineKeyboardMarkup:
+    """Same list as browsing, but each row arms a deletion instead of opening."""
+    kb = InlineKeyboardBuilder()
+    for t in tutorials:
+        kb.button(text=f"🗑 {t.title}", callback_data=f"tutorial_del:{t.id}")
+    kb.adjust(1)
+    return kb.as_markup()
+
+
+def confirm_delete_tutorial_kb(tutorial_id: int) -> InlineKeyboardMarkup:
+    kb = InlineKeyboardBuilder()
+    kb.button(text=texts.BTN_CONFIRM_DELETE, callback_data=f"tutorial_del_yes:{tutorial_id}")
+    kb.button(text=texts.BTN_KEEP, callback_data="tutorial_del_no")
     kb.adjust(1)
     return kb.as_markup()
 

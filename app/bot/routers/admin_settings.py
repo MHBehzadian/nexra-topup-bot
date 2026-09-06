@@ -81,8 +81,27 @@ async def start_set_channel(message: Message, state: FSMContext) -> None:
     await message.answer(texts.ASK_FORCE_JOIN_CHANNEL, reply_markup=keyboards.cancel_kb())
 
 
+async def _report_channel_access(message: Message, bot: Bot, channel: str) -> None:
+    """Say whether the gate can actually work.
+
+    The middleware deliberately fails open when it can't read the channel, so a
+    bot that isn't an admin there lets everyone straight through — silently. The
+    superadmin needs to hear about that at the moment they configure it, not
+    discover it from users who never got asked to join.
+    """
+    try:
+        await bot.get_chat_member(channel, bot.id)
+    except Exception as exc:
+        await message.answer(
+            texts.FORCE_JOIN_BOT_NOT_ADMIN.format(channel=channel, error=exc),
+            reply_markup=keyboards.superadmin_menu_kb(),
+        )
+        return
+    await message.answer(texts.FORCE_JOIN_CHECK_OK.format(channel=channel))
+
+
 @router.message(SetForceJoinChannel.value, ~F.text.in_(ALL_MENU_TEXTS))
-async def finish_set_channel(message: Message, state: FSMContext) -> None:
+async def finish_set_channel(message: Message, state: FSMContext, bot: Bot) -> None:
     await state.clear()
     channel = (message.text or "").strip()
     if not channel.startswith("@"):
@@ -93,10 +112,11 @@ async def finish_set_channel(message: Message, state: FSMContext) -> None:
         texts.FORCE_JOIN_CHANNEL_SET.format(channel=channel),
         reply_markup=keyboards.superadmin_menu_kb(),
     )
+    await _report_channel_access(message, bot, channel)
 
 
 @router.message(F.text == texts.BTN_TOGGLE_FORCE_JOIN)
-async def toggle_force_join(message: Message) -> None:
+async def toggle_force_join(message: Message, bot: Bot) -> None:
     channel = db.get_setting("force_join_channel")
     currently_on = db.get_setting("force_join_enabled") == "1"
     if not currently_on and not channel:
@@ -106,6 +126,8 @@ async def toggle_force_join(message: Message) -> None:
     await message.answer(
         texts.FORCE_JOIN_ENABLED_OFF if currently_on else texts.FORCE_JOIN_ENABLED_ON
     )
+    if not currently_on:
+        await _report_channel_access(message, bot, channel)
 
 
 @router.message(F.text == texts.BTN_SET_BULK_PIN)

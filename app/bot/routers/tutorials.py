@@ -70,6 +70,53 @@ async def send_tutorial(call: CallbackQuery, bot: Bot) -> None:
         await bot.send_message(chat_id, tutorial.text or "")
 
 
+@router.message(F.text == texts.BTN_DELETE_TUTORIAL, SuperadminFilter())
+async def start_delete_tutorial(message: Message) -> None:
+    tutorials = db.list_tutorials()
+    if not tutorials:
+        await message.answer(texts.NO_TUTORIALS)
+        return
+    await message.answer(
+        texts.TUTORIALS_DELETE_TEXT, reply_markup=keyboards.tutorials_delete_kb(tutorials)
+    )
+
+
+@router.callback_query(F.data.startswith("tutorial_del:"), SuperadminFilter())
+async def confirm_delete_tutorial(call: CallbackQuery) -> None:
+    tutorial_id = int(call.data.split(":")[1])
+    tutorial = db.get_tutorial(tutorial_id)
+    if tutorial is None:
+        await call.answer(texts.TUTORIAL_NOT_FOUND, show_alert=True)
+        return
+    # Deleting is irreversible and the titles sit right next to each other in the
+    # list, so make it a two-tap action rather than a one-tap accident.
+    await call.answer()
+    await call.message.answer(
+        texts.CONFIRM_DELETE_TUTORIAL.format(title=tutorial.title),
+        reply_markup=keyboards.confirm_delete_tutorial_kb(tutorial_id),
+    )
+
+
+@router.callback_query(F.data.startswith("tutorial_del_yes:"), SuperadminFilter())
+async def do_delete_tutorial(call: CallbackQuery) -> None:
+    tutorial_id = int(call.data.split(":")[1])
+    tutorial = db.get_tutorial(tutorial_id)
+    if tutorial is None or not db.delete_tutorial(tutorial_id):
+        await call.answer(texts.TUTORIAL_NOT_FOUND, show_alert=True)
+        return
+    await call.answer()
+    await call.message.answer(
+        texts.TUTORIAL_DELETED.format(title=tutorial.title),
+        reply_markup=keyboards.superadmin_menu_kb(),
+    )
+
+
+@router.callback_query(F.data == "tutorial_del_no", SuperadminFilter())
+async def cancel_delete_tutorial(call: CallbackQuery) -> None:
+    await call.answer()
+    await call.message.answer(texts.DELETE_CANCELLED, reply_markup=keyboards.superadmin_menu_kb())
+
+
 @router.message(F.text == texts.BTN_ADD_TUTORIAL, SuperadminFilter())
 async def start_add_tutorial(message: Message, state: FSMContext) -> None:
     await state.set_state(AddTutorial.title)

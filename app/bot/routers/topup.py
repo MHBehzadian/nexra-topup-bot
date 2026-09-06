@@ -28,7 +28,9 @@ router = Router(name="topup")
 async def _ask_amount(message: Message, state: FSMContext, username: str) -> None:
     await state.update_data(panel_username=username)
     await state.set_state(TopUp.amount_gb)
-    await message.answer(texts.ASK_AMOUNT_GB, reply_markup=keyboards.cancel_kb())
+    await message.answer(
+        texts.ASK_AMOUNT_GB_CHOICE, reply_markup=keyboards.topup_amount_kb()
+    )
 
 
 @router.message(F.text == texts.BTN_TOPUP)
@@ -49,18 +51,41 @@ async def picked_panel_for_topup(call: CallbackQuery, state: FSMContext) -> None
     await _ask_amount(call.message, state, username)
 
 
+@router.callback_query(F.data.startswith("topup_gb:"), TopUp.amount_gb)
+async def pick_amount_gb(call: CallbackQuery, state: FSMContext) -> None:
+    choice = call.data.split(":", 1)[1]
+    await call.answer()
+    if choice == "custom":
+        await call.message.answer(
+            texts.ASK_AMOUNT_GB_CUSTOM, reply_markup=keyboards.cancel_kb()
+        )
+        return
+    await _price_and_invoice(call.message, state, float(choice))
+
+
 @router.message(TopUp.amount_gb, ~F.text.in_(ALL_MENU_TEXTS))
 async def get_amount_gb(message: Message, state: FSMContext) -> None:
     try:
         amount = float((message.text or "").strip().replace(",", "."))
     except ValueError:
         amount = None
-    if amount is None or not (settings.min_gb <= amount <= settings.max_gb):
-        await message.answer(
-            f"{texts.INVALID_AMOUNT_GB} (بین {settings.min_gb:g} تا {settings.max_gb:g} گیگابایت)"
-        )
+
+    if amount is None or amount <= 0:
+        await message.answer(texts.INVALID_AMOUNT_GB)
+        return
+    # Separate messages for the two bounds: "invalid number" tells someone who
+    # typed 100 nothing about what to do next.
+    if amount < settings.min_gb:
+        await message.answer(texts.BELOW_MIN_GB.format(min_gb=settings.min_gb))
+        return
+    if amount > settings.max_gb:
+        await message.answer(texts.ABOVE_MAX_GB.format(max_gb=settings.max_gb))
         return
 
+    await _price_and_invoice(message, state, amount)
+
+
+async def _price_and_invoice(message: Message, state: FSMContext, amount: float) -> None:
     price_per_gb_raw = db.get_setting("price_per_gb")
     if not price_per_gb_raw:
         await state.clear()

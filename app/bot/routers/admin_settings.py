@@ -35,6 +35,30 @@ router.message.filter(SuperadminFilter())
 router.callback_query.filter(SuperadminFilter())
 
 
+_SECTIONS = {
+    texts.BTN_SEC_PANELS: (texts.SECTION_PANELS, keyboards.panels_section_kb),
+    texts.BTN_SEC_FINANCE: (texts.SECTION_FINANCE, keyboards.finance_section_kb),
+    texts.BTN_SEC_USERS: (texts.SECTION_USERS, keyboards.users_section_kb),
+    texts.BTN_SEC_SETTINGS: (texts.SECTION_SETTINGS, keyboards.settings_section_kb),
+    texts.BTN_TUTORIALS: (texts.SECTION_TUTORIALS, keyboards.tutorials_section_kb),
+}
+
+
+@router.message(F.text.in_(_SECTIONS))
+async def open_section(message: Message, state: FSMContext) -> None:
+    # Leaving a half-finished flow by tapping a section is a deliberate exit, so
+    # drop the state rather than letting the next answer land in it.
+    await state.clear()
+    prompt, keyboard = _SECTIONS[message.text]
+    await message.answer(prompt, reply_markup=keyboard())
+
+
+@router.message(F.text == texts.BTN_BACK)
+async def back_to_root(message: Message, state: FSMContext) -> None:
+    await state.clear()
+    await message.answer(texts.BACK_TO_MENU, reply_markup=keyboards.superadmin_menu_kb())
+
+
 @router.message(F.text == texts.BTN_SET_PRICE)
 async def start_set_price(message: Message, state: FSMContext) -> None:
     await state.set_state(SetPricePerGb.value)

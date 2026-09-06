@@ -18,8 +18,11 @@ from ... import db
 router = Router(name="tutorials")
 
 
-@router.message(F.text == texts.BTN_TUTORIALS)
+@router.message(F.text.in_({texts.BTN_TUTORIALS, texts.BTN_VIEW_TUTORIALS}))
 async def list_tutorials(message: Message) -> None:
+    """BTN_TUTORIALS is the customer's button; for a superadmin that label
+    opens the section instead (admin_settings runs first), and they browse
+    from BTN_VIEW_TUTORIALS inside it."""
     tutorials = db.list_tutorials()
     if not tutorials:
         await message.answer(texts.NO_TUTORIALS)

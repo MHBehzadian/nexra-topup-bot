@@ -26,32 +26,86 @@ def unlinked_menu_kb() -> ReplyKeyboardMarkup:
     return kb.as_markup(resize_keyboard=True)
 
 
-def superadmin_menu_kb() -> ReplyKeyboardMarkup:
+def _reply_kb(*labels, layout=(2,)) -> ReplyKeyboardMarkup:
     kb = ReplyKeyboardBuilder()
-    kb.button(text=texts.BTN_PENDING_REQUESTS)
-    kb.button(text=texts.BTN_SET_PRICE)
-    kb.button(text=texts.BTN_SET_CARD)
-    kb.button(text=texts.BTN_TOGGLE_FORCE_JOIN)
-    kb.button(text=texts.BTN_SET_FORCE_JOIN_CHANNEL)
-    kb.button(text=texts.BTN_TUTORIALS)
-    kb.button(text=texts.BTN_ADD_TUTORIAL)
-    kb.button(text=texts.BTN_DELETE_TUTORIAL)
-    kb.button(text=texts.BTN_ALL_PANELS)
-    kb.button(text=texts.BTN_GRANT_TRAFFIC)
-    kb.button(text=texts.BTN_BROADCAST)
-    kb.button(text=texts.BTN_DEBTS)
-    kb.button(text=texts.BTN_TOGGLE_WEEKLY)
-    kb.button(text=texts.BTN_GRANT_WALLET)
-    kb.button(text=texts.BTN_SET_BULK_PIN)
-    kb.button(text=texts.BTN_EXPORT_ALL_PASSWORDS)
-    kb.button(text=texts.BTN_SYNC_TELEGRAM_IDS)
-    kb.button(text=texts.BTN_BACKUP)
-    kb.button(text=texts.BTN_CREATE_ADMIN)
-    kb.button(text=texts.BTN_NEW_INVOICE)
-    kb.button(text=texts.BTN_INVOICES)
-    kb.button(text=texts.BTN_SEARCH_USER)
-    kb.adjust(1, 2, 2, 3, 2, 2, 2, 2, 2, 2, 2)
+    for label in labels:
+        kb.button(text=label)
+    kb.adjust(*layout)
     return kb.as_markup(resize_keyboard=True)
+
+
+def superadmin_menu_kb() -> ReplyKeyboardMarkup:
+    """Root menu: sections, not the whole feature list.
+
+    Twenty-odd buttons on one keyboard filled the screen and buried the one
+    thing that is actually time-critical — the pending requests — so everything
+    else moved a tap away, grouped by what it is for.
+    """
+    return _reply_kb(
+        texts.BTN_PENDING_REQUESTS,
+        texts.BTN_SEC_PANELS,
+        texts.BTN_SEC_FINANCE,
+        texts.BTN_SEC_USERS,
+        texts.BTN_TUTORIALS,
+        texts.BTN_SEC_SETTINGS,
+        layout=(1, 2, 2, 1),
+    )
+
+
+def panels_section_kb() -> ReplyKeyboardMarkup:
+    return _reply_kb(
+        texts.BTN_ALL_PANELS,
+        texts.BTN_GRANT_TRAFFIC,
+        texts.BTN_CREATE_ADMIN,
+        texts.BTN_SYNC_TELEGRAM_IDS,
+        texts.BTN_EXPORT_ALL_PASSWORDS,
+        texts.BTN_BACK,
+        layout=(2, 2, 1, 1),
+    )
+
+
+def finance_section_kb() -> ReplyKeyboardMarkup:
+    return _reply_kb(
+        texts.BTN_NEW_INVOICE,
+        texts.BTN_INVOICES,
+        texts.BTN_DEBTS,
+        texts.BTN_GRANT_WALLET,
+        texts.BTN_TOGGLE_WEEKLY,
+        texts.BTN_BACK,
+        layout=(2, 2, 1, 1),
+    )
+
+
+def users_section_kb() -> ReplyKeyboardMarkup:
+    return _reply_kb(
+        texts.BTN_SEARCH_USER,
+        texts.BTN_BROADCAST,
+        texts.BTN_BACK,
+        layout=(2, 1),
+    )
+
+
+def tutorials_section_kb() -> ReplyKeyboardMarkup:
+    return _reply_kb(
+        texts.BTN_VIEW_TUTORIALS,
+        texts.BTN_ADD_TUTORIAL,
+        texts.BTN_DELETE_TUTORIAL,
+        texts.BTN_BACK,
+        layout=(1, 2, 1),
+    )
+
+
+def settings_section_kb() -> ReplyKeyboardMarkup:
+    return _reply_kb(
+        texts.BTN_SET_PRICE,
+        texts.BTN_SET_CARD,
+        texts.BTN_TOGGLE_FORCE_JOIN,
+        texts.BTN_SET_FORCE_JOIN_CHANNEL,
+        texts.BTN_SET_BULK_PIN,
+        texts.BTN_BACKUP,
+        texts.BTN_BACK,
+        layout=(2, 2, 2, 1),
+    )
 
 
 def cancel_kb() -> ReplyKeyboardMarkup:

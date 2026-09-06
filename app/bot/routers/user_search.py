@@ -14,7 +14,7 @@ from aiogram.types import CallbackQuery, Message
 from .. import keyboards, texts
 from ..filters import SuperadminFilter
 from ..invoices import describe_due, due_at_for
-from ..nav import ALL_MENU_TEXTS
+from ..nav import ALL_MENU_TEXTS, superadmin_kb
 from ..states import DeductWallet, NewInvoice, SearchUser
 from ... import db
 from ...services.nexra_panel import NexraPanelError, nexra_panel
@@ -136,7 +136,7 @@ async def do_search(message: Message, state: FSMContext) -> None:
     await state.clear()
     telegram_id, panels = await _resolve(message.text or "")
     if telegram_id is None:
-        await message.answer(texts.USER_NOT_FOUND, reply_markup=keyboards.superadmin_menu_kb())
+        await message.answer(texts.USER_NOT_FOUND, reply_markup=superadmin_kb(message.from_user.id))
         return
 
     await message.answer(
@@ -168,7 +168,7 @@ async def finish_deduct(message: Message, state: FSMContext, bot: Bot) -> None:
 
     await message.answer(
         texts.DEDUCT_SUCCESS.format(amount=amount, balance=balance),
-        reply_markup=keyboards.superadmin_menu_kb(),
+        reply_markup=superadmin_kb(message.from_user.id),
     )
     try:
         await bot.send_message(target, texts.WALLET_BALANCE.format(balance=balance))

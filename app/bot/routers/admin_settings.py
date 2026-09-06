@@ -11,7 +11,7 @@ from .. import keyboards, texts
 from ..backups import send_backup
 from ..filters import SuperadminFilter
 from ..invoices import describe_due, due_at_for
-from ..nav import ALL_MENU_TEXTS
+from ..nav import ALL_MENU_TEXTS, forget_section, remember_section, superadmin_kb
 from ..states import (
     Broadcast,
     CreateAdmin,
@@ -36,11 +36,11 @@ router.callback_query.filter(SuperadminFilter())
 
 
 _SECTIONS = {
-    texts.BTN_SEC_PANELS: (texts.SECTION_PANELS, keyboards.panels_section_kb),
-    texts.BTN_SEC_FINANCE: (texts.SECTION_FINANCE, keyboards.finance_section_kb),
-    texts.BTN_SEC_USERS: (texts.SECTION_USERS, keyboards.users_section_kb),
-    texts.BTN_SEC_SETTINGS: (texts.SECTION_SETTINGS, keyboards.settings_section_kb),
-    texts.BTN_TUTORIALS: (texts.SECTION_TUTORIALS, keyboards.tutorials_section_kb),
+    texts.BTN_SEC_PANELS: (texts.SECTION_PANELS, "panels"),
+    texts.BTN_SEC_FINANCE: (texts.SECTION_FINANCE, "finance"),
+    texts.BTN_SEC_USERS: (texts.SECTION_USERS, "users"),
+    texts.BTN_SEC_SETTINGS: (texts.SECTION_SETTINGS, "settings"),
+    texts.BTN_TUTORIALS: (texts.SECTION_TUTORIALS, "tutorials"),
 }
 
 
@@ -49,14 +49,16 @@ async def open_section(message: Message, state: FSMContext) -> None:
     # Leaving a half-finished flow by tapping a section is a deliberate exit, so
     # drop the state rather than letting the next answer land in it.
     await state.clear()
-    prompt, keyboard = _SECTIONS[message.text]
-    await message.answer(prompt, reply_markup=keyboard())
+    prompt, section = _SECTIONS[message.text]
+    remember_section(message.from_user.id, section)
+    await message.answer(prompt, reply_markup=superadmin_kb(message.from_user.id))
 
 
 @router.message(F.text == texts.BTN_BACK)
 async def back_to_root(message: Message, state: FSMContext) -> None:
     await state.clear()
-    await message.answer(texts.BACK_TO_MENU, reply_markup=keyboards.superadmin_menu_kb())
+    forget_section(message.from_user.id)
+    await message.answer(texts.BACK_TO_MENU, reply_markup=superadmin_kb(message.from_user.id))
 
 
 @router.message(F.text == texts.BTN_SET_PRICE)
@@ -74,11 +76,11 @@ async def finish_set_price(message: Message, state: FSMContext) -> None:
         if price <= 0:
             raise ValueError
     except ValueError:
-        await message.answer(texts.INVALID_PRICE, reply_markup=keyboards.superadmin_menu_kb())
+        await message.answer(texts.INVALID_PRICE, reply_markup=superadmin_kb(message.from_user.id))
         return
     db.set_setting("price_per_gb", str(price))
     await message.answer(
-        texts.PRICE_SET_CONFIRM.format(price=int(price)), reply_markup=keyboards.superadmin_menu_kb()
+        texts.PRICE_SET_CONFIRM.format(price=int(price)), reply_markup=superadmin_kb(message.from_user.id)
     )
 
 
@@ -93,10 +95,10 @@ async def finish_set_card(message: Message, state: FSMContext) -> None:
     await state.clear()
     card_number = (message.text or "").strip()
     if not card_number:
-        await message.answer(texts.INVALID_CARD_NUMBER, reply_markup=keyboards.superadmin_menu_kb())
+        await message.answer(texts.INVALID_CARD_NUMBER, reply_markup=superadmin_kb(message.from_user.id))
         return
     db.set_setting("card_number", card_number)
-    await message.answer(texts.CARD_SET_CONFIRM, reply_markup=keyboards.superadmin_menu_kb())
+    await message.answer(texts.CARD_SET_CONFIRM, reply_markup=superadmin_kb(message.from_user.id))
 
 
 @router.message(F.text == texts.BTN_SET_FORCE_JOIN_CHANNEL)
@@ -118,7 +120,7 @@ async def _report_channel_access(message: Message, bot: Bot, channel: str) -> No
     except Exception as exc:
         await message.answer(
             texts.FORCE_JOIN_BOT_NOT_ADMIN.format(channel=channel, error=exc),
-            reply_markup=keyboards.superadmin_menu_kb(),
+            reply_markup=superadmin_kb(message.from_user.id),
         )
         return
     await message.answer(texts.FORCE_JOIN_CHECK_OK.format(channel=channel))
@@ -129,12 +131,12 @@ async def finish_set_channel(message: Message, state: FSMContext, bot: Bot) -> N
     await state.clear()
     channel = (message.text or "").strip()
     if not channel.startswith("@"):
-        await message.answer(texts.INVALID_CHANNEL, reply_markup=keyboards.superadmin_menu_kb())
+        await message.answer(texts.INVALID_CHANNEL, reply_markup=superadmin_kb(message.from_user.id))
         return
     db.set_setting("force_join_channel", channel)
     await message.answer(
         texts.FORCE_JOIN_CHANNEL_SET.format(channel=channel),
-        reply_markup=keyboards.superadmin_menu_kb(),
+        reply_markup=superadmin_kb(message.from_user.id),
     )
     await _report_channel_access(message, bot, channel)
 
@@ -165,10 +167,10 @@ async def finish_set_bulk_pin(message: Message, state: FSMContext) -> None:
     await state.clear()
     pin = (message.text or "").strip()
     if not pin:
-        await message.answer(texts.INVALID_BULK_PIN, reply_markup=keyboards.superadmin_menu_kb())
+        await message.answer(texts.INVALID_BULK_PIN, reply_markup=superadmin_kb(message.from_user.id))
         return
     db.set_setting("bulk_password_pin", pin)
-    await message.answer(texts.BULK_PIN_SET_CONFIRM, reply_markup=keyboards.superadmin_menu_kb())
+    await message.answer(texts.BULK_PIN_SET_CONFIRM, reply_markup=superadmin_kb(message.from_user.id))
 
 
 @router.message(F.text == texts.BTN_EXPORT_ALL_PASSWORDS)
@@ -186,18 +188,18 @@ async def finish_export_credentials(message: Message, state: FSMContext) -> None
     entered_pin = (message.text or "").strip()
     correct_pin = db.get_setting("bulk_password_pin")
     if not correct_pin or entered_pin != correct_pin:
-        await message.answer(texts.BULK_PIN_WRONG, reply_markup=keyboards.superadmin_menu_kb())
+        await message.answer(texts.BULK_PIN_WRONG, reply_markup=superadmin_kb(message.from_user.id))
         return
 
     try:
         credentials = await nexra_panel.get_all_credentials()
     except NexraPanelError as exc:
         await message.answer(
-            texts.SYNC_FAILED.format(error=exc), reply_markup=keyboards.superadmin_menu_kb()
+            texts.SYNC_FAILED.format(error=exc), reply_markup=superadmin_kb(message.from_user.id)
         )
         return
     if not credentials:
-        await message.answer(texts.NO_CREDENTIALS, reply_markup=keyboards.superadmin_menu_kb())
+        await message.answer(texts.NO_CREDENTIALS, reply_markup=superadmin_kb(message.from_user.id))
         return
 
     lines = [texts.CREDENTIALS_LIST_HEADER]
@@ -217,7 +219,7 @@ async def finish_export_credentials(message: Message, state: FSMContext) -> None
 
     for i, chunk in enumerate(chunks):
         is_last = i == len(chunks) - 1
-        await message.answer(chunk, reply_markup=keyboards.superadmin_menu_kb() if is_last else None)
+        await message.answer(chunk, reply_markup=superadmin_kb(message.from_user.id) if is_last else None)
 
 
 @router.message(F.text == texts.BTN_ALL_PANELS)
@@ -290,7 +292,7 @@ async def finish_grant(message: Message, state: FSMContext, bot: Bot) -> None:
         result = await nexra_panel.grant(username, amount)
     except NexraPanelError as exc:
         await message.answer(
-            texts.GRANT_FAILED.format(error=exc), reply_markup=keyboards.superadmin_menu_kb()
+            texts.GRANT_FAILED.format(error=exc), reply_markup=superadmin_kb(message.from_user.id)
         )
         return
 
@@ -298,7 +300,7 @@ async def finish_grant(message: Message, state: FSMContext, bot: Bot) -> None:
     db.clear_warning_bucket(username)
     await message.answer(
         texts.GRANT_SUCCESS.format(added_gb=amount, username=username, new_gb=new_gb),
-        reply_markup=keyboards.superadmin_menu_kb(),
+        reply_markup=superadmin_kb(message.from_user.id),
     )
 
     target_telegram_id = result.get("telegram_id")
@@ -391,7 +393,7 @@ async def invoice_due(call: CallbackQuery, state: FSMContext, bot: Bot) -> None:
             amount=data["invoice_amount"],
             due=describe_due(due_at),
         ),
-        reply_markup=keyboards.superadmin_menu_kb(),
+        reply_markup=superadmin_kb(call.from_user.id),
     )
     if not delivered:
         await call.message.answer(texts.INVOICE_CREATE_NOT_DELIVERED)
@@ -471,13 +473,13 @@ async def create_admin_password(message: Message, state: FSMContext) -> None:
         await state.clear()
         await message.answer(
             texts.CREATE_ADMIN_FAILED.format(error=exc),
-            reply_markup=keyboards.superadmin_menu_kb(),
+            reply_markup=superadmin_kb(message.from_user.id),
         )
         return
 
     if not panels:
         await state.clear()
-        await message.answer(texts.NO_MARZBAN_PANELS, reply_markup=keyboards.superadmin_menu_kb())
+        await message.answer(texts.NO_MARZBAN_PANELS, reply_markup=superadmin_kb(message.from_user.id))
         return
 
     # A single panel needs no choosing; skip straight to the next question.
@@ -577,7 +579,7 @@ async def create_admin_finish(message: Message, state: FSMContext, bot: Bot) -> 
     except NexraPanelError as exc:
         await message.answer(
             texts.CREATE_ADMIN_FAILED.format(error=exc),
-            reply_markup=keyboards.superadmin_menu_kb(),
+            reply_markup=superadmin_kb(message.from_user.id),
         )
         return
 
@@ -589,7 +591,7 @@ async def create_admin_finish(message: Message, state: FSMContext, bot: Bot) -> 
             traffic_gb=data["new_traffic"],
             expiry=expiry[:10] if expiry else "بدون انقضا",
         ),
-        reply_markup=keyboards.superadmin_menu_kb(),
+        reply_markup=superadmin_kb(message.from_user.id),
     )
 
     if target_id:
@@ -615,7 +617,7 @@ async def create_admin_finish(message: Message, state: FSMContext, bot: Bot) -> 
 async def manual_backup(message: Message, bot: Bot) -> None:
     await message.answer(texts.BACKUP_RUNNING)
     if not await send_backup(bot, targets=[message.from_user.id]):
-        await message.answer(texts.BACKUP_FAILED, reply_markup=keyboards.superadmin_menu_kb())
+        await message.answer(texts.BACKUP_FAILED, reply_markup=superadmin_kb(message.from_user.id))
 
 
 @router.message(F.text == texts.BTN_DEBTS)
@@ -654,13 +656,13 @@ async def finish_toggle_weekly(message: Message, state: FSMContext) -> None:
     await state.clear()
     username = (message.text or "").strip()
     if not username:
-        await message.answer(texts.ASK_WEEKLY_USERNAME, reply_markup=keyboards.superadmin_menu_kb())
+        await message.answer(texts.ASK_WEEKLY_USERNAME, reply_markup=superadmin_kb(message.from_user.id))
         return
     now_on = not db.is_weekly_enabled(username)
     db.set_weekly_enabled(username, now_on)
     template = texts.WEEKLY_ENABLED_ON if now_on else texts.WEEKLY_ENABLED_OFF
     await message.answer(
-        template.format(username=username), reply_markup=keyboards.superadmin_menu_kb()
+        template.format(username=username), reply_markup=superadmin_kb(message.from_user.id)
     )
 
 
@@ -698,7 +700,7 @@ async def finish_grant_wallet(message: Message, state: FSMContext, bot: Bot) -> 
 
     await message.answer(
         texts.GRANT_WALLET_SUCCESS.format(telegram_id=target_id, balance=balance),
-        reply_markup=keyboards.superadmin_menu_kb(),
+        reply_markup=superadmin_kb(message.from_user.id),
     )
     try:
         await bot.send_message(
@@ -719,7 +721,7 @@ async def finish_broadcast(message: Message, state: FSMContext, bot: Bot) -> Non
     await state.clear()
     body = message.text or ""
     if not body.strip():
-        await message.answer(texts.INVALID_PASSWORD, reply_markup=keyboards.superadmin_menu_kb())
+        await message.answer(texts.INVALID_PASSWORD, reply_markup=superadmin_kb(message.from_user.id))
         return
 
     sent = failed = 0
@@ -732,7 +734,7 @@ async def finish_broadcast(message: Message, state: FSMContext, bot: Bot) -> Non
 
     await message.answer(
         texts.BROADCAST_RESULT.format(sent=sent, failed=failed),
-        reply_markup=keyboards.superadmin_menu_kb(),
+        reply_markup=superadmin_kb(message.from_user.id),
     )
 
 
@@ -743,16 +745,16 @@ async def sync_telegram_ids(message: Message) -> None:
         result = await nexra_panel.sync_telegram_ids()
     except NexraPanelError as exc:
         await message.answer(
-            texts.SYNC_FAILED.format(error=exc), reply_markup=keyboards.superadmin_menu_kb()
+            texts.SYNC_FAILED.format(error=exc), reply_markup=superadmin_kb(message.from_user.id)
         )
         return
 
     updated = result.get("updated") or []
     if not updated:
-        await message.answer(texts.SYNC_RESULT_NONE, reply_markup=keyboards.superadmin_menu_kb())
+        await message.answer(texts.SYNC_RESULT_NONE, reply_markup=superadmin_kb(message.from_user.id))
         return
 
     text = texts.SYNC_RESULT_HEADER.format(count=len(updated))
     for a in updated:
         text += texts.SYNC_RESULT_LINE.format(username=a["username"], telegram_id=a["telegram_id"])
-    await message.answer(text, reply_markup=keyboards.superadmin_menu_kb())
+    await message.answer(text, reply_markup=superadmin_kb(message.from_user.id))

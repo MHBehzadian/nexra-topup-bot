@@ -68,6 +68,28 @@ ALL_MENU_TEXTS = {
 }
 
 
+# Which section each superadmin currently has open. Finishing an action returns
+# them to it rather than to the root menu, so setting the price and then the card
+# number doesn't mean walking back in through Settings each time. In memory on
+# purpose: it is a UI position, not data, and falling back to the root menu after
+# a restart is the right thing to do anyway.
+_open_section: dict[int, str] = {}
+
+
+def remember_section(user_id: int, section: str) -> None:
+    _open_section[user_id] = section
+
+
+def forget_section(user_id: int) -> None:
+    _open_section.pop(user_id, None)
+
+
+def superadmin_kb(user_id: int):
+    """The section keyboard this superadmin is in, or the root menu."""
+    builder = keyboards.SECTION_KEYBOARDS.get(_open_section.get(user_id))
+    return builder() if builder else keyboards.superadmin_menu_kb()
+
+
 async def menu_kb_for(user_id: int):
     """The persistent reply keyboard this user should see outside any flow.
 
@@ -77,7 +99,7 @@ async def menu_kb_for(user_id: int):
     down to the unlinked one.
     """
     if user_id in settings.superadmin_id_list:
-        return keyboards.superadmin_menu_kb()
+        return superadmin_kb(user_id)
     if db.is_user_linked(user_id):
         return keyboards.main_menu_kb()
     return keyboards.unlinked_menu_kb()

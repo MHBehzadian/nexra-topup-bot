@@ -11,7 +11,7 @@ from aiogram.types import CallbackQuery, Message
 
 from .. import keyboards, texts
 from ..forecast import render
-from ..nav import cancel_and_show_menu
+from ..nav import cancel_and_show_menu, forget_section
 from ..panels import format_panel_line, safe_get_admins
 from ... import db
 from ...config import settings
@@ -48,6 +48,8 @@ async def start(message: Message, bot: Bot) -> None:
     db.upsert_user(message.from_user.id, message.from_user.username, message.from_user.full_name)
 
     if message.from_user.id in settings.superadmin_id_list:
+        # /start is a reset, so it also drops whichever section they were in.
+        forget_section(message.from_user.id)
         await message.answer(texts.SUPERADMIN_WELCOME, reply_markup=keyboards.superadmin_menu_kb())
         return
 

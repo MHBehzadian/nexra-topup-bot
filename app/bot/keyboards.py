@@ -108,6 +108,15 @@ def settings_section_kb() -> ReplyKeyboardMarkup:
     )
 
 
+SECTION_KEYBOARDS = {
+    "panels": panels_section_kb,
+    "finance": finance_section_kb,
+    "users": users_section_kb,
+    "tutorials": tutorials_section_kb,
+    "settings": settings_section_kb,
+}
+
+
 def cancel_kb() -> ReplyKeyboardMarkup:
     kb = ReplyKeyboardBuilder()
     kb.button(text=texts.BTN_CANCEL)

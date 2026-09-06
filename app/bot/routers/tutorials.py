@@ -11,7 +11,7 @@ from aiogram.types import CallbackQuery, Message
 
 from .. import keyboards, texts
 from ..filters import SuperadminFilter
-from ..nav import ALL_MENU_TEXTS
+from ..nav import ALL_MENU_TEXTS, superadmin_kb
 from ..states import AddTutorial
 from ... import db
 
@@ -110,14 +110,14 @@ async def do_delete_tutorial(call: CallbackQuery) -> None:
     await call.answer()
     await call.message.answer(
         texts.TUTORIAL_DELETED.format(title=tutorial.title),
-        reply_markup=keyboards.superadmin_menu_kb(),
+        reply_markup=superadmin_kb(call.from_user.id),
     )
 
 
 @router.callback_query(F.data == "tutorial_del_no", SuperadminFilter())
 async def cancel_delete_tutorial(call: CallbackQuery) -> None:
     await call.answer()
-    await call.message.answer(texts.DELETE_CANCELLED, reply_markup=keyboards.superadmin_menu_kb())
+    await call.message.answer(texts.DELETE_CANCELLED, reply_markup=superadmin_kb(call.from_user.id))
 
 
 @router.message(F.text == texts.BTN_ADD_TUTORIAL, SuperadminFilter())
@@ -157,7 +157,7 @@ async def get_tutorial_content(message: Message, state: FSMContext) -> None:
         )
         await message.answer(
             texts.TUTORIAL_ADDED_CONFIRM.format(title=title),
-            reply_markup=keyboards.superadmin_menu_kb(),
+            reply_markup=superadmin_kb(message.from_user.id),
         )
         return
 
@@ -176,5 +176,5 @@ async def get_tutorial_content(message: Message, state: FSMContext) -> None:
     await state.clear()
     db.add_tutorial(title=title, content_type=content_type, text=text, file_id=file_id)
     await message.answer(
-        texts.TUTORIAL_ADDED_CONFIRM.format(title=title), reply_markup=keyboards.superadmin_menu_kb()
+        texts.TUTORIAL_ADDED_CONFIRM.format(title=title), reply_markup=superadmin_kb(message.from_user.id)
     )

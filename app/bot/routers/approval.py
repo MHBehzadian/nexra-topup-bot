@@ -9,7 +9,7 @@ from aiogram.types import CallbackQuery, FSInputFile, Message
 
 from .. import keyboards, texts
 from ..filters import SuperadminFilter
-from ..nav import ALL_MENU_TEXTS
+from ..nav import ALL_MENU_TEXTS, forget_section, superadmin_kb
 from ..states import MessageUser, RejectReason
 from ... import db
 from ...billing import apply_wallet_to_debts
@@ -26,6 +26,8 @@ router.callback_query.filter(SuperadminFilter())
 
 @router.message(F.text == texts.BTN_PENDING_REQUESTS)
 async def list_pending(message: Message) -> None:
+    # Reached from the root menu, so stop returning them into a section.
+    forget_section(message.from_user.id)
     pending = db.list_pending_requests()
     if not pending:
         await message.answer(texts.NO_PENDING_REQUESTS)
@@ -166,7 +168,7 @@ async def finish_reject(message: Message, state: FSMContext, bot: Bot) -> None:
     if not db.mark_reviewed(
         request_id, status="rejected", reviewed_by=message.from_user.id, reason=reason
     ):
-        await message.answer(texts.ALREADY_HANDLED, reply_markup=keyboards.superadmin_menu_kb())
+        await message.answer(texts.ALREADY_HANDLED, reply_markup=superadmin_kb(message.from_user.id))
         return
 
     req = db.get_request(request_id)
@@ -180,7 +182,7 @@ async def finish_reject(message: Message, state: FSMContext, bot: Bot) -> None:
     except Exception:
         pass
 
-    await message.answer(texts.REJECTED_TOAST, reply_markup=keyboards.superadmin_menu_kb())
+    await message.answer(texts.REJECTED_TOAST, reply_markup=superadmin_kb(message.from_user.id))
     try:
         await bot.edit_message_reply_markup(
             chat_id=data["origin_chat_id"],
@@ -209,6 +211,6 @@ async def finish_message_user(message: Message, state: FSMContext, bot: Bot) -> 
     target_id = data["target_telegram_id"]
     try:
         await bot.send_message(target_id, texts.INCOMING_MESSAGE_PREFIX + (message.text or ""))
-        await message.answer(texts.MESSAGE_SENT, reply_markup=keyboards.superadmin_menu_kb())
+        await message.answer(texts.MESSAGE_SENT, reply_markup=superadmin_kb(message.from_user.id))
     except Exception:
-        await message.answer(texts.MESSAGE_FAILED, reply_markup=keyboards.superadmin_menu_kb())
+        await message.answer(texts.MESSAGE_FAILED, reply_markup=superadmin_kb(message.from_user.id))

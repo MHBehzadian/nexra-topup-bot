@@ -20,8 +20,9 @@ def main_menu_kb() -> ReplyKeyboardMarkup:
 
 def unlinked_menu_kb() -> ReplyKeyboardMarkup:
     kb = ReplyKeyboardBuilder()
+    kb.button(text=texts.BTN_PARTNERSHIP)
     kb.button(text=texts.BTN_CREATE_PANEL)
-    kb.adjust(1)
+    kb.adjust(1, 1)
     return kb.as_markup(resize_keyboard=True)
 
 
@@ -127,6 +128,30 @@ def pay_debt_kb(username: str) -> InlineKeyboardMarkup:
     return kb.as_markup()
 
 
+def wallet_amount_kb() -> InlineKeyboardMarkup:
+    """Common top-up sizes, plus an escape hatch for anything else."""
+    kb = InlineKeyboardBuilder()
+    for amount in texts.WALLET_PRESETS:
+        kb.button(text=f"{amount:,} تومان", callback_data=f"wallet_amt:{amount}")
+    kb.button(text=texts.BTN_WALLET_CUSTOM, callback_data="wallet_amt:custom")
+    kb.adjust(2, 2, 1)
+    return kb.as_markup()
+
+
+def partner_volume_kb() -> InlineKeyboardMarkup:
+    kb = InlineKeyboardBuilder()
+    for key, label in [
+        ("u1", texts.VOL_UNDER_1TB),
+        ("1", texts.VOL_1TB),
+        ("2", texts.VOL_2TB),
+        ("3", texts.VOL_3TB),
+        ("o3", texts.VOL_OVER_3TB),
+    ]:
+        kb.button(text=label, callback_data=f"pvol:{key}")
+    kb.adjust(1)
+    return kb.as_markup()
+
+
 def wallet_kb() -> InlineKeyboardMarkup:
     kb = InlineKeyboardBuilder()
     kb.button(text=texts.BTN_CHARGE_WALLET, callback_data="wallet_charge")
@@ -159,10 +184,14 @@ def panel_picker_kb(admins, action: str) -> InlineKeyboardMarkup:
 
 
 def panel_name_picker_kb(panel_names) -> InlineKeyboardMarkup:
-    """Choose which Marzban panel a newly provisioned reseller belongs to."""
+    """Choose which Marzban panel a newly provisioned reseller belongs to.
+
+    The callback carries the panel's position, not its name: Telegram caps
+    callback_data at 64 bytes and a Persian panel name would blow past that.
+    """
     kb = InlineKeyboardBuilder()
-    for name in panel_names:
-        kb.button(text=f"▪️ {name}", callback_data=f"newadmin_panel:{name}")
+    for index, name in enumerate(panel_names):
+        kb.button(text=f"▪️ {name}", callback_data=f"newadmin_panel:{index}")
     kb.adjust(1)
     return kb.as_markup()
 

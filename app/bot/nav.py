@@ -56,6 +56,8 @@ ALL_MENU_TEXTS = {
     texts.BTN_MY_INVOICES,
     texts.BTN_FORECAST,
     texts.BTN_SEARCH_USER,
+    texts.BTN_PARTNERSHIP,
+    texts.BTN_WALLET_CUSTOM,
 }
 
 

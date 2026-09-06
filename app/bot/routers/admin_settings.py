@@ -354,10 +354,28 @@ async def invoice_due(call: CallbackQuery, state: FSMContext, bot: Bot) -> None:
 @router.message(F.text == texts.BTN_INVOICES)
 async def list_invoices(message: Message) -> None:
     invoices = db.list_pending_invoices()
-    if not invoices:
+    debts = db.list_outstanding_debts()
+    if not invoices and not debts:
         await message.answer(texts.NO_INVOICES)
         return
+
     lines = []
+    # Weekly credit lives in its own table but is money owed all the same, so it
+    # is listed alongside invoices rather than hiding in a separate screen.
+    for debt in debts:
+        user = db.get_user(debt["telegram_id"]) if debt["telegram_id"] else None
+        mention = "—"
+        if user:
+            mention = f"@{user['username']}" if user.get("username") else (user.get("full_name") or "—")
+        lines.append(
+            texts.WEEKLY_DEBT_LINE.format(
+                username=debt["username"],
+                amount=debt["amount"],
+                mention=mention,
+                telegram_id=debt["telegram_id"] or "—",
+            )
+        )
+
     for inv in invoices:
         user = db.get_user(inv.telegram_id)
         mention = "—"
@@ -423,6 +441,7 @@ async def create_admin_password(message: Message, state: FSMContext) -> None:
         await message.answer(texts.ASK_NEW_ADMIN_TRAFFIC, reply_markup=keyboards.cancel_kb())
         return
 
+    await state.update_data(panel_choices=panels)
     await state.set_state(CreateAdmin.panel)
     await message.answer(
         texts.ASK_NEW_ADMIN_PANEL, reply_markup=keyboards.panel_name_picker_kb(panels)
@@ -431,10 +450,29 @@ async def create_admin_password(message: Message, state: FSMContext) -> None:
 
 @router.callback_query(F.data.startswith("newadmin_panel:"), CreateAdmin.panel)
 async def create_admin_panel(call: CallbackQuery, state: FSMContext) -> None:
-    await state.update_data(new_panel=call.data.split(":", 1)[1])
+    data = await state.get_data()
+    choices = data.get("panel_choices") or []
+    index = int(call.data.split(":", 1)[1])
+    # A keyboard left over from an earlier, abandoned run would point at a list
+    # this state no longer has.
+    if index >= len(choices):
+        await call.answer(texts.PANEL_CHOICE_EXPIRED, show_alert=True)
+        return
+
+    await state.update_data(new_panel=choices[index])
     await state.set_state(CreateAdmin.traffic)
     await call.answer()
     await call.message.answer(texts.ASK_NEW_ADMIN_TRAFFIC, reply_markup=keyboards.cancel_kb())
+
+
+@router.message(CreateAdmin.panel, ~F.text.in_(ALL_MENU_TEXTS))
+async def create_admin_panel_typed(message: Message, state: FSMContext) -> None:
+    """Typing instead of tapping would otherwise go unanswered."""
+    data = await state.get_data()
+    await message.answer(
+        texts.ASK_NEW_ADMIN_PANEL,
+        reply_markup=keyboards.panel_name_picker_kb(data.get("panel_choices") or []),
+    )
 
 
 @router.message(CreateAdmin.traffic, ~F.text.in_(ALL_MENU_TEXTS))
@@ -509,6 +547,10 @@ async def create_admin_finish(message: Message, state: FSMContext, bot: Bot) -> 
     )
 
     if target_id:
+        # The menu is built from this cached flag, so without it the new owner
+        # would keep seeing the unlinked menu until their next /start.
+        db.ensure_user(target_id)
+        db.set_user_linked(target_id, True)
         try:
             await bot.send_message(
                 target_id,

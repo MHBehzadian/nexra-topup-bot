@@ -63,16 +63,10 @@ async def show_wallet(message: Message) -> None:
 async def start_wallet_charge(call: CallbackQuery, state: FSMContext) -> None:
     await call.answer()
     await state.set_state(WalletTopUp.amount)
-    await call.message.answer(texts.ASK_WALLET_AMOUNT, reply_markup=keyboards.cancel_kb())
+    await call.message.answer(texts.ASK_WALLET_AMOUNT, reply_markup=keyboards.wallet_amount_kb())
 
 
-@router.message(WalletTopUp.amount, ~F.text.in_(ALL_MENU_TEXTS))
-async def get_wallet_amount(message: Message, state: FSMContext) -> None:
-    amount = _parse_toman(message.text)
-    if amount is None:
-        await message.answer(texts.INVALID_WALLET_AMOUNT)
-        return
-
+async def _ask_for_receipt(message: Message, state: FSMContext, amount: int) -> None:
     card_number = db.get_setting("card_number")
     if not card_number:
         await state.clear()
@@ -85,6 +79,27 @@ async def get_wallet_amount(message: Message, state: FSMContext) -> None:
         texts.WALLET_CHARGE_INSTRUCTIONS.format(amount=amount, card_number=card_number),
         reply_markup=keyboards.cancel_kb(),
     )
+
+
+@router.callback_query(F.data.startswith("wallet_amt:"), WalletTopUp.amount)
+async def pick_wallet_amount(call: CallbackQuery, state: FSMContext) -> None:
+    choice = call.data.split(":", 1)[1]
+    await call.answer()
+    if choice == "custom":
+        await call.message.answer(
+            texts.ASK_WALLET_CUSTOM_AMOUNT, reply_markup=keyboards.cancel_kb()
+        )
+        return
+    await _ask_for_receipt(call.message, state, int(choice))
+
+
+@router.message(WalletTopUp.amount, ~F.text.in_(ALL_MENU_TEXTS))
+async def get_wallet_amount(message: Message, state: FSMContext) -> None:
+    amount = _parse_toman(message.text)
+    if amount is None:
+        await message.answer(texts.INVALID_WALLET_AMOUNT)
+        return
+    await _ask_for_receipt(message, state, amount)
 
 
 @router.message(WalletTopUp.receipt, ~F.text.in_(ALL_MENU_TEXTS))
@@ -124,9 +139,22 @@ async def get_wallet_receipt(message: Message, state: FSMContext, bot: Bot) -> N
 @router.message(F.text == texts.BTN_MY_INVOICES)
 async def my_invoices(message: Message) -> None:
     invoices = db.list_pending_invoices(message.from_user.id)
-    if not invoices:
+    # Weekly credit is billed through the debts table rather than as an invoice,
+    # but to the customer it's just another unpaid amount — so it belongs here too.
+    debts = [d for d in db.list_outstanding_debts() if d["telegram_id"] == message.from_user.id]
+
+    if not invoices and not debts:
         await message.answer(texts.NO_MY_INVOICES)
         return
+
+    for debt in debts:
+        await message.answer(
+            texts.WEEKLY_DEBT_AS_INVOICE.format(
+                username=debt["username"], amount=debt["amount"]
+            ),
+            reply_markup=keyboards.pay_debt_kb(debt["username"]),
+        )
+
     for inv in invoices:
         await message.answer(
             texts.INVOICE_FOR_CUSTOMER.format(

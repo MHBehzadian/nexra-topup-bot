@@ -298,6 +298,21 @@ def upsert_user(telegram_id: int, username: str | None, full_name: str | None) -
         )
 
 
+def ensure_user(telegram_id: int) -> None:
+    """Make sure a row exists without touching a name we may already know —
+    used when we learn of someone from a superadmin action rather than a /start."""
+    now = datetime.now(timezone.utc).isoformat()
+    with _connect() as conn:
+        conn.execute(
+            """
+            INSERT INTO bot_users (telegram_id, username, full_name, first_seen, last_seen)
+            VALUES (?, NULL, NULL, ?, ?)
+            ON CONFLICT(telegram_id) DO NOTHING
+            """,
+            (telegram_id, now, now),
+        )
+
+
 def list_pending_requests() -> list[TopupRequest]:
     with _connect() as conn:
         rows = conn.execute(

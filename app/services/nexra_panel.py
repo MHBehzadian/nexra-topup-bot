@@ -83,10 +83,19 @@ class NexraPanelClient:
             )
         return self._ok(resp)
 
-    async def list_panels(self) -> list[dict]:
-        """Distinct Marzban panels, derived from the admins already on them."""
-        admins = await self.list_all_admins()
-        return sorted({a["panel"] for a in admins if a.get("panel")})
+    async def list_panels(self) -> list[str]:
+        """Names of the Marzban panels a new reseller can be created on.
+
+        Falls back to deriving the names from existing admins when the panel is
+        still running a build without /bot/panels, so the bot keeps working if it
+        is deployed ahead of the panel.
+        """
+        async with self._client() as client:
+            resp = await client.get("/bot/panels")
+        if resp.status_code == 404:
+            admins = await self.list_all_admins()
+            return sorted({a["panel"] for a in admins if a.get("panel")})
+        return sorted(self._ok(resp) or [])
 
     async def grant(self, username: str, added_gb: float) -> dict:
         async with self._client() as client:

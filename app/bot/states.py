@@ -49,6 +49,12 @@ class GrantWallet(StatesGroup):
     amount = State()
 
 
+class Partnership(StatesGroup):
+    name = State()
+    volume = State()
+    method = State()
+
+
 class SearchUser(StatesGroup):
     query = State()
 

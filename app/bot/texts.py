@@ -186,7 +186,10 @@ BTN_WALLET = "💼 کیف پول"
 BTN_PAY_WALLET = "💼 پرداخت از کیف پول"
 WALLET_BALANCE = "💼 موجودی کیف پول شما: {balance:,} تومان"
 BTN_CHARGE_WALLET = "➕ شارژ کیف پول"
-ASK_WALLET_AMOUNT = "➕ چه مبلغی (تومان) می‌خواهید به کیف پول اضافه کنید؟"
+ASK_WALLET_AMOUNT = "➕ مبلغ موردنظر برای شارژ کیف پول را انتخاب نمایید:"
+ASK_WALLET_CUSTOM_AMOUNT = "➕ مبلغ را به تومان وارد کنید:"
+BTN_WALLET_CUSTOM = "✏️ مبلغ دلخواه"
+WALLET_PRESETS = [1_000_000, 2_000_000, 5_000_000, 10_000_000]
 INVALID_WALLET_AMOUNT = "⚠️ مبلغ وارد شده معتبر نیست."
 WALLET_CHARGE_INSTRUCTIONS = (
     "💳 لطفاً مبلغ {amount:,} تومان را به شماره کارت زیر واریز نمایید:\n\n"
@@ -315,6 +318,28 @@ GRANT_NOTIFY_ADMIN = (
     "📊 موجودی جدید: {new_gb:.2f} گیگابایت"
 )
 
+BTN_PARTNERSHIP = "🤝 ثبت درخواست همکاری"
+ASK_PARTNER_NAME = "🤝 لطفاً نام و نام خانوادگی خود را وارد نمایید:"
+ASK_PARTNER_VOLUME = "📊 حجم فروش ماهانه‌ی شما چقدر است؟"
+VOL_UNDER_1TB = "کمتر از ۱ ترابایت"
+VOL_1TB = "۱ ترابایت"
+VOL_2TB = "۲ ترابایت"
+VOL_3TB = "۳ ترابایت"
+VOL_OVER_3TB = "بالای ۳ ترابایت"
+ASK_PARTNER_METHOD = "🛒 نحوه‌ی فروش خود را توضیح دهید (از چه طریقی مشتری جذب می‌کنید؟):"
+PARTNER_SUBMITTED = (
+    "✅ درخواست شما ارسال شد.\n\n"
+    "به‌زودی پشتیبانی با شما ارتباط خواهد گرفت. سپاس از شکیبایی شما 🙏"
+)
+PARTNER_NOTIFY_SUPERADMIN = (
+    "🤝 درخواست همکاری جدید\n\n"
+    "👤 نام: {name}\n"
+    "📎 یوزرنیم: {mention}\n"
+    "🆔 آیدی عددی: <code>{telegram_id}</code>\n"
+    "📊 حجم فروش ماهانه: {volume}\n"
+    "🛒 نحوه‌ی فروش: {method}"
+)
+
 BTN_SEARCH_USER = "🔍 جستجوی کاربر"
 ASK_SEARCH_QUERY = "🔍 آیدی عددی تلگرام، یوزرنیم تلگرام یا نام کاربری پنل را وارد نمایید:"
 USER_NOT_FOUND = "⚠️ کاربری با این مشخصات یافت نشد."
@@ -410,6 +435,17 @@ INVOICE_LINE = (
     "     ↳ ⏳ {due}\n"
 )
 NO_INVOICES = "✅ هیچ فاکتور پرداخت‌نشده‌ای وجود ندارد."
+WEEKLY_DEBT_LINE = (
+    "🗓 بدهی هفتگی — {amount:,} تومان\n"
+    "     ↳ پنل {username}\n"
+    "     ↳ {mention} · <code>{telegram_id}</code>\n"
+)
+WEEKLY_DEBT_AS_INVOICE = (
+    "🗓 بدهی هفتگی\n\n"
+    "▪️ پنل: {username}\n"
+    "💰 مبلغ قابل پرداخت: {amount:,} تومان\n\n"
+    "برای پرداخت، دکمه‌ی زیر را بزنید."
+)
 MY_INVOICES_HEADER = "🧾 فاکتورهای پرداخت‌نشده‌ی شما:\n\n"
 BTN_MY_INVOICES = "🧾 فاکتورهای من"
 NO_MY_INVOICES = "✅ فاکتور پرداخت‌نشده‌ای ندارید."
@@ -431,6 +467,7 @@ CREATE_ADMIN_SUCCESS = (
     "📅 انقضا: {expiry}\n\n"
     "این پنل هم در مرزبان و هم در نکسرا ثبت شد."
 )
+PANEL_CHOICE_EXPIRED = "⚠️ این فهرست منقضی شده است؛ لطفاً مجدداً از ابتدا اقدام نمایید."
 CREATE_ADMIN_FAILED = "⚠️ ساخت پنل ناموفق بود: {error}"
 
 BTN_BACKUP = "📦 دریافت بکاپ"

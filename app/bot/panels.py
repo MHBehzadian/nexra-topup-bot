@@ -32,7 +32,8 @@ async def safe_get_admins(message: Message) -> list[dict] | None:
         logger.error(f"panel lookup failed for {message.from_user.id}: {exc}")
         await message.answer(texts.PANEL_UNREACHABLE)
         return None
-    db.set_user_linked(message.from_user.id, bool(admins))
+    if admins:
+        db.set_user_linked(message.from_user.id, True)
     return admins
 
 

@@ -62,7 +62,7 @@ async def start(message: Message, bot: Bot) -> None:
     if not admins:
         await message.answer(
             texts.START_UNLINKED.format(telegram_id=message.from_user.id),
-            reply_markup=keyboards.unlinked_menu_kb(),
+            reply_markup=await menu_kb_for(message.from_user.id),
         )
         return
 

@@ -14,7 +14,7 @@ from aiogram.fsm.context import FSMContext
 from aiogram.types import CallbackQuery, FSInputFile, Message
 
 from .. import keyboards, texts
-from ..nav import ALL_MENU_TEXTS
+from ..nav import ALL_MENU_TEXTS, menu_kb_for
 from ..panels import choose_panel, owned_panel
 from ..states import TopUp
 from ... import db
@@ -245,7 +245,9 @@ async def get_receipt(message: Message, state: FSMContext, bot: Bot) -> None:
 
     target = await owned_panel(message.from_user.id, username)
     if not target:
-        await message.answer(texts.NOT_LINKED_RETRY, reply_markup=keyboards.unlinked_menu_kb())
+        await message.answer(
+            texts.NOT_LINKED_RETRY, reply_markup=await menu_kb_for(message.from_user.id)
+        )
         return
 
     os.makedirs(settings.media_dir, exist_ok=True)

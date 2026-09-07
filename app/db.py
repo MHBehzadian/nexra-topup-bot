@@ -718,9 +718,16 @@ def clear_warning_bucket(username: str) -> None:
 
 
 def set_user_linked(telegram_id: int, linked: bool) -> None:
+    """Mark that this account owns a panel. Deliberately one-way.
+
+    Once someone has been a panel owner their menu stays the owner's menu. A
+    lookup that comes back empty — a rename, a momentary gap, a panel being
+    rebuilt — must never drop them back to the "request a panel" menu they left
+    behind, so this can raise the flag but never lower it.
+    """
     with _connect() as conn:
         conn.execute(
-            "UPDATE bot_users SET is_linked = ? WHERE telegram_id = ?",
+            "UPDATE bot_users SET is_linked = MAX(is_linked, ?) WHERE telegram_id = ?",
             (1 if linked else 0, telegram_id),
         )
 

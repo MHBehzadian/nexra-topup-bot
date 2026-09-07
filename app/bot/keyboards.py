@@ -19,10 +19,25 @@ def main_menu_kb() -> ReplyKeyboardMarkup:
 
 
 def unlinked_menu_kb() -> ReplyKeyboardMarkup:
+    """Someone with no panel yet still has an account with us: they can hold a
+    balance and be invoiced, so the money side of the bot is open to them. The
+    panel button is where activation and the requests live."""
+    kb = ReplyKeyboardBuilder()
+    kb.button(text=texts.BTN_WALLET)
+    kb.button(text=texts.BTN_MY_INVOICES)
+    kb.button(text=texts.BTN_MY_PANELS)
+    kb.adjust(2, 1)
+    return kb.as_markup(resize_keyboard=True)
+
+
+def panel_request_kb() -> ReplyKeyboardMarkup:
+    """Shown alongside the activation notice, so the two ways of asking for a
+    panel sit where someone actually looks for them."""
     kb = ReplyKeyboardBuilder()
     kb.button(text=texts.BTN_PARTNERSHIP)
     kb.button(text=texts.BTN_CREATE_PANEL)
-    kb.adjust(1, 1)
+    kb.button(text=texts.BTN_BACK)
+    kb.adjust(1, 1, 1)
     return kb.as_markup(resize_keyboard=True)
 
 

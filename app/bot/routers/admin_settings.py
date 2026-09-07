@@ -11,7 +11,7 @@ from .. import keyboards, texts
 from ..backups import send_backup
 from ..filters import SuperadminFilter
 from ..invoices import describe_due, due_at_for
-from ..nav import ALL_MENU_TEXTS, forget_section, remember_section, superadmin_kb
+from ..nav import ALL_MENU_TEXTS, remember_section, superadmin_kb
 from ..states import (
     Broadcast,
     CreateAdmin,
@@ -52,13 +52,6 @@ async def open_section(message: Message, state: FSMContext) -> None:
     prompt, section = _SECTIONS[message.text]
     remember_section(message.from_user.id, section)
     await message.answer(prompt, reply_markup=superadmin_kb(message.from_user.id))
-
-
-@router.message(F.text == texts.BTN_BACK)
-async def back_to_root(message: Message, state: FSMContext) -> None:
-    await state.clear()
-    forget_section(message.from_user.id)
-    await message.answer(texts.BACK_TO_MENU, reply_markup=superadmin_kb(message.from_user.id))
 
 
 @router.message(F.text == texts.BTN_SET_PRICE)

@@ -11,7 +11,7 @@ from aiogram.types import CallbackQuery, Message
 
 from .. import keyboards, texts
 from ..forecast import render
-from ..nav import cancel_and_show_menu, forget_section
+from ..nav import cancel_and_show_menu, forget_section, menu_kb_for
 from ..panels import format_panel_line, safe_get_admins
 from ... import db
 from ...config import settings
@@ -80,10 +80,27 @@ async def my_panels(message: Message) -> None:
     if admins is None:
         return
     if not admins:
-        await message.answer(texts.NO_PANELS)
+        # Same button for everyone: with no panel it becomes the activation
+        # screen, carrying the numeric ID they need to forward to support.
+        await message.answer(
+            texts.PANEL_ACTIVATION.format(telegram_id=message.from_user.id),
+            reply_markup=keyboards.panel_request_kb(),
+        )
         return
     text = texts.PANELS_LIST_HEADER + "".join(format_panel_line(a) for a in admins)
     await message.answer(text)
+
+
+@router.message(F.text == texts.BTN_BACK)
+async def back_to_menu(message: Message, state: FSMContext) -> None:
+    """One Back for everyone: this router is registered first, so a copy in the
+    superadmin router could never run. Dropping the remembered section is what
+    makes it land on the root menu rather than back where it started."""
+    await state.clear()
+    forget_section(message.from_user.id)
+    await message.answer(
+        texts.BACK_TO_MENU, reply_markup=await menu_kb_for(message.from_user.id)
+    )
 
 
 @router.message(F.text == texts.BTN_FORECAST)

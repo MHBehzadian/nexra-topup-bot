@@ -14,6 +14,7 @@ from aiogram.types import CallbackQuery, Message
 from .. import keyboards, texts
 from ..filters import SuperadminFilter
 from ..invoices import describe_due, due_at_for
+from ..bills import open_bills
 from ..nav import ALL_MENU_TEXTS, superadmin_kb
 from ..states import DeductWallet, NewInvoice, SearchUser
 from ... import db
@@ -67,6 +68,7 @@ def _render_profile(telegram_id: int, panels: list[dict]) -> str:
         telegram_id=telegram_id,
         mention=mention,
         wallet=db.get_wallet_balance(telegram_id),
+        debt=sum(b.amount for b in open_bills(telegram_id)),
     )
 
     if panels:

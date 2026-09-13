@@ -183,6 +183,10 @@ def init_db() -> None:
         _ensure_column(conn, "debts", "overdue_since", "TEXT")
         # Links a settlement receipt back to the manual invoice it pays off.
         _ensure_column(conn, "topup_requests", "invoice_id", "INTEGER")
+        # When a non-payment warning was last sent for a bill, so the open list
+        # can show it and nobody gets warned twice by accident.
+        _ensure_column(conn, "invoices", "last_warned_at", "TEXT")
+        _ensure_column(conn, "debts", "last_warned_at", "TEXT")
 
 
 @dataclass
@@ -553,7 +557,8 @@ def mark_overdue(username: str) -> None:
 def list_outstanding_debts() -> list[dict]:
     with _connect() as conn:
         rows = conn.execute(
-            "SELECT username, telegram_id, amount, overdue_since FROM debts "
+            "SELECT username, telegram_id, amount, overdue_since, updated_at, last_warned_at "
+            "FROM debts "
             "WHERE amount > 0 ORDER BY username"
         ).fetchall()
         return [dict(r) for r in rows]
@@ -570,6 +575,7 @@ class Invoice:
     created_at: str
     paid_at: str | None
     last_reminded_date: str | None
+    last_warned_at: str | None = None
 
 
 def create_invoice(
@@ -629,6 +635,49 @@ def set_invoice_reminded(invoice_id: int, date_stamp: str) -> None:
         conn.execute(
             "UPDATE invoices SET last_reminded_date = ? WHERE id = ?", (date_stamp, invoice_id)
         )
+
+
+def mark_invoice_warned(invoice_id: int) -> None:
+    now = datetime.now(timezone.utc).isoformat()
+    with _connect() as conn:
+        conn.execute("UPDATE invoices SET last_warned_at = ? WHERE id = ?", (now, invoice_id))
+
+
+def mark_debt_warned(username: str) -> None:
+    now = datetime.now(timezone.utc).isoformat()
+    with _connect() as conn:
+        conn.execute("UPDATE debts SET last_warned_at = ? WHERE username = ?", (now, username))
+
+
+def get_debt_record(username: str) -> dict | None:
+    """The whole debt row — who owes it, not just how much."""
+    with _connect() as conn:
+        row = conn.execute(
+            "SELECT username, telegram_id, amount, overdue_since, updated_at, last_warned_at "
+            "FROM debts WHERE username = ?",
+            (username,),
+        ).fetchone()
+        return dict(row) if row else None
+
+
+def has_billing_account(telegram_id: int) -> bool:
+    """Whether we have any business with this person: a panel, or a bill of any
+    kind at some point.
+
+    Gates the wallet and the card number. Paid and cancelled invoices still
+    count — settling up doesn't turn a customer back into a stranger.
+    """
+    with _connect() as conn:
+        row = conn.execute(
+            """
+            SELECT 1 FROM bot_users WHERE telegram_id = ? AND is_linked = 1
+            UNION ALL SELECT 1 FROM invoices WHERE telegram_id = ?
+            UNION ALL SELECT 1 FROM debts WHERE telegram_id = ?
+            LIMIT 1
+            """,
+            (telegram_id, telegram_id, telegram_id),
+        ).fetchone()
+        return row is not None
 
 
 def record_traffic_snapshot(

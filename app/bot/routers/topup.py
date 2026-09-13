@@ -13,7 +13,7 @@ from aiogram import Bot, F, Router
 from aiogram.fsm.context import FSMContext
 from aiogram.types import CallbackQuery, FSInputFile, Message
 
-from .. import keyboards, texts
+from .. import auto_approve, keyboards, texts
 from ..nav import ALL_MENU_TEXTS, menu_kb_for
 from ..panels import choose_panel, owned_panel
 from ..states import TopUp
@@ -270,7 +270,7 @@ async def get_receipt(message: Message, state: FSMContext, bot: Bot) -> None:
         f"👤 آیدی عددی: {message.from_user.id}\n"
         f"📊 حجم درخواستی: {data['amount_gb']:g} گیگابایت\n"
         f"💰 مبلغ: {data['total_price']:,} تومان"
-    )
+    ) + auto_approve.caption_note()
     for superadmin_id in settings.superadmin_id_list:
         try:
             await bot.send_photo(

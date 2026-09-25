@@ -21,6 +21,10 @@ DAYS = 7
 GRANT = "grant"
 # Payments towards weekly credit: reported beside the sales, never inside them.
 SETTLEMENT = db.SETTLEMENT_METHOD
+# Money put into a wallet: reported beside the sales, never inside them.
+WALLET_CHARGE = db.WALLET_CHARGE_METHOD
+# Everything in the ledger that isn't takings.
+NOT_SALES = (GRANT, *db.PAYMENT_METHODS)
 MAX_LISTED_SETTLEMENTS = 20
 
 # Python's weekday(): Monday is 0.
@@ -79,7 +83,7 @@ def report(now: datetime | None = None, days: int = DAYS) -> str:
         hour=0, minute=0, second=0, microsecond=0
     )
     ledger = db.list_sales_since(first_day.astimezone(timezone.utc).isoformat())
-    sales = [s for s in ledger if s.method not in (GRANT, SETTLEMENT)]
+    sales = [s for s in ledger if s.method not in NOT_SALES]
     settled = [s for s in ledger if s.method == SETTLEMENT]
     if not sales and not settled:
         return texts.SALES_EMPTY

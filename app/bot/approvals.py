@@ -49,6 +49,13 @@ async def approve_request(bot: Bot, request_id: int, reviewer_id: int) -> Outcom
 
     if req.kind == "wallet":
         db.add_wallet_balance(customer, req.toman_amount)
+        db.record_sale(
+            telegram_id=customer,
+            username=None,
+            gb=0,
+            amount=req.toman_amount,
+            method=db.WALLET_CHARGE_METHOD,
+        )
         # Newly arrived money clears any outstanding weekly debt immediately.
         apply_wallet_to_debts(customer)
         await _tell(

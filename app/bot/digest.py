@@ -26,6 +26,7 @@ logger = logging.getLogger(__name__)
 TEHRAN = ZoneInfo("Asia/Tehran")
 LOW_TRAFFIC_GB = 50.0
 MAX_LISTED_PANELS = 15
+MAX_LISTED_SETTLEMENTS = 10
 
 
 async def build(now: datetime | None = None) -> str:
@@ -33,11 +34,8 @@ async def build(now: datetime | None = None) -> str:
     text = texts.DIGEST_HEADER.format(day=sales.format_day(now.date()))
 
     midnight = now.replace(hour=0, minute=0, second=0, microsecond=0)
-    today = [
-        s
-        for s in db.list_sales_since(midnight.astimezone(timezone.utc).isoformat())
-        if s.method != sales.GRANT
-    ]
+    ledger = db.list_sales_since(midnight.astimezone(timezone.utc).isoformat())
+    today = [s for s in ledger if s.method not in (sales.GRANT, sales.SETTLEMENT)]
     if today:
         text += texts.DIGEST_SALES.format(
             amount=sum(s.amount for s in today),
@@ -46,6 +44,22 @@ async def build(now: datetime | None = None) -> str:
         )
     else:
         text += texts.DIGEST_NO_SALES
+
+    # Money that came in against weekly credit — reported separately so it never
+    # inflates the day's sales, but still seen without going to look for it.
+    settled = [s for s in ledger if s.method == sales.SETTLEMENT]
+    if settled:
+        listed = "".join(
+            texts.DIGEST_SETTLED_LINE.format(username=s.username or "—", amount=s.amount)
+            for s in settled[:MAX_LISTED_SETTLEMENTS]
+        )
+        if len(settled) > MAX_LISTED_SETTLEMENTS:
+            listed += texts.DIGEST_SETTLED_MORE.format(
+                count=len(settled) - MAX_LISTED_SETTLEMENTS
+            )
+        text += texts.DIGEST_SETTLED.format(
+            amount=sum(s.amount for s in settled), count=len(settled), payers=listed
+        )
 
     pending = db.list_pending_requests()
     if pending:

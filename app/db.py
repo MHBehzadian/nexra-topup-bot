@@ -657,6 +657,13 @@ def set_invoice_reminded(invoice_id: int, date_stamp: str) -> None:
         )
 
 
+# A payment towards a panel's weekly credit. It shares the sales ledger so the
+# reports can find it, but it is not a sale: the credit was already counted as a
+# "weekly" sale the day the traffic was handed over, so adding this to the takings
+# would count the same money twice.
+SETTLEMENT_METHOD = "settlement"
+
+
 @dataclass
 class Sale:
     id: int
@@ -689,11 +696,13 @@ def list_sales_since(stamp: str) -> list[Sale]:
 
 
 def list_sales_for(username: str, limit: int = 20) -> list[Sale]:
-    """One panel's traffic history, newest first."""
+    """One panel's traffic history, newest first. Debt payments add no traffic,
+    so they stay out of it."""
     with _connect() as conn:
         rows = conn.execute(
-            "SELECT * FROM sales WHERE username = ? ORDER BY created_at DESC LIMIT ?",
-            (username, limit),
+            "SELECT * FROM sales WHERE username = ? AND method != ? "
+            "ORDER BY created_at DESC LIMIT ?",
+            (username, SETTLEMENT_METHOD, limit),
         ).fetchall()
         return [Sale(**dict(r)) for r in rows]
 

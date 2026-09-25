@@ -78,6 +78,16 @@ async def approve_request(bot: Bot, request_id: int, reviewer_id: int) -> Outcom
         excess = max(0, req.toman_amount - owed)
         if excess:
             db.add_wallet_balance(customer, excess)
+        # Only what actually went against the debt: the excess is wallet credit.
+        applied = min(owed, req.toman_amount)
+        if applied > 0:
+            db.record_sale(
+                telegram_id=customer,
+                username=req.admin_username,
+                gb=0,
+                amount=applied,
+                method=db.SETTLEMENT_METHOD,
+            )
 
         if remaining > 0:
             text = texts.SETTLEMENT_PARTIAL_ADMIN.format(

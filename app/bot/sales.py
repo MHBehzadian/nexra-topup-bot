@@ -19,6 +19,9 @@ DAYS = 7
 # Traffic the superadmin handed over without charging: part of a panel's
 # history, but not a sale, so it stays out of the takings.
 GRANT = "grant"
+# Payments towards weekly credit: reported beside the sales, never inside them.
+SETTLEMENT = db.SETTLEMENT_METHOD
+MAX_LISTED_SETTLEMENTS = 20
 
 # Python's weekday(): Monday is 0.
 WEEKDAYS = ["دوشنبه", "سه‌شنبه", "چهارشنبه", "پنج‌شنبه", "جمعه", "شنبه", "یک‌شنبه"]
@@ -75,13 +78,13 @@ def report(now: datetime | None = None, days: int = DAYS) -> str:
     first_day = (now - timedelta(days=days - 1)).replace(
         hour=0, minute=0, second=0, microsecond=0
     )
-    sales = [
-        s
-        for s in db.list_sales_since(first_day.astimezone(timezone.utc).isoformat())
-        if s.method != GRANT
-    ]
-    if not sales:
+    ledger = db.list_sales_since(first_day.astimezone(timezone.utc).isoformat())
+    sales = [s for s in ledger if s.method not in (GRANT, SETTLEMENT)]
+    settled = [s for s in ledger if s.method == SETTLEMENT]
+    if not sales and not settled:
         return texts.SALES_EMPTY
+    if not sales:
+        return texts.SALES_HEADER + texts.SALES_NONE_THIS_WEEK + _settlements_block(settled)
 
     per_day: dict[object, dict] = {}
     per_method: dict[str, int] = {}
@@ -116,12 +119,33 @@ def report(now: datetime | None = None, days: int = DAYS) -> str:
         f"{texts.SALES_METHOD_LABELS.get(method, method)} {count}"
         for method, count in sorted(per_method.items(), key=lambda kv: kv[1], reverse=True)
     )
-    return text + texts.SALES_FOOTER.format(
+    text += texts.SALES_FOOTER.format(
         total=total,
         gb=total_gb,
         average=round(total / days),
         count=sum(b["count"] for b in per_day.values()),
         methods=breakdown,
+    )
+    if settled:
+        text += "\n" + _settlements_block(settled)
+    return text
+
+
+def _settlements_block(settled: list) -> str:
+    """Who paid their weekly credit and when, newest first, with the total."""
+    text = texts.SALES_SETTLED_HEADER
+    newest_first = sorted(settled, key=lambda s: s.created_at, reverse=True)
+    for entry in newest_first[:MAX_LISTED_SETTLEMENTS]:
+        day = day_of(entry.created_at)
+        text += texts.SALES_SETTLED_LINE.format(
+            day=format_day(day) if day else "—",
+            username=entry.username or "—",
+            amount=entry.amount,
+        )
+    if len(newest_first) > MAX_LISTED_SETTLEMENTS:
+        text += texts.SALES_SETTLED_MORE.format(count=len(newest_first) - MAX_LISTED_SETTLEMENTS)
+    return text + texts.SALES_SETTLED_TOTAL.format(
+        total=sum(s.amount for s in settled), count=len(settled)
     )
 
 

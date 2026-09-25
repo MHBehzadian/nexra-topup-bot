@@ -677,14 +677,24 @@ SALES_METHOD_LABELS = {
     "weekly": "هفتگی",
     "invoice": "فاکتور",
     "grant": "افزودن دستی",
+    "settlement": "تسویه‌ی هفتگی",
 }
 SALES_EMPTY = "📈 در ۷ روز گذشته فروشی ثبت نشده است."
+SALES_NONE_THIS_WEEK = "▫️ در این ۷ روز فروشی ثبت نشده است.\n"
+# Payments made against weekly credit: money in, but not new sales.
+SALES_SETTLED_HEADER = "\n💵 <b>تسویه‌های هفتگی دریافت‌شده</b>\n"
+SALES_SETTLED_LINE = "▫️ {day} · <b>{username}</b> · {amount:,} تومان\n"
+SALES_SETTLED_MORE = "     … و {count} پرداخت دیگر\n"
+SALES_SETTLED_TOTAL = "━━━━━━━━━━━━━━━\n💰 جمع تسویه‌ها: <b>{total:,}</b> تومان · {count} پرداخت\n"
 
 # --- the nightly summary ---
 BTN_DIGEST = "📋 خلاصه‌ی امروز"
 DIGEST_HEADER = "📋 <b>خلاصه‌ی امروز</b> · {day}\n━━━━━━━━━━━━━━━\n"
 DIGEST_SALES = "💰 فروش امروز: <b>{amount:,}</b> تومان · {gb:g} گیگ · {count} فروش\n"
 DIGEST_NO_SALES = "💰 فروش امروز: بدون فروش\n"
+DIGEST_SETTLED = "💵 تسویه‌ی هفتگی امروز: <b>{amount:,}</b> تومان · {count} پرداخت\n{payers}"
+DIGEST_SETTLED_LINE = "     ▫️ {username} — {amount:,} تومان\n"
+DIGEST_SETTLED_MORE = "     … و {count} پرداخت دیگر\n"
 DIGEST_PENDING = "🧾 رسیدهای در انتظار: {count} مورد ({amount:,} تومان)\n"
 DIGEST_NO_PENDING = "🧾 رسید در انتظاری نیست ✅\n"
 DIGEST_OVERDUE = "⏰ بدهی سررسیدگذشته: {count} مورد ({amount:,} تومان)\n"

@@ -89,13 +89,14 @@ def panels_section_kb() -> ReplyKeyboardMarkup:
 
 def finance_section_kb() -> ReplyKeyboardMarkup:
     return _reply_kb(
+        texts.BTN_DIGEST,
         texts.BTN_INVOICES,
         texts.BTN_NEW_INVOICE,
         texts.BTN_SALES_REPORT,
         texts.BTN_GRANT_WALLET,
         texts.BTN_TOGGLE_WEEKLY,
         texts.BTN_BACK,
-        layout=(2, 1, 2, 1),
+        layout=(1, 2, 1, 2, 1),
     )
 
 

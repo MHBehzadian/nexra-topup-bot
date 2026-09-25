@@ -460,13 +460,21 @@ ASK_NEW_ADMIN_EXPIRY = "📅 مدت اعتبار را به روز وارد نم�
 ASK_NEW_ADMIN_TELEGRAM = "👤 آیدی عددی تلگرام کاربر را وارد نمایید (یا «-» برای خالی):"
 CREATING_ADMIN = "⏳ در حال ساخت پنل..."
 NO_MARZBAN_PANELS = "⚠️ هیچ پنل مرزبانی در نکسرا ثبت نشده است."
+# Deliberately plain and in English: this is the message that gets handed
+# straight to the new reseller, so it is written to be forwarded as it stands.
 CREATE_ADMIN_SUCCESS = (
-    "✅ پنل جدید با موفقیت ساخته شد.\n\n"
-    "▪️ نام کاربری: <code>{username}</code>\n"
-    "🔑 رمز عبور: <code>{password}</code>\n"
-    "📊 حجم اولیه: {traffic_gb:g} گیگابایت\n"
-    "📅 انقضا: {expiry}\n\n"
-    "این پنل هم در مرزبان و هم در نکسرا ثبت شد."
+    'Admin "{username}" created successfully.\n\n'
+    "Panel:\n{panel_url}\n\n"
+    "Username:\n<code>{username}</code>\n\n"
+    "Pass:\n<code>{password}</code>\n\n"
+    "Traffic:\n{traffic_gb:g}GB{expiry_line}\n\n"
+    "Alarms Bot\n{alarm_bot}\n\n"
+    "Panel Manager:\n{manager_bot}"
+)
+CREATE_ADMIN_EXPIRY_LINE = "\n\nExpires:\n{expiry}"
+CREATE_ADMIN_NOT_DELIVERED = (
+    "ℹ️ پنل ساخته شد، اما ارسال مشخصات به کاربر ممکن نبود "
+    "(احتمالاً هنوز ربات را استارت نکرده است). پیام بالا را برایش فوروارد کنید."
 )
 PANEL_CHOICE_EXPIRED = "⚠️ این فهرست منقضی شده است؛ لطفاً مجدداً از ابتدا اقدام نمایید."
 CREATE_ADMIN_FAILED = "⚠️ ساخت پنل ناموفق بود: {error}"
@@ -670,3 +678,18 @@ SALES_METHOD_LABELS = {
     "invoice": "فاکتور",
 }
 SALES_EMPTY = "📈 در ۷ روز گذشته فروشی ثبت نشده است."
+
+# --- the nightly summary ---
+BTN_DIGEST = "📋 خلاصه‌ی امروز"
+DIGEST_HEADER = "📋 <b>خلاصه‌ی امروز</b> · {day}\n━━━━━━━━━━━━━━━\n"
+DIGEST_SALES = "💰 فروش امروز: <b>{amount:,}</b> تومان · {gb:g} گیگ · {count} فروش\n"
+DIGEST_NO_SALES = "💰 فروش امروز: بدون فروش\n"
+DIGEST_PENDING = "🧾 رسیدهای در انتظار: {count} مورد ({amount:,} تومان)\n"
+DIGEST_NO_PENDING = "🧾 رسید در انتظاری نیست ✅\n"
+DIGEST_OVERDUE = "⏰ بدهی سررسیدگذشته: {count} مورد ({amount:,} تومان)\n"
+DIGEST_NO_OVERDUE = "⏰ بدهی سررسیدگذشته‌ای نیست ✅\n"
+DIGEST_LOW_PANELS = "\n📉 <b>پنل‌های رو به اتمام</b> (زیر {threshold:g} گیگ):\n{panels}"
+DIGEST_LOW_PANEL_LINE = "     ▫️ {username} — {remaining_gb:.1f} گیگ\n"
+DIGEST_MORE_PANELS = "     … و {count} پنل دیگر\n"
+DIGEST_NO_LOW_PANELS = "\n📉 پنلی در آستانه‌ی اتمام نیست ✅"
+DIGEST_PANELS_UNAVAILABLE = "\n📉 وضعیت پنل‌ها در دسترس نبود."

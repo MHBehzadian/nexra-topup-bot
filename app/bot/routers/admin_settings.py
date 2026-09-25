@@ -7,7 +7,7 @@ from aiogram import Bot, F, Router
 from aiogram.fsm.context import FSMContext
 from aiogram.types import CallbackQuery, Message
 
-from .. import auto_approve, bills, keyboards, sales, texts
+from .. import auto_approve, bills, digest, keyboards, sales, texts
 from ..backups import send_backup
 from ..filters import SuperadminFilter
 from ..invoices import describe_due, due_at_for
@@ -27,6 +27,7 @@ from ..states import (
 )
 from ... import db
 from ...billing import apply_wallet_to_debts
+from ...config import settings
 from ...services.nexra_panel import NexraPanelError, nexra_panel
 from ...units import bytes_to_gb
 
@@ -504,6 +505,11 @@ async def show_sales(message: Message) -> None:
     await message.answer(sales.report())
 
 
+@router.message(F.text == texts.BTN_DIGEST)
+async def show_digest(message: Message) -> None:
+    await message.answer(await digest.build())
+
+
 @router.message(F.text == texts.BTN_TOGGLE_AUTO_APPROVE)
 async def toggle_auto_approve(message: Message) -> None:
     turning_on = not auto_approve.is_enabled()
@@ -656,33 +662,30 @@ async def create_admin_finish(message: Message, state: FSMContext, bot: Bot) -> 
         return
 
     expiry = result.get("expiry_date")
-    await message.answer(
-        texts.CREATE_ADMIN_SUCCESS.format(
-            username=data["new_username"],
-            password=data["new_password"],
-            traffic_gb=data["new_traffic"],
-            expiry=expiry[:10] if expiry else "بدون انقضا",
-        ),
-        reply_markup=superadmin_kb(message.from_user.id),
+    # One message for both: what the superadmin sees is exactly what the customer
+    # gets, so it can be forwarded to anyone who wasn't linked yet.
+    summary = texts.CREATE_ADMIN_SUCCESS.format(
+        username=data["new_username"],
+        password=data["new_password"],
+        traffic_gb=data["new_traffic"],
+        panel_url=settings.panel_login_link,
+        alarm_bot=settings.alarm_bot,
+        manager_bot=settings.manager_bot,
+        expiry_line=texts.CREATE_ADMIN_EXPIRY_LINE.format(expiry=expiry[:10]) if expiry else "",
     )
+    await message.answer(summary, reply_markup=superadmin_kb(message.from_user.id))
 
-    if target_id:
-        # The menu is built from this cached flag, so without it the new owner
-        # would keep seeing the unlinked menu until their next /start.
-        db.ensure_user(target_id)
-        db.set_user_linked(target_id, True)
-        try:
-            await bot.send_message(
-                target_id,
-                texts.CREATE_ADMIN_SUCCESS.format(
-                    username=data["new_username"],
-                    password=data["new_password"],
-                    traffic_gb=data["new_traffic"],
-                    expiry=expiry[:10] if expiry else "بدون انقضا",
-                ),
-            )
-        except Exception:
-            pass
+    if not target_id:
+        return
+
+    # The menu is built from this cached flag, so without it the new owner would
+    # keep seeing the unlinked menu until their next /start.
+    db.ensure_user(target_id)
+    db.set_user_linked(target_id, True)
+    try:
+        await bot.send_message(target_id, summary)
+    except Exception:
+        await message.answer(texts.CREATE_ADMIN_NOT_DELIVERED)
 
 
 @router.message(F.text == texts.BTN_BACKUP)

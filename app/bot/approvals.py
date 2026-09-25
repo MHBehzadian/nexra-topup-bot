@@ -63,6 +63,9 @@ async def approve_request(bot: Bot, request_id: int, reviewer_id: int) -> Outcom
     if req.kind == "invoice":
         if not db.mark_invoice_paid(req.invoice_id):
             return Outcome(False, texts.INVOICE_ALREADY_PAID, alert=True, finished=True)
+        db.record_sale(
+            telegram_id=customer, username=None, gb=0, amount=req.toman_amount, method="invoice"
+        )
         await _tell(bot, customer, texts.INVOICE_PAID_CUSTOMER.format(id=req.invoice_id))
         return Outcome(True, texts.APPROVED_TOAST, finished=True)
 
@@ -99,6 +102,13 @@ async def approve_request(bot: Bot, request_id: int, reviewer_id: int) -> Outcom
 
     # A successful top-up rearms the low-traffic warnings for this panel.
     db.clear_warning_bucket(req.admin_username)
+    db.record_sale(
+        telegram_id=customer,
+        username=req.admin_username,
+        gb=req.requested_gb,
+        amount=req.toman_amount,
+        method="card",
+    )
     await _tell(
         bot,
         customer,

@@ -11,10 +11,9 @@ from aiogram import Bot, F, Router
 from aiogram.fsm.context import FSMContext
 from aiogram.types import CallbackQuery, Message
 
-from .. import keyboards, texts
+from .. import bills, keyboards, texts
 from ..filters import SuperadminFilter
 from ..invoices import describe_due, due_at_for
-from ..bills import open_bills
 from ..nav import ALL_MENU_TEXTS, superadmin_kb
 from ..states import DeductWallet, NewInvoice, SearchUser
 from ... import db
@@ -68,7 +67,7 @@ def _render_profile(telegram_id: int, panels: list[dict]) -> str:
         telegram_id=telegram_id,
         mention=mention,
         wallet=db.get_wallet_balance(telegram_id),
-        debt=sum(b.amount for b in open_bills(telegram_id)),
+        debt=sum(b.amount for b in bills.open_bills(telegram_id)),
     )
 
     if panels:
@@ -189,24 +188,16 @@ async def invoice_for_user(call: CallbackQuery, state: FSMContext) -> None:
 
 
 @router.callback_query(F.data.startswith("usr_delinv:"))
-async def choose_invoice_to_delete(call: CallbackQuery) -> None:
+async def choose_bill_to_delete(call: CallbackQuery) -> None:
+    """Weekly credit is money owed like any invoice, so it can be written off here too."""
     target = int(call.data.split(":", 1)[1])
-    invoices = db.list_pending_invoices(target)
-    if not invoices:
+    items = sorted(bills.open_bills(target), key=bills.urgency, reverse=True)
+    if not items:
         await call.answer(texts.NO_INVOICES, show_alert=True)
         return
     await call.answer()
     await call.message.answer(
-        texts.CHOOSE_INVOICE_TO_DELETE, reply_markup=keyboards.invoice_delete_kb(invoices)
+        texts.CHOOSE_INVOICE_TO_DELETE, reply_markup=keyboards.bills_delete_kb(items)
     )
 
 
-@router.callback_query(F.data.startswith("delinv:"))
-async def delete_invoice(call: CallbackQuery) -> None:
-    invoice_id = int(call.data.split(":", 1)[1])
-    if db.cancel_invoice(invoice_id):
-        await call.answer(texts.INVOICE_DELETED.format(id=invoice_id))
-        await call.message.edit_reply_markup(reply_markup=None)
-        await call.message.answer(texts.INVOICE_DELETED.format(id=invoice_id))
-    else:
-        await call.answer(texts.INVOICE_DELETE_FAILED, show_alert=True)

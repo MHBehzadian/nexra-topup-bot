@@ -7,7 +7,7 @@ from aiogram import Bot, F, Router
 from aiogram.fsm.context import FSMContext
 from aiogram.types import CallbackQuery, Message
 
-from .. import auto_approve, bills, keyboards, texts
+from .. import auto_approve, bills, keyboards, sales, texts
 from ..backups import send_backup
 from ..filters import SuperadminFilter
 from ..invoices import describe_due, due_at_for
@@ -448,6 +448,60 @@ async def send_nonpayment_warning(call: CallbackQuery, bot: Bot) -> None:
             )
         except Exception:
             pass
+
+
+@router.callback_query(F.data.startswith("billdel:"))
+async def confirm_bill_delete(call: CallbackQuery) -> None:
+    bill = bills.find(call.data.split(":", 1)[1])
+    if bill is None:
+        await call.answer(texts.WARNING_BILL_GONE, show_alert=True)
+        return
+    if bill.kind == "invoice":
+        prompt = texts.CONFIRM_DELETE_BILL_INVOICE.format(id=bill.invoice_id, amount=bill.amount)
+    else:
+        prompt = texts.CONFIRM_DELETE_BILL_WEEKLY.format(
+            username=bill.username, amount=bill.amount
+        )
+    # Writing off money is irreversible, so it takes a second tap.
+    await call.answer()
+    await call.message.answer(prompt, reply_markup=keyboards.confirm_bill_delete_kb(bill))
+
+
+@router.callback_query(F.data.startswith("billdelok:"))
+async def do_bill_delete(call: CallbackQuery) -> None:
+    bill = bills.find(call.data.split(":", 1)[1])
+    if bill is None:
+        await call.answer(texts.WARNING_BILL_GONE, show_alert=True)
+        return
+
+    if bill.kind == "invoice":
+        if not db.cancel_invoice(bill.invoice_id):
+            await call.answer(texts.BILL_DELETE_FAILED, show_alert=True)
+            return
+        done = texts.BILL_DELETED_INVOICE.format(id=bill.invoice_id)
+    else:
+        # Zeroing the debt also clears its overdue stamp, so a panel that buys
+        # on credit again starts clean instead of being chased for this one.
+        db.clear_debt(bill.username)
+        done = texts.BILL_DELETED_WEEKLY.format(username=bill.username)
+
+    # Deliberately silent towards the customer: this is the superadmin's own
+    # correction, not a payment they made.
+    await call.answer()
+    await call.message.answer(done, reply_markup=superadmin_kb(call.from_user.id))
+
+
+@router.callback_query(F.data == "billdel_no")
+async def cancel_bill_delete(call: CallbackQuery) -> None:
+    await call.answer()
+    await call.message.answer(
+        texts.DELETE_CANCELLED, reply_markup=superadmin_kb(call.from_user.id)
+    )
+
+
+@router.message(F.text == texts.BTN_SALES_REPORT)
+async def show_sales(message: Message) -> None:
+    await message.answer(sales.report())
 
 
 @router.message(F.text == texts.BTN_TOGGLE_AUTO_APPROVE)

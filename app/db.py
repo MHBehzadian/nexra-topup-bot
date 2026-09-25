@@ -155,6 +155,23 @@ def init_db() -> None:
             )
             """
         )
+        # Every sale as it happens. None of the payment paths leave a usable
+        # trail by themselves: a card sale is only an approved receipt, a wallet
+        # sale moves two balances, and weekly credit becomes a debt that vanishes
+        # once it is settled.
+        conn.execute(
+            """
+            CREATE TABLE IF NOT EXISTS sales (
+                id INTEGER PRIMARY KEY AUTOINCREMENT,
+                telegram_id INTEGER,
+                username TEXT,
+                gb REAL NOT NULL DEFAULT 0,
+                amount INTEGER NOT NULL DEFAULT 0,
+                method TEXT NOT NULL,
+                created_at TEXT NOT NULL
+            )
+            """
+        )
         conn.execute(
             """
             CREATE TABLE IF NOT EXISTS tutorials (
@@ -187,6 +204,9 @@ def init_db() -> None:
         # can show it and nobody gets warned twice by accident.
         _ensure_column(conn, "invoices", "last_warned_at", "TEXT")
         _ensure_column(conn, "debts", "last_warned_at", "TEXT")
+
+    # Outside the transaction above: it opens its own connection.
+    backfill_sales_from_requests()
 
 
 @dataclass
@@ -635,6 +655,67 @@ def set_invoice_reminded(invoice_id: int, date_stamp: str) -> None:
         conn.execute(
             "UPDATE invoices SET last_reminded_date = ? WHERE id = ?", (date_stamp, invoice_id)
         )
+
+
+@dataclass
+class Sale:
+    id: int
+    telegram_id: int | None
+    username: str | None
+    gb: float
+    amount: int
+    method: str
+    created_at: str
+
+
+def record_sale(
+    *, telegram_id: int | None, username: str | None, gb: float, amount: int, method: str
+) -> None:
+    now = datetime.now(timezone.utc).isoformat()
+    with _connect() as conn:
+        conn.execute(
+            "INSERT INTO sales (telegram_id, username, gb, amount, method, created_at) "
+            "VALUES (?, ?, ?, ?, ?, ?)",
+            (telegram_id, username, gb, amount, method, now),
+        )
+
+
+def list_sales_since(stamp: str) -> list[Sale]:
+    with _connect() as conn:
+        rows = conn.execute(
+            "SELECT * FROM sales WHERE created_at >= ? ORDER BY created_at", (stamp,)
+        ).fetchall()
+        return [Sale(**dict(r)) for r in rows]
+
+
+def backfill_sales_from_requests() -> int:
+    """Seed the ledger once from approved card receipts.
+
+    Those are the only past sales written down anywhere. Wallet and weekly-credit
+    purchases made before the ledger existed cannot be recovered — nothing
+    recorded them — so the report only counts those from here on.
+    """
+    with _connect() as conn:
+        if conn.execute(
+            "SELECT 1 FROM bot_settings WHERE key = 'sales_backfilled'"
+        ).fetchone():
+            return 0
+        rows = conn.execute(
+            "SELECT admin_telegram_id, admin_username, requested_gb, toman_amount, "
+            "COALESCE(reviewed_at, created_at) AS at FROM topup_requests "
+            "WHERE status = 'approved' AND kind = 'topup'"
+        ).fetchall()
+        conn.executemany(
+            "INSERT INTO sales (telegram_id, username, gb, amount, method, created_at) "
+            "VALUES (?, ?, ?, ?, 'card', ?)",
+            [
+                (r["admin_telegram_id"], r["admin_username"], r["requested_gb"],
+                 r["toman_amount"], r["at"])
+                for r in rows
+            ],
+        )
+        conn.execute("INSERT INTO bot_settings (key, value) VALUES ('sales_backfilled', '1')")
+        return len(rows)
 
 
 def mark_invoice_warned(invoice_id: int) -> None:

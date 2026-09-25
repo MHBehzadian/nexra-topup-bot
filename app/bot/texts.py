@@ -390,8 +390,6 @@ BTN_DELETE_INVOICE = "🗑 حذف فاکتور"
 ASK_DEDUCT_AMOUNT = "➖ چه مبلغی (تومان) از کیف پول این کاربر کسر شود؟"
 DEDUCT_SUCCESS = "✅ {amount:,} تومان کسر شد.\n💼 موجودی جدید: {balance:,} تومان"
 CHOOSE_INVOICE_TO_DELETE = "🗑 کدام فاکتور حذف شود؟"
-INVOICE_DELETED = "✅ فاکتور #{id} حذف شد."
-INVOICE_DELETE_FAILED = "⚠️ حذف فاکتور ممکن نبود (شاید قبلاً تسویه شده)."
 
 KIND_LABELS = {
     "topup": "شارژ حجم",
@@ -544,26 +542,29 @@ WHEN_DAYS_AGO = "{days} روز پیش"
 BILLS_SUMMARY = (
     "🧾 <b>فاکتورهای باز</b>\n"
     "━━━━━━━━━━━━━━━\n"
-    "💰 جمع کل مطالبات: <b>{total:,}</b> تومان\n"
-    "👥 {customers} مشتری · 🧾 {count} مورد\n"
-    "⏰ سررسید گذشته: {overdue_count} مورد — {overdue_total:,} تومان"
+    "💰 جمع کل: <b>{total:,}</b> تومان\n"
+    "👥 {customers} مشتری · {count} مورد\n"
+    "⏰ سررسید گذشته: {overdue_count} مورد ({overdue_total:,} تومان)"
 )
 BILLS_CUSTOMER_HEADER = (
-    "👤 <b>{name}</b> · {mention} · <code>{telegram_id}</code>\n"
+    "👤 <b>{name}</b> · {mention}\n"
+    "🆔 <code>{telegram_id}</code>\n"
     "💰 جمع بدهی: <b>{total:,}</b> تومان\n"
+    "─────────────\n"
 )
 BILL_INVOICE_ITEM = (
-    "\n🧾 فاکتور #{id} — <b>{amount:,}</b> تومان\n"
-    "      📝 {description}\n"
-    "      {timing}\n"
+    "▫️ <b>فاکتور #{id}</b> · {amount:,} تومان\n"
+    "     {description}\n"
+    "     {timing}\n"
 )
 BILL_WEEKLY_ITEM = (
-    "\n🗓 پرداخت هفتگی · {username} — <b>{amount:,}</b> تومان\n"
-    "      {timing}\n"
+    "▫️ <b>پرداخت هفتگی</b> · {amount:,} تومان\n"
+    "     پنل {username}\n"
+    "     {timing}\n"
 )
-BILL_LAST_WARNED = "      🔔 آخرین هشدار: {when}\n"
-BTN_WARN_INVOICE = "⚠️ هشدار عدم پرداخت · فاکتور #{id}"
-BTN_WARN_WEEKLY = "⚠️ هشدار عدم پرداخت · {username}"
+BILL_LAST_WARNED = "     🔔 آخرین هشدار: {when}\n"
+BTN_WARN_INVOICE = "⚠️ هشدار · #{id}"
+BTN_WARN_WEEKLY = "⚠️ هشدار · {username}"
 
 MY_BILLS_SUMMARY = (
     "🧾 <b>بدهی‌های پرداخت‌نشده‌ی شما</b>\n"
@@ -630,3 +631,42 @@ AUTO_APPROVE_FAILED_NOTICE = (
     "⚠️ تأیید خودکار رسید #{id} انجام نشد و برای بررسی دستی باقی ماند.\n"
     "علت: {reason}"
 )
+
+# --- removing a bill by hand ---
+BTN_DELETE_BILL_INVOICE = "🗑 حذف · #{id}"
+BTN_DELETE_BILL_WEEKLY = "🗑 حذف · {username}"
+BTN_CONFIRM_DELETE_BILL = "🗑 بله، حذف شود"
+CONFIRM_DELETE_BILL_INVOICE = (
+    "🗑 حذف فاکتور #{id} به مبلغ {amount:,} تومان\n\n"
+    "این فاکتور از بدهی‌های مشتری حذف می‌شود و قابل بازگشت نیست. مطمئن هستید؟"
+)
+CONFIRM_DELETE_BILL_WEEKLY = (
+    "🗑 حذف بدهی هفتگی پنل «{username}» به مبلغ {amount:,} تومان\n\n"
+    "این بدهی صفر می‌شود و قابل بازگشت نیست. مطمئن هستید؟"
+)
+BILL_DELETED_INVOICE = "✅ فاکتور #{id} حذف شد."
+BILL_DELETED_WEEKLY = "✅ بدهی هفتگی پنل «{username}» صفر شد."
+BILL_DELETE_FAILED = "⚠️ حذف ممکن نبود (شاید همین حالا تسویه شده باشد)."
+
+# --- the week's sales ---
+BTN_SALES_REPORT = "📈 فروش ۷ روز اخیر"
+SALES_HEADER = "📈 <b>فروش ۷ روز گذشته</b>\n━━━━━━━━━━━━━━━\n"
+SALES_DAY_LINE = (
+    "▫️ <b>{day}</b>\n"
+    "     💰 {amount:,} تومان · 📊 {gb:g} گیگ · {count} فروش\n"
+)
+SALES_DAY_EMPTY = "▫️ {day}\n     — بدون فروش\n"
+SALES_FOOTER = (
+    "━━━━━━━━━━━━━━━\n"
+    "💰 جمع هفته: <b>{total:,}</b> تومان\n"
+    "📊 مجموع حجم: {gb:g} گیگابایت · {count} فروش\n"
+    "🧮 میانگین روزانه: {average:,} تومان\n"
+    "🧾 {methods}"
+)
+SALES_METHOD_LABELS = {
+    "card": "کارت",
+    "wallet": "کیف پول",
+    "weekly": "هفتگی",
+    "invoice": "فاکتور",
+}
+SALES_EMPTY = "📈 در ۷ روز گذشته فروشی ثبت نشده است."

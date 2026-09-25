@@ -104,5 +104,9 @@ class SetBulkPin(StatesGroup):
     value = State()
 
 
+class PanelHistory(StatesGroup):
+    username = State()
+
+
 class ExportCredentials(StatesGroup):
     pin = State()

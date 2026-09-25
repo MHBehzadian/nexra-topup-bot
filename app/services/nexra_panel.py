@@ -19,6 +19,22 @@ class NexraPanelClient:
     def _client(self, timeout: float = 15.0) -> httpx.AsyncClient:
         return httpx.AsyncClient(base_url=self._base_url, headers=self._headers, timeout=timeout)
 
+    async def _request(
+        self, method: str, path: str, *, timeout: float = 15.0, **kwargs
+    ) -> httpx.Response:
+        """Every call goes through here, so a panel that can't be reached — timed
+        out, refused, DNS gone — arrives as NexraPanelError like any other
+        failure. Raw httpx errors escape the handler instead, and whoever pressed
+        the button is met with silence and no idea why.
+        """
+        try:
+            async with self._client(timeout) as client:
+                return await client.request(method, path, **kwargs)
+        except httpx.HTTPError as exc:
+            raise NexraPanelError(
+                f"ارتباط با پنل برقرار نشد ({type(exc).__name__})"
+            ) from exc
+
     @staticmethod
     def _ok(resp: httpx.Response) -> dict | list:
         if resp.status_code >= 400:
@@ -32,8 +48,7 @@ class NexraPanelClient:
         with a single admin object instead of a list; without this, a bot
         deployed ahead of its panel breaks for every non-superadmin.
         """
-        async with self._client() as client:
-            resp = await client.get(f"/bot/admin/{telegram_id}")
+        resp = await self._request("GET", f"/bot/admin/{telegram_id}")
         if resp.status_code == 404:
             return []
         data = self._ok(resp)
@@ -48,16 +63,15 @@ class NexraPanelClient:
         return admins[0] if len(admins) == 1 else None
 
     async def list_all_admins(self) -> list[dict]:
-        async with self._client(30.0) as client:
-            resp = await client.get("/bot/admins")
+        resp = await self._request("GET", "/bot/admins", timeout=30.0)
         return self._ok(resp)
 
     async def topup(self, telegram_id: int, added_gb: float, username: str | None = None) -> dict:
-        async with self._client() as client:
-            resp = await client.post(
-                "/bot/admin/topup",
-                json={"telegram_id": telegram_id, "added_gb": added_gb, "username": username},
-            )
+        resp = await self._request(
+            "POST",
+            "/bot/admin/topup",
+            json={"telegram_id": telegram_id, "added_gb": added_gb, "username": username},
+        )
         return self._ok(resp)
 
     async def create_admin(
@@ -69,18 +83,19 @@ class NexraPanelClient:
         expiry_days: int | None,
         telegram_id: int | None,
     ) -> dict:
-        async with self._client(30.0) as client:
-            resp = await client.post(
-                "/bot/admin/create",
-                json={
-                    "username": username,
-                    "password": password,
-                    "panel": panel,
-                    "traffic_gb": traffic_gb,
-                    "expiry_days": expiry_days,
-                    "telegram_id": telegram_id,
-                },
-            )
+        resp = await self._request(
+            "POST",
+            "/bot/admin/create",
+            timeout=30.0,
+            json={
+                "username": username,
+                "password": password,
+                "panel": panel,
+                "traffic_gb": traffic_gb,
+                "expiry_days": expiry_days,
+                "telegram_id": telegram_id,
+            },
+        )
         return self._ok(resp)
 
     async def list_panels(self) -> list[str]:
@@ -90,43 +105,39 @@ class NexraPanelClient:
         still running a build without /bot/panels, so the bot keeps working if it
         is deployed ahead of the panel.
         """
-        async with self._client() as client:
-            resp = await client.get("/bot/panels")
+        resp = await self._request("GET", "/bot/panels")
         if resp.status_code == 404:
             admins = await self.list_all_admins()
             return sorted({a["panel"] for a in admins if a.get("panel")})
         return sorted(self._ok(resp) or [])
 
     async def grant(self, username: str, added_gb: float) -> dict:
-        async with self._client() as client:
-            resp = await client.post(
-                "/bot/admin/grant", json={"username": username, "added_gb": added_gb}
-            )
+        resp = await self._request(
+            "POST", "/bot/admin/grant", json={"username": username, "added_gb": added_gb}
+        )
         return self._ok(resp)
 
     async def change_password(
         self, telegram_id: int, current_password: str, new_password: str, username: str | None = None
     ) -> dict:
-        async with self._client() as client:
-            resp = await client.post(
-                "/bot/admin/change-password",
-                json={
-                    "telegram_id": telegram_id,
-                    "current_password": current_password,
-                    "new_password": new_password,
-                    "username": username,
-                },
-            )
+        resp = await self._request(
+            "POST",
+            "/bot/admin/change-password",
+            json={
+                "telegram_id": telegram_id,
+                "current_password": current_password,
+                "new_password": new_password,
+                "username": username,
+            },
+        )
         return self._ok(resp)
 
     async def get_all_credentials(self) -> list[dict]:
-        async with self._client() as client:
-            resp = await client.get("/bot/admins/credentials")
+        resp = await self._request("GET", "/bot/admins/credentials")
         return self._ok(resp)
 
     async def sync_telegram_ids(self) -> dict:
-        async with self._client(30.0) as client:
-            resp = await client.post("/bot/admins/sync-telegram-ids")
+        resp = await self._request("POST", "/bot/admins/sync-telegram-ids", timeout=30.0)
         return self._ok(resp)
 
 

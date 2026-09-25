@@ -9,12 +9,13 @@ from aiogram.filters import CommandStart
 from aiogram.fsm.context import FSMContext
 from aiogram.types import CallbackQuery, Message
 
-from .. import keyboards, texts
+from .. import keyboards, sales, texts
 from ..forecast import render
 from ..nav import cancel_and_show_menu, forget_section, menu_kb_for
-from ..panels import format_panel_line, safe_get_admins
+from ..panels import format_panel_line, owned_panel, safe_get_admins
 from ... import db
 from ...config import settings
+from ...services.nexra_panel import NexraPanelError
 
 router = Router(name="start")
 
@@ -88,7 +89,24 @@ async def my_panels(message: Message) -> None:
         )
         return
     text = texts.PANELS_LIST_HEADER + "".join(format_panel_line(a) for a in admins)
-    await message.answer(text)
+    await message.answer(text, reply_markup=keyboards.panel_history_kb(admins))
+
+
+@router.callback_query(F.data.startswith("hist:"))
+async def panel_history(call: CallbackQuery) -> None:
+    username = call.data.split(":", 1)[1]
+    # Callback data comes from the client, so a panel named in it has to be
+    # one they actually own. The superadmin may look at any of them.
+    if call.from_user.id not in settings.superadmin_id_list:
+        try:
+            if not await owned_panel(call.from_user.id, username):
+                await call.answer(texts.NOT_LINKED_RETRY, show_alert=True)
+                return
+        except NexraPanelError:
+            await call.answer(texts.PANEL_UNREACHABLE, show_alert=True)
+            return
+    await call.answer()
+    await call.message.answer(sales.history(username))
 
 
 @router.message(F.text == texts.BTN_BACK)

@@ -19,6 +19,7 @@ from ..states import (
     GrantTraffic,
     GrantWallet,
     NewInvoice,
+    PanelHistory,
     SetBulkPin,
     SetCardNumber,
     SetForceJoinChannel,
@@ -292,6 +293,14 @@ async def finish_grant(message: Message, state: FSMContext, bot: Bot) -> None:
 
     new_gb = bytes_to_gb(result.get("new_traffic_bytes"))
     db.clear_warning_bucket(username)
+    # No money changed hands, but it still belongs in the panel's history.
+    db.record_sale(
+        telegram_id=result.get("telegram_id"),
+        username=username,
+        gb=amount,
+        amount=0,
+        method=sales.GRANT,
+    )
     await message.answer(
         texts.GRANT_SUCCESS.format(added_gb=amount, username=username, new_gb=new_gb),
         reply_markup=superadmin_kb(message.from_user.id),
@@ -503,6 +512,21 @@ async def cancel_bill_delete(call: CallbackQuery) -> None:
 @router.message(F.text == texts.BTN_SALES_REPORT)
 async def show_sales(message: Message) -> None:
     await message.answer(sales.report())
+
+
+@router.message(F.text == texts.BTN_PANEL_HISTORY)
+async def start_panel_history(message: Message, state: FSMContext) -> None:
+    await state.set_state(PanelHistory.username)
+    await message.answer(texts.ASK_HISTORY_USERNAME, reply_markup=keyboards.cancel_kb())
+
+
+@router.message(PanelHistory.username, ~F.text.in_(ALL_MENU_TEXTS))
+async def finish_panel_history(message: Message, state: FSMContext) -> None:
+    await state.clear()
+    username = (message.text or "").strip()
+    await message.answer(
+        sales.history(username), reply_markup=superadmin_kb(message.from_user.id)
+    )
 
 
 @router.message(F.text == texts.BTN_DIGEST)

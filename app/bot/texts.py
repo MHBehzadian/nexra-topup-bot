@@ -676,6 +676,7 @@ SALES_METHOD_LABELS = {
     "wallet": "کیف پول",
     "weekly": "هفتگی",
     "invoice": "فاکتور",
+    "grant": "افزودن دستی",
 }
 SALES_EMPTY = "📈 در ۷ روز گذشته فروشی ثبت نشده است."
 
@@ -693,3 +694,13 @@ DIGEST_LOW_PANEL_LINE = "     ▫️ {username} — {remaining_gb:.1f} گیگ\n"
 DIGEST_MORE_PANELS = "     … و {count} پنل دیگر\n"
 DIGEST_NO_LOW_PANELS = "\n📉 پنلی در آستانه‌ی اتمام نیست ✅"
 DIGEST_PANELS_UNAVAILABLE = "\n📉 وضعیت پنل‌ها در دسترس نبود."
+
+# --- one panel's traffic history ---
+BTN_PANEL_HISTORY = "📜 تاریخچه‌ی شارژ"
+BTN_HISTORY = "📜 تاریخچه"
+ASK_HISTORY_USERNAME = "📜 نام کاربری پنل را وارد نمایید:"
+HISTORY_HEADER = "📜 <b>تاریخچه‌ی شارژ پنل «{username}»</b>\n━━━━━━━━━━━━━━━\n"
+HISTORY_LINE = "▫️ <b>{day}</b>\n     ‎+{gb:g} گیگ · {method} · {amount:,} تومان\n"
+HISTORY_LINE_FREE = "▫️ <b>{day}</b>\n     ‎+{gb:g} گیگ · {method}\n"
+HISTORY_FOOTER = "━━━━━━━━━━━━━━━\n📊 مجموع: {gb:g} گیگابایت در {count} نوبت"
+HISTORY_EMPTY = "📜 برای پنل «{username}» تا کنون شارژی ثبت نشده است."

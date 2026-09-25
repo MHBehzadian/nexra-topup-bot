@@ -688,6 +688,16 @@ def list_sales_since(stamp: str) -> list[Sale]:
         return [Sale(**dict(r)) for r in rows]
 
 
+def list_sales_for(username: str, limit: int = 20) -> list[Sale]:
+    """One panel's traffic history, newest first."""
+    with _connect() as conn:
+        rows = conn.execute(
+            "SELECT * FROM sales WHERE username = ? ORDER BY created_at DESC LIMIT ?",
+            (username, limit),
+        ).fetchall()
+        return [Sale(**dict(r)) for r in rows]
+
+
 def backfill_sales_from_requests() -> int:
     """Seed the ledger once from approved card receipts.
 

@@ -16,6 +16,9 @@ from .. import db
 
 TEHRAN = ZoneInfo("Asia/Tehran")
 DAYS = 7
+# Traffic the superadmin handed over without charging: part of a panel's
+# history, but not a sale, so it stays out of the takings.
+GRANT = "grant"
 
 # Python's weekday(): Monday is 0.
 WEEKDAYS = ["دوشنبه", "سه‌شنبه", "چهارشنبه", "پنج‌شنبه", "جمعه", "شنبه", "یک‌شنبه"]
@@ -48,6 +51,14 @@ def to_jalali(year: int, month: int, day: int) -> tuple[int, int, int]:
     return jalali_year, 7 + ((days - 186) // 30), 1 + ((days - 186) % 30)
 
 
+def day_of(stamp: str):
+    """The Tehran calendar day a stored UTC timestamp falls on."""
+    try:
+        return datetime.fromisoformat(stamp).astimezone(TEHRAN).date()
+    except Exception:
+        return None
+
+
 def format_day(day) -> str:
     year, month, date = to_jalali(day.year, day.month, day.day)
     return f"{year}/{month:02d}/{date:02d} · {WEEKDAYS[day.weekday()]}"
@@ -64,16 +75,19 @@ def report(now: datetime | None = None, days: int = DAYS) -> str:
     first_day = (now - timedelta(days=days - 1)).replace(
         hour=0, minute=0, second=0, microsecond=0
     )
-    sales = db.list_sales_since(first_day.astimezone(timezone.utc).isoformat())
+    sales = [
+        s
+        for s in db.list_sales_since(first_day.astimezone(timezone.utc).isoformat())
+        if s.method != GRANT
+    ]
     if not sales:
         return texts.SALES_EMPTY
 
     per_day: dict[object, dict] = {}
     per_method: dict[str, int] = {}
     for sale in sales:
-        try:
-            when = datetime.fromisoformat(sale.created_at).astimezone(TEHRAN).date()
-        except Exception:
+        when = day_of(sale.created_at)
+        if when is None:
             continue
         bucket = per_day.setdefault(when, {"amount": 0, "gb": 0.0, "count": 0})
         bucket["amount"] += sale.amount
@@ -109,3 +123,25 @@ def report(now: datetime | None = None, days: int = DAYS) -> str:
         count=sum(b["count"] for b in per_day.values()),
         methods=breakdown,
     )
+
+
+def history(username: str, limit: int = 20) -> str:
+    """When traffic was added to one panel, and how it was paid for."""
+    entries = db.list_sales_for(username, limit)
+    if not entries:
+        return texts.HISTORY_EMPTY.format(username=username)
+
+    text = texts.HISTORY_HEADER.format(username=username)
+    total = 0.0
+    for entry in entries:
+        day = day_of(entry.created_at)
+        total += entry.gb
+        method = texts.SALES_METHOD_LABELS.get(entry.method, entry.method)
+        line = texts.HISTORY_LINE if entry.amount else texts.HISTORY_LINE_FREE
+        text += line.format(
+            day=format_day(day) if day else "—",
+            gb=round(entry.gb, 2),
+            method=method,
+            amount=entry.amount,
+        )
+    return text + texts.HISTORY_FOOTER.format(gb=round(total, 2), count=len(entries))

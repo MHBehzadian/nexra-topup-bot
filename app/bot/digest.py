@@ -33,7 +33,11 @@ async def build(now: datetime | None = None) -> str:
     text = texts.DIGEST_HEADER.format(day=sales.format_day(now.date()))
 
     midnight = now.replace(hour=0, minute=0, second=0, microsecond=0)
-    today = db.list_sales_since(midnight.astimezone(timezone.utc).isoformat())
+    today = [
+        s
+        for s in db.list_sales_since(midnight.astimezone(timezone.utc).isoformat())
+        if s.method != sales.GRANT
+    ]
     if today:
         text += texts.DIGEST_SALES.format(
             amount=sum(s.amount for s in today),

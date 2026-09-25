@@ -714,3 +714,20 @@ HISTORY_LINE = "▫️ <b>{day}</b>\n     ‎+{gb:g} گیگ · {method} · {amou
 HISTORY_LINE_FREE = "▫️ <b>{day}</b>\n     ‎+{gb:g} گیگ · {method}\n"
 HISTORY_FOOTER = "━━━━━━━━━━━━━━━\n📊 مجموع: {gb:g} گیگابایت در {count} نوبت"
 HISTORY_EMPTY = "📜 برای پنل «{username}» تا کنون شارژی ثبت نشده است."
+
+# --- acting on a customer, not on each separate debt ---
+BTN_WARN_CUSTOMER = "⚠️ یادآوری پرداخت"
+BTN_DELETE_CUSTOMER_BILL = "🗑 حذف بدهی"
+BTN_PAY_BILL_INVOICE = "💳 پرداخت فاکتور #{id}"
+BTN_PAY_BILL_WEEKLY = "💳 پرداخت پنل {username}"
+WARN_ITEM_INVOICE = "▫️ فاکتور #{id} — {amount:,} تومان\n     {timing}\n"
+WARN_ITEM_WEEKLY = "▫️ پرداخت هفتگی · {username} — {amount:,} تومان\n     {timing}\n"
+NONPAYMENT_WARNING_MULTI = (
+    "🔔 <b>اطلاعیه‌ی سیستم — عدم پرداخت</b>\n"
+    "━━━━━━━━━━━━━━━\n"
+    "{items}"
+    "━━━━━━━━━━━━━━━\n"
+    "💰 جمع بدهی: <b>{total:,}</b> تومان\n\n"
+    "⛔️ در صورت عدم پرداخت، {service} شما به‌صورت خودکار معلق خواهد شد.\n"
+    "برای جلوگیری از تعلیق، از دکمه‌های زیر اقدام به پرداخت نمایید."
+)

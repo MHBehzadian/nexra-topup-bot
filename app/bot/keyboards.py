@@ -211,22 +211,38 @@ def pay_debt_kb(username: str) -> InlineKeyboardMarkup:
 
 
 def bill_actions_kb(customer) -> InlineKeyboardMarkup | None:
-    """Warn or remove, per bill, plus a direct message. Nothing to offer for a
-    debt with no Telegram ID on record — there is nobody to send it to."""
+    """Three things you can do about a customer, however many debts they have:
+    remind them, write one off, or write to them.
+
+    A button per debt meant five buttons for two debts, each labelled with a
+    panel name or an invoice number you had to match against the lines above.
+    """
     if customer.telegram_id is None:
         return None
     kb = InlineKeyboardBuilder()
-    for bill in customer.bills:
-        if bill.kind == "invoice":
-            warn = texts.BTN_WARN_INVOICE.format(id=bill.invoice_id)
-            remove = texts.BTN_DELETE_BILL_INVOICE.format(id=bill.invoice_id)
-        else:
-            warn = texts.BTN_WARN_WEEKLY.format(username=bill.username)
-            remove = texts.BTN_DELETE_BILL_WEEKLY.format(username=bill.username)
-        kb.button(text=warn, callback_data=f"warn:{bill.key}")
-        kb.button(text=remove, callback_data=f"billdel:{bill.key}")
+    kb.button(text=texts.BTN_WARN_CUSTOMER, callback_data=f"warnall:{customer.telegram_id}")
+    kb.button(
+        text=texts.BTN_DELETE_CUSTOMER_BILL, callback_data=f"delpick:{customer.telegram_id}"
+    )
     kb.button(text=texts.BTN_MESSAGE_USER, callback_data=f"msg_user:{customer.telegram_id}")
-    kb.adjust(*([2] * len(customer.bills) + [1]))
+    kb.adjust(2, 1)
+    return kb.as_markup()
+
+
+def bill_pay_all_kb(items) -> InlineKeyboardMarkup:
+    """Pay buttons for everything one notice covers."""
+    if len(items) == 1:
+        return bill_pay_kb(items[0])
+    kb = InlineKeyboardBuilder()
+    for bill in items:
+        if bill.kind == "invoice":
+            label = texts.BTN_PAY_BILL_INVOICE.format(id=bill.invoice_id)
+            data = f"pay_invoice:{bill.invoice_id}"
+        else:
+            label = texts.BTN_PAY_BILL_WEEKLY.format(username=bill.username)
+            data = f"pay_debt:{bill.username}"
+        kb.button(text=label, callback_data=data)
+    kb.adjust(1)
     return kb.as_markup()
 
 

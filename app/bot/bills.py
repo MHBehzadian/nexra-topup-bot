@@ -138,6 +138,37 @@ def mark_warned(bill: Bill) -> None:
         db.mark_debt_warned(bill.username)
 
 
+def mark_paid(bill: Bill) -> int | None:
+    """Settle a bill with money the superadmin received outside the bot.
+
+    Unlike a write-off this is money in, so it goes into the ledger the same way
+    an approved receipt would. Returns the amount recorded, or None if the bill
+    was already settled or cancelled in the meantime.
+    """
+    if bill.kind == "invoice":
+        if not db.mark_invoice_paid(bill.invoice_id):
+            return None
+        db.record_sale(
+            telegram_id=bill.telegram_id, username=None, gb=0, amount=bill.amount, method="invoice"
+        )
+        return bill.amount
+
+    # What is owed now, not what the card showed: the wallet may have chipped in
+    # since, or another purchase on credit added to it.
+    owed = db.get_debt(bill.username)
+    if owed <= 0:
+        return None
+    db.reduce_debt(bill.username, owed)
+    db.record_sale(
+        telegram_id=bill.telegram_id,
+        username=bill.username,
+        gb=0,
+        amount=owed,
+        method=db.SETTLEMENT_METHOD,
+    )
+    return owed
+
+
 # ---- rendering ---------------------------------------------------------------
 
 def describe_timing(bill: Bill, now: datetime | None = None) -> str:

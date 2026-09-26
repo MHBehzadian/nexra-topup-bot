@@ -528,7 +528,7 @@ async def confirm_bill_delete(call: CallbackQuery) -> None:
 
 
 @router.callback_query(F.data.startswith("billdelok:"))
-async def do_bill_delete(call: CallbackQuery) -> None:
+async def do_bill_delete(call: CallbackQuery, bot: Bot) -> None:
     bill = bills.find(call.data.split(":", 1)[1])
     if bill is None:
         await call.answer(texts.WARNING_BILL_GONE, show_alert=True)
@@ -539,16 +539,19 @@ async def do_bill_delete(call: CallbackQuery) -> None:
             await call.answer(texts.BILL_DELETE_FAILED, show_alert=True)
             return
         done = texts.BILL_DELETED_INVOICE.format(id=bill.invoice_id)
+        notice = texts.BILL_WRITTEN_OFF_INVOICE_CUSTOMER.format(id=bill.invoice_id)
     else:
         # Zeroing the debt also clears its overdue stamp, so a panel that buys
         # on credit again starts clean instead of being chased for this one.
         db.clear_debt(bill.username)
         done = texts.BILL_DELETED_WEEKLY.format(username=bill.username)
+        notice = texts.BILL_WRITTEN_OFF_WEEKLY_CUSTOMER.format(username=bill.username)
 
-    # Deliberately silent towards the customer: this is the superadmin's own
-    # correction, not a payment they made.
+    # Not a payment, so nothing goes in the ledger — but the customer is told,
+    # or the last thing they heard stays a reminder saying they still owe it.
     await call.answer()
     await call.message.answer(done, reply_markup=superadmin_kb(call.from_user.id))
+    await _notify_customer(call, bot, bill.telegram_id, notice)
 
 
 @router.callback_query(F.data == "billdel_no")
@@ -556,6 +559,80 @@ async def cancel_bill_delete(call: CallbackQuery) -> None:
     await call.answer()
     await call.message.answer(
         texts.DELETE_CANCELLED, reply_markup=superadmin_kb(call.from_user.id)
+    )
+
+
+async def _notify_customer(call: CallbackQuery, bot: Bot, telegram_id: int | None, text: str) -> None:
+    if telegram_id is None:
+        return
+    try:
+        await bot.send_message(telegram_id, text)
+    except Exception:
+        await call.message.answer(texts.BILL_NOTICE_NOT_DELIVERED)
+
+
+# ---- recording a payment made outside the bot --------------------------------
+
+@router.callback_query(F.data.startswith("paidpick:"))
+async def pick_bill_to_mark_paid(call: CallbackQuery) -> None:
+    telegram_id = int(call.data.split(":", 1)[1])
+    items = sorted(bills.open_bills(telegram_id), key=bills.urgency, reverse=True)
+    if not items:
+        await call.answer(texts.WARNING_BILL_GONE, show_alert=True)
+        return
+    await call.answer()
+    if len(items) == 1:
+        await _ask_paid_confirmation(call, items[0])
+        return
+    await call.message.answer(
+        texts.CHOOSE_BILL_TO_MARK_PAID, reply_markup=keyboards.bills_mark_paid_kb(items)
+    )
+
+
+async def _ask_paid_confirmation(call: CallbackQuery, bill) -> None:
+    if bill.kind == "invoice":
+        prompt = texts.CONFIRM_MARK_PAID_INVOICE.format(id=bill.invoice_id, amount=bill.amount)
+    else:
+        prompt = texts.CONFIRM_MARK_PAID_WEEKLY.format(username=bill.username, amount=bill.amount)
+    await call.message.answer(prompt, reply_markup=keyboards.confirm_bill_paid_kb(bill))
+
+
+@router.callback_query(F.data.startswith("billpaid:"))
+async def confirm_bill_paid(call: CallbackQuery) -> None:
+    bill = bills.find(call.data.split(":", 1)[1])
+    if bill is None:
+        await call.answer(texts.WARNING_BILL_GONE, show_alert=True)
+        return
+    await call.answer()
+    await _ask_paid_confirmation(call, bill)
+
+
+@router.callback_query(F.data.startswith("billpaidok:"))
+async def do_bill_paid(call: CallbackQuery, bot: Bot) -> None:
+    bill = bills.find(call.data.split(":", 1)[1])
+    amount = bills.mark_paid(bill) if bill is not None else None
+    if amount is None:
+        await call.answer(texts.WARNING_BILL_GONE, show_alert=True)
+        return
+
+    if bill.kind == "invoice":
+        done = texts.BILL_MARKED_PAID_INVOICE.format(id=bill.invoice_id)
+        notice = texts.INVOICE_PAID_CUSTOMER.format(id=bill.invoice_id)
+    else:
+        done = texts.BILL_MARKED_PAID_WEEKLY.format(username=bill.username, amount=amount)
+        notice = texts.BILL_MARKED_PAID_WEEKLY_CUSTOMER.format(
+            username=bill.username, amount=amount
+        )
+    await call.answer()
+    await call.message.answer(done, reply_markup=superadmin_kb(call.from_user.id))
+    await _notify_customer(call, bot, bill.telegram_id, notice)
+
+
+@router.callback_query(F.data == "billpaid_no")
+async def cancel_bill_paid(call: CallbackQuery) -> None:
+    await call.answer()
+    await call.message.answer(
+        texts.MARK_PAID_CANCELLED, reply_markup=superadmin_kb(call.from_user.id)
     )
 
 
@@ -821,6 +898,9 @@ async def finish_grant_wallet(message: Message, state: FSMContext, bot: Bot) -> 
     target_id, amount = data["target_telegram_id"], int(raw)
 
     db.add_wallet_balance(target_id, amount)
+    db.record_sale(
+        telegram_id=target_id, username=None, gb=0, amount=amount, method=db.WALLET_CHARGE_METHOD
+    )
     apply_wallet_to_debts(target_id)
     balance = db.get_wallet_balance(target_id)
 

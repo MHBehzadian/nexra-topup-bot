@@ -662,6 +662,12 @@ def set_invoice_reminded(invoice_id: int, date_stamp: str) -> None:
 # "weekly" sale the day the traffic was handed over, so adding this to the takings
 # would count the same money twice.
 SETTLEMENT_METHOD = "settlement"
+# Money put into someone's wallet — by an approved receipt or by the superadmin
+# by hand. Money in, but not a sale: spending it later is recorded as a "wallet"
+# sale, so counting it here too would count the same money twice.
+WALLET_CHARGE_METHOD = "wallet_charge"
+# Ledger entries that are payments rather than sales, kept out of the takings.
+PAYMENT_METHODS = (SETTLEMENT_METHOD, WALLET_CHARGE_METHOD)
 
 
 @dataclass

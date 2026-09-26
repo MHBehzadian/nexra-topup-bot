@@ -655,6 +655,36 @@ CONFIRM_DELETE_BILL_WEEKLY = (
 BILL_DELETED_INVOICE = "✅ فاکتور #{id} حذف شد."
 BILL_DELETED_WEEKLY = "✅ بدهی هفتگی پنل «{username}» صفر شد."
 BILL_DELETE_FAILED = "⚠️ حذف ممکن نبود (شاید همین حالا تسویه شده باشد)."
+# Told to the customer, so the last word they have isn't a reminder saying they owe.
+BILL_WRITTEN_OFF_INVOICE_CUSTOMER = "✅ فاکتور #{id} از سوی مدیریت لغو شد و پرداختی بابت آن لازم نیست."
+BILL_WRITTEN_OFF_WEEKLY_CUSTOMER = (
+    "✅ بدهی هفتگی پنل «{username}» از سوی مدیریت صفر شد و بدهی‌ای بابت آن ندارید."
+)
+
+# --- recording a payment by hand ---
+# For money that reached the superadmin outside the bot (cash, a transfer
+# without a receipt, or paid by the superadmin themselves). Unlike a write-off
+# it counts as money in, and the customer is told their bill is settled.
+BTN_MARK_PAID = "✅ ثبت پرداخت"
+CHOOSE_BILL_TO_MARK_PAID = "✅ پرداخت کدام بدهی ثبت شود؟"
+BTN_MARK_PAID_INVOICE = "✅ پرداخت · #{id}"
+BTN_MARK_PAID_WEEKLY = "✅ پرداخت · {username}"
+BTN_CONFIRM_MARK_PAID = "✅ بله، پرداخت شده"
+CONFIRM_MARK_PAID_INVOICE = (
+    "✅ ثبت پرداخت فاکتور #{id} به مبلغ {amount:,} تومان\n\n"
+    "فاکتور پرداخت‌شده ثبت می‌شود و به مشتری اطلاع داده می‌شود. مطمئن هستید؟"
+)
+CONFIRM_MARK_PAID_WEEKLY = (
+    "✅ ثبت پرداخت بدهی هفتگی پنل «{username}» به مبلغ {amount:,} تومان\n\n"
+    "بدهی تسویه‌شده ثبت می‌شود و به مشتری اطلاع داده می‌شود. مطمئن هستید؟"
+)
+BILL_MARKED_PAID_INVOICE = "✅ پرداخت فاکتور #{id} ثبت شد."
+BILL_MARKED_PAID_WEEKLY = "✅ پرداخت بدهی هفتگی پنل «{username}» ({amount:,} تومان) ثبت شد."
+BILL_MARKED_PAID_WEEKLY_CUSTOMER = (
+    "✅ بدهی هفتگی پنل «{username}» به مبلغ {amount:,} تومان تسویه شد. سپاس از پرداخت شما."
+)
+MARK_PAID_CANCELLED = "↩️ ثبت پرداخت لغو شد."
+BILL_NOTICE_NOT_DELIVERED = "⚠️ پیام به مشتری تحویل نشد (احتمالاً ربات را مسدود کرده است)."
 
 # --- the week's sales ---
 BTN_SALES_REPORT = "📈 فروش ۷ روز اخیر"
@@ -678,6 +708,7 @@ SALES_METHOD_LABELS = {
     "invoice": "فاکتور",
     "grant": "افزودن دستی",
     "settlement": "تسویه‌ی هفتگی",
+    "wallet_charge": "شارژ کیف پول",
 }
 SALES_EMPTY = "📈 در ۷ روز گذشته فروشی ثبت نشده است."
 SALES_NONE_THIS_WEEK = "▫️ در این ۷ روز فروشی ثبت نشده است.\n"
@@ -695,6 +726,8 @@ DIGEST_NO_SALES = "💰 فروش امروز: بدون فروش\n"
 DIGEST_SETTLED = "💵 تسویه‌ی هفتگی امروز: <b>{amount:,}</b> تومان · {count} پرداخت\n{payers}"
 DIGEST_SETTLED_LINE = "     ▫️ {username} — {amount:,} تومان\n"
 DIGEST_SETTLED_MORE = "     … و {count} پرداخت دیگر\n"
+DIGEST_WALLET_CHARGED = "💼 شارژ کیف پول امروز: <b>{amount:,}</b> تومان · {count} پرداخت\n{payers}"
+DIGEST_WALLET_CHARGE_LINE = "     ▫️ {who} — {amount:,} تومان\n"
 DIGEST_PENDING = "🧾 رسیدهای در انتظار: {count} مورد ({amount:,} تومان)\n"
 DIGEST_NO_PENDING = "🧾 رسید در انتظاری نیست ✅\n"
 DIGEST_OVERDUE = "⏰ بدهی سررسیدگذشته: {count} مورد ({amount:,} تومان)\n"

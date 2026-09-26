@@ -11,6 +11,7 @@ from __future__ import annotations
 import asyncio
 import logging
 from datetime import datetime, timezone
+from html import escape
 from zoneinfo import ZoneInfo
 
 from aiogram import Bot
@@ -29,13 +30,20 @@ MAX_LISTED_PANELS = 15
 MAX_LISTED_SETTLEMENTS = 10
 
 
+def _who(telegram_id: int | None) -> str:
+    if telegram_id is None:
+        return "—"
+    record = db.get_user(telegram_id) or {}
+    return escape(record.get("full_name") or str(telegram_id))
+
+
 async def build(now: datetime | None = None) -> str:
     now = now or datetime.now(TEHRAN)
     text = texts.DIGEST_HEADER.format(day=sales.format_day(now.date()))
 
     midnight = now.replace(hour=0, minute=0, second=0, microsecond=0)
     ledger = db.list_sales_since(midnight.astimezone(timezone.utc).isoformat())
-    today = [s for s in ledger if s.method not in (sales.GRANT, sales.SETTLEMENT)]
+    today = [s for s in ledger if s.method not in sales.NOT_SALES]
     if today:
         text += texts.DIGEST_SALES.format(
             amount=sum(s.amount for s in today),
@@ -59,6 +67,20 @@ async def build(now: datetime | None = None) -> str:
             )
         text += texts.DIGEST_SETTLED.format(
             amount=sum(s.amount for s in settled), count=len(settled), payers=listed
+        )
+
+    charged = [s for s in ledger if s.method == sales.WALLET_CHARGE]
+    if charged:
+        listed = "".join(
+            texts.DIGEST_WALLET_CHARGE_LINE.format(who=_who(s.telegram_id), amount=s.amount)
+            for s in charged[:MAX_LISTED_SETTLEMENTS]
+        )
+        if len(charged) > MAX_LISTED_SETTLEMENTS:
+            listed += texts.DIGEST_SETTLED_MORE.format(
+                count=len(charged) - MAX_LISTED_SETTLEMENTS
+            )
+        text += texts.DIGEST_WALLET_CHARGED.format(
+            amount=sum(s.amount for s in charged), count=len(charged), payers=listed
         )
 
     pending = db.list_pending_requests()

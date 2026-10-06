@@ -288,6 +288,15 @@ def confirm_bill_paid_kb(bill) -> InlineKeyboardMarkup:
     return kb.as_markup()
 
 
+def suspended_kb() -> InlineKeyboardMarkup:
+    """Shown with the lock notice: see what is owed, or pay all of it at once."""
+    kb = InlineKeyboardBuilder()
+    kb.button(text=texts.BTN_SHOW_ALL_BILLS, callback_data="bills_all")
+    kb.button(text=texts.BTN_PAY_ALL_BILLS, callback_data="pay_all")
+    kb.adjust(1)
+    return kb.as_markup()
+
+
 def bill_pay_kb(bill) -> InlineKeyboardMarkup:
     if bill.kind == "invoice":
         return pay_invoice_kb(bill.invoice_id)

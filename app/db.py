@@ -172,6 +172,20 @@ def init_db() -> None:
             )
             """
         )
+        # Panels locked for non-payment. The password that was in force before
+        # the lock is kept here because that is the only copy once the panel's
+        # own record has been overwritten with the lock password — without it a
+        # customer who pays can never be given their panel back as it was.
+        conn.execute(
+            """
+            CREATE TABLE IF NOT EXISTS suspensions (
+                username TEXT PRIMARY KEY,
+                telegram_id INTEGER NOT NULL,
+                previous_password TEXT NOT NULL,
+                suspended_at TEXT NOT NULL
+            )
+            """
+        )
         conn.execute(
             """
             CREATE TABLE IF NOT EXISTS tutorials (
@@ -343,6 +357,46 @@ def list_pending_requests() -> list[TopupRequest]:
             "SELECT * FROM topup_requests WHERE status = 'pending' ORDER BY created_at"
         ).fetchall()
         return [TopupRequest(**dict(row)) for row in rows]
+
+
+def record_suspension(username: str, telegram_id: int, previous_password: str) -> None:
+    """Remembers a locked panel and the password to put back. Never overwrites
+    an existing row: a second lock would otherwise store the lock password as
+    the one to restore, stranding the customer on it for good."""
+    now = datetime.now(timezone.utc).isoformat()
+    with _connect() as conn:
+        conn.execute(
+            "INSERT OR IGNORE INTO suspensions (username, telegram_id, previous_password, suspended_at) "
+            "VALUES (?, ?, ?, ?)",
+            (username, telegram_id, previous_password, now),
+        )
+
+
+def list_suspensions(telegram_id: int | None = None) -> list[dict]:
+    with _connect() as conn:
+        if telegram_id is None:
+            rows = conn.execute("SELECT * FROM suspensions ORDER BY suspended_at").fetchall()
+        else:
+            rows = conn.execute(
+                "SELECT * FROM suspensions WHERE telegram_id = ? ORDER BY suspended_at",
+                (telegram_id,),
+            ).fetchall()
+        return [dict(r) for r in rows]
+
+
+def clear_suspension(username: str) -> None:
+    with _connect() as conn:
+        conn.execute("DELETE FROM suspensions WHERE username = ?", (username,))
+
+
+def is_suspended(username: str) -> bool:
+    with _connect() as conn:
+        return (
+            conn.execute(
+                "SELECT 1 FROM suspensions WHERE username = ?", (username,)
+            ).fetchone()
+            is not None
+        )
 
 
 def get_setting(key: str) -> str | None:

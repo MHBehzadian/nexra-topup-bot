@@ -20,7 +20,7 @@ from aiogram.types import CallbackQuery, FSInputFile, Message
 from .. import auto_approve, keyboards, texts
 from ..bills import open_bills, render_for_customer, urgency
 from ..nav import ALL_MENU_TEXTS, menu_kb_for
-from ..states import DebtPayment, InvoicePayment, WalletTopUp
+from ..states import DebtPayment, InvoicePayment, PayAllBills, WalletTopUp
 from ... import db
 from ...config import settings
 
@@ -176,6 +176,85 @@ async def my_invoices(message: Message) -> None:
         )
     for bill in bills:
         await message.answer(render_for_customer(bill), reply_markup=keyboards.bill_pay_kb(bill))
+
+
+# ---- everything owed, paid in one go -----------------------------------------
+# Offered from the lock notice, where paying bill by bill is exactly the friction
+# that let the debt build up in the first place.
+
+@router.callback_query(F.data == "bills_all")
+async def show_all_bills(call: CallbackQuery) -> None:
+    items = sorted(open_bills(call.from_user.id), key=urgency, reverse=True)
+    await call.answer()
+    if not items:
+        await call.message.answer(texts.NO_MY_INVOICES)
+        return
+    await call.message.answer(
+        texts.MY_BILLS_SUMMARY.format(total=sum(b.amount for b in items), count=len(items))
+    )
+    for bill in items:
+        await call.message.answer(
+            render_for_customer(bill), reply_markup=keyboards.bill_pay_kb(bill)
+        )
+
+
+@router.callback_query(F.data == "pay_all")
+async def start_pay_all(call: CallbackQuery, state: FSMContext) -> None:
+    items = open_bills(call.from_user.id)
+    total = sum(b.amount for b in items)
+    if total <= 0:
+        await call.answer(texts.PAY_ALL_NOTHING, show_alert=True)
+        return
+
+    card_number = db.get_setting("card_number")
+    if not card_number:
+        await call.answer()
+        await call.message.answer(texts.CARD_NOT_CONFIGURED)
+        return
+
+    await call.answer()
+    await state.set_state(PayAllBills.receipt)
+    await state.update_data(pay_all_amount=total)
+    await call.message.answer(
+        texts.PAY_ALL_INSTRUCTIONS.format(
+            amount=total, count=len(items), card_number=card_number
+        ),
+        reply_markup=keyboards.cancel_kb(),
+    )
+
+
+@router.message(PayAllBills.receipt, ~F.text.in_(ALL_MENU_TEXTS))
+async def get_pay_all_receipt(message: Message, state: FSMContext, bot: Bot) -> None:
+    if not message.photo:
+        await message.answer(texts.NOT_A_PHOTO)
+        return
+
+    data = await state.get_data()
+    await state.clear()
+    amount = data["pay_all_amount"]
+    path = await _save_receipt(message, bot)
+
+    request_id = db.create_request(
+        admin_telegram_id=message.from_user.id,
+        admin_username=None,
+        requested_gb=0,
+        toman_amount=amount,
+        receipt_path=path,
+        kind="settle_all",
+    )
+
+    await message.answer(
+        texts.PAY_ALL_SUBMITTED, reply_markup=await menu_kb_for(message.from_user.id)
+    )
+    await _send_to_superadmins(
+        bot,
+        path,
+        f"💳 رسید پرداخت همه فاکتورها (درخواست #{request_id})\n"
+        f"👤 آیدی عددی: {message.from_user.id}\n"
+        f"💰 مبلغ: {amount:,} تومان",
+        request_id,
+        message.from_user.id,
+    )
 
 
 @router.callback_query(F.data.startswith("pay_invoice:"))

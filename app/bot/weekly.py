@@ -18,7 +18,7 @@ from zoneinfo import ZoneInfo
 
 from aiogram import Bot
 
-from . import keyboards, texts
+from . import enforcement, keyboards, texts
 from .invoices import describe_due, is_due
 from .. import db
 from ..billing import apply_wallet_to_debts
@@ -188,6 +188,15 @@ async def run_settlement(bot: Bot) -> None:
 
 async def tick(bot: Bot) -> None:
     now = datetime.now(TEHRAN)
+
+    # Locking and unlocking runs on every pass, not just at RUN_HOUR: the 24h
+    # grace expires at whatever time Friday's settlement ran, and someone who
+    # has just paid should get their panel back within minutes, not at 08:00.
+    try:
+        await enforcement.tick(bot)
+    except Exception as exc:
+        logger.error(f"non-payment enforcement failed: {exc}")
+
     if now.hour != RUN_HOUR:
         return
     stamp = _week_stamp(now)

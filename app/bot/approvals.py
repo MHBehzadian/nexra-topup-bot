@@ -7,14 +7,22 @@ move exactly the same money in exactly the same way.
 from __future__ import annotations
 
 from dataclasses import dataclass
+from datetime import datetime, timezone
 
 from aiogram import Bot
 
-from . import texts
+from . import bills, enforcement, texts
 from .. import db
 from ..billing import apply_wallet_to_debts
 from ..services.nexra_panel import NexraPanelError, nexra_panel
 from ..units import bytes_to_gb
+
+# Oldest debt first, with open-ended invoices (no deadline) last.
+_FAR_FUTURE = datetime.max.replace(tzinfo=timezone.utc)
+
+
+def _oldest_first(bill) -> datetime:
+    return bill.due or _FAR_FUTURE
 
 # reviewed_by for an approval nobody pressed a button for.
 AUTOMATIC = 0
@@ -65,6 +73,7 @@ async def approve_request(bot: Bot, request_id: int, reviewer_id: int) -> Outcom
                 amount=req.toman_amount, balance=db.get_wallet_balance(customer)
             ),
         )
+        await enforcement.settle_up(bot, customer)
         return Outcome(True, texts.APPROVED_TOAST, finished=True)
 
     if req.kind == "invoice":
@@ -74,6 +83,44 @@ async def approve_request(bot: Bot, request_id: int, reviewer_id: int) -> Outcom
             telegram_id=customer, username=None, gb=0, amount=req.toman_amount, method="invoice"
         )
         await _tell(bot, customer, texts.INVOICE_PAID_CUSTOMER.format(id=req.invoice_id))
+        await enforcement.settle_up(bot, customer)
+        return Outcome(True, texts.APPROVED_TOAST, finished=True)
+
+    if req.kind == "settle_all":
+        # Everything they owe, cleared oldest-first by what the receipt covers.
+        # Paid as one sum, so the split across invoices and weekly credit is
+        # bookkeeping rather than something the customer had to work out.
+        left = req.toman_amount
+        for bill in sorted(bills.open_bills(customer), key=_oldest_first):
+            if left <= 0:
+                break
+            if bill.kind == "invoice":
+                # All or nothing: an invoice is a single demand, so covering
+                # part of one must not mark the whole thing settled.
+                if left < bill.amount or not db.mark_invoice_paid(bill.invoice_id):
+                    continue
+                db.record_sale(
+                    telegram_id=customer, username=None, gb=0, amount=bill.amount, method="invoice"
+                )
+                left -= bill.amount
+            else:
+                take = min(left, bill.amount)
+                db.reduce_debt(bill.username, take)
+                db.record_sale(
+                    telegram_id=customer, username=bill.username, gb=0, amount=take,
+                    method=db.SETTLEMENT_METHOD,
+                )
+                left -= take
+
+        if left > 0:
+            db.add_wallet_balance(customer, left)
+            text = texts.SETTLE_ALL_APPROVED_WITH_CREDIT.format(
+                excess=left, balance=db.get_wallet_balance(customer)
+            )
+        else:
+            text = texts.SETTLE_ALL_APPROVED_ADMIN.format(amount=req.toman_amount)
+        await _tell(bot, customer, text)
+        await enforcement.settle_up(bot, customer)
         return Outcome(True, texts.APPROVED_TOAST, finished=True)
 
     if req.kind == "settlement":
@@ -109,6 +156,7 @@ async def approve_request(bot: Bot, request_id: int, reviewer_id: int) -> Outcom
         else:
             text = texts.SETTLEMENT_APPROVED_ADMIN.format(username=req.admin_username)
         await _tell(bot, customer, text)
+        await enforcement.settle_up(bot, customer)
         return Outcome(True, texts.APPROVED_TOAST, finished=True)
 
     try:

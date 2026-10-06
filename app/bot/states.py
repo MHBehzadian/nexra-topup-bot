@@ -74,6 +74,10 @@ class InvoicePayment(StatesGroup):
     receipt = State()
 
 
+class PayAllBills(StatesGroup):
+    receipt = State()
+
+
 class CreateAdmin(StatesGroup):
     username = State()
     password = State()

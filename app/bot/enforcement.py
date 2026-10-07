@@ -55,18 +55,31 @@ def cutoff() -> datetime:
 
 
 def locking_bills(customer: bills.Customer, now: datetime | None = None) -> list[bills.Bill]:
-    """The customer's bills that are late enough, and recent enough, to lock for."""
+    """The customer's bills that are late enough, and recent enough, to lock for.
+
+    Weekly credit only. A manual invoice is a one-off arrangement rather than
+    the standing weekly obligation this is meant to enforce, so it never locks
+    anything — and never holds a lock closed either (see `owes_weekly`).
+    """
     now = now or datetime.now(bills.TEHRAN)
     started = cutoff()
     deadline = now - timedelta(hours=GRACE_HOURS)
     eligible = []
     for bill in customer.bills:
+        if bill.kind != "weekly":
+            continue
         if bill.due is None or bill.due > deadline:
             continue  # not yet past the settlement date plus its grace
         if bill.due <= started:
             continue  # fell due before enforcement existed
         eligible.append(bill)
     return eligible
+
+
+def owes_weekly(telegram_id: int) -> bool:
+    """Whether any weekly credit is still outstanding — the one thing that
+    decides whether a lock stays on."""
+    return any(b.kind == "weekly" and b.amount > 0 for b in bills.open_bills(telegram_id))
 
 
 async def _panels_of(telegram_id: int) -> list[dict]:
@@ -99,12 +112,10 @@ async def _tell_superadmins(bot: Bot, text: str) -> None:
         await _tell(bot, superadmin_id, text)
 
 
-async def lock(bot: Bot, customer: bills.Customer) -> list[str]:
-    """Lock every panel this customer owns. Returns the ones actually locked."""
-    telegram_id = customer.telegram_id
-    if telegram_id is None:
-        return []
-
+async def lock_panels(
+    bot: Bot, telegram_id: int, *, reason: str = "unpaid", total: int = 0, count: int = 0
+) -> list[str]:
+    """Lock every panel this person owns. Returns the ones actually locked."""
     panels = await _panels_of(telegram_id)
     if not panels:
         return []
@@ -131,7 +142,7 @@ async def lock(bot: Bot, customer: bills.Customer) -> list[str]:
             continue
         # Written only after the panel confirms, so a failed change never
         # leaves a record claiming a lock that isn't there.
-        db.record_suspension(username, telegram_id, current)
+        db.record_suspension(username, telegram_id, current, reason=reason)
         locked.append(username)
 
     if not locked:
@@ -140,22 +151,26 @@ async def lock(bot: Bot, customer: bills.Customer) -> list[str]:
     await _tell(
         bot,
         telegram_id,
-        texts.SUSPENDED_NOTICE.format(total=customer.total, count=len(customer.bills)),
+        texts.SUSPENDED_NOTICE.format(total=total, count=count),
         reply_markup=keyboards.suspended_kb(),
     )
     await _tell_superadmins(
         bot,
         texts.SUSPENDED_ADMIN_NOTICE.format(
-            panels="، ".join(locked), telegram_id=telegram_id, total=customer.total
+            panels="، ".join(locked), telegram_id=telegram_id, total=total
         ),
     )
-    logger.info(f"locked {locked} for {telegram_id}")
+    logger.info(f"locked {locked} for {telegram_id} ({reason})")
     return locked
 
 
-async def unlock(bot: Bot, telegram_id: int) -> list[str]:
-    """Put back every password this customer's panels had before the lock."""
-    rows = db.list_suspensions(telegram_id)
+async def unlock(bot: Bot, telegram_id: int, *, reason: str | None = None) -> list[str]:
+    """Put back every password this customer's panels had before the lock.
+
+    `reason` narrows it: the automatic sweep passes 'unpaid' so a lock placed by
+    hand is never lifted by someone simply settling their weekly credit.
+    """
+    rows = db.list_suspensions(telegram_id, reason=reason)
     if not rows:
         return []
 
@@ -189,28 +204,33 @@ async def unlock(bot: Bot, telegram_id: int) -> list[str]:
 
 
 async def settle_up(bot: Bot, telegram_id: int) -> None:
-    """Called after any payment: give the panels back once nothing is owed."""
-    if not db.list_suspensions(telegram_id):
+    """Called after any payment: give the panels back once the weekly credit is
+    clear. Outstanding invoices don't hold it, since they could never have
+    caused the lock in the first place."""
+    if not db.list_suspensions(telegram_id, reason="unpaid"):
         return
-    if sum(b.amount for b in bills.open_bills(telegram_id)) > 0:
+    if owes_weekly(telegram_id):
         return
-    await unlock(bot, telegram_id)
+    await unlock(bot, telegram_id, reason="unpaid")
 
 
 async def tick(bot: Bot) -> None:
     """One sweep: lock whoever has run out of grace, unlock whoever has paid."""
     cutoff()  # make sure the start line exists before anything is judged against it
 
-    customers = bills.by_customer(bills.open_bills())
-    owing = {c.telegram_id for c in customers if c.telegram_id is not None}
-
-    for customer in customers:
+    for customer in bills.by_customer(bills.open_bills()):
         if customer.telegram_id is None:
             continue
-        if locking_bills(customer):
-            await lock(bot, customer)
+        overdue = locking_bills(customer)
+        if overdue:
+            await lock_panels(
+                bot,
+                customer.telegram_id,
+                total=customer.total,
+                count=len(customer.bills),
+            )
 
-    # Anyone locked who no longer appears in the open bills has settled.
-    for row in db.list_suspensions():
-        if row["telegram_id"] not in owing:
-            await unlock(bot, row["telegram_id"])
+    # Locks the rule put on come off as soon as the weekly credit is settled.
+    for row in db.list_suspensions(reason="unpaid"):
+        if not owes_weekly(row["telegram_id"]):
+            await unlock(bot, row["telegram_id"], reason="unpaid")

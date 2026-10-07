@@ -195,13 +195,34 @@ def pay_invoice_kb(invoice_id: int) -> InlineKeyboardMarkup:
 
 
 def user_actions_kb(telegram_id: int) -> InlineKeyboardMarkup:
+    from .. import db  # here rather than at import time: keyboards is imported very early
+
     kb = InlineKeyboardBuilder()
     kb.button(text=texts.BTN_DEDUCT_WALLET, callback_data=f"usr_deduct:{telegram_id}")
     kb.button(text=texts.BTN_INVOICE_FOR_USER, callback_data=f"usr_invoice:{telegram_id}")
     kb.button(text=texts.BTN_MARK_PAID, callback_data=f"paidpick:{telegram_id}")
     kb.button(text=texts.BTN_DELETE_INVOICE, callback_data=f"usr_delinv:{telegram_id}")
     kb.button(text=texts.BTN_MESSAGE_USER, callback_data=f"msg_user:{telegram_id}")
-    kb.adjust(2, 2, 1)
+    # Whichever of the two makes sense right now, so there is nothing to read
+    # off the card before deciding which button to press.
+    if db.list_suspensions(telegram_id):
+        kb.button(text=texts.BTN_UNLOCK_PANELS, callback_data=f"usr_unlock:{telegram_id}")
+    else:
+        kb.button(text=texts.BTN_LOCK_PANELS, callback_data=f"usr_lock:{telegram_id}")
+    kb.adjust(2, 2, 1, 1)
+    return kb.as_markup()
+
+
+def confirm_lock_kb(telegram_id: int, locking: bool) -> InlineKeyboardMarkup:
+    """Changing someone's password is not undoable by them, so it takes a second tap."""
+    kb = InlineKeyboardBuilder()
+    action = "lockok" if locking else "unlockok"
+    kb.button(
+        text=texts.BTN_CONFIRM_LOCK if locking else texts.BTN_CONFIRM_UNLOCK,
+        callback_data=f"{action}:{telegram_id}",
+    )
+    kb.button(text=texts.BTN_KEEP, callback_data="lock_no")
+    kb.adjust(1)
     return kb.as_markup()
 
 

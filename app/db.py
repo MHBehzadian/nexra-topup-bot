@@ -212,6 +212,9 @@ def init_db() -> None:
         _ensure_column(conn, "tutorials", "source_message_id", "INTEGER")
         # When a debt passed its settlement date unpaid — drives daily chasing.
         _ensure_column(conn, "debts", "overdue_since", "TEXT")
+        # 'unpaid' = locked by the weekly-credit rule and released by paying;
+        # 'manual' = locked by hand, and only ever released by hand.
+        _ensure_column(conn, "suspensions", "reason", "TEXT NOT NULL DEFAULT 'unpaid'")
         # Links a settlement receipt back to the manual invoice it pays off.
         _ensure_column(conn, "topup_requests", "invoice_id", "INTEGER")
         # When a non-payment warning was last sent for a bill, so the open list
@@ -359,28 +362,32 @@ def list_pending_requests() -> list[TopupRequest]:
         return [TopupRequest(**dict(row)) for row in rows]
 
 
-def record_suspension(username: str, telegram_id: int, previous_password: str) -> None:
+def record_suspension(
+    username: str, telegram_id: int, previous_password: str, reason: str = "unpaid"
+) -> None:
     """Remembers a locked panel and the password to put back. Never overwrites
     an existing row: a second lock would otherwise store the lock password as
     the one to restore, stranding the customer on it for good."""
     now = datetime.now(timezone.utc).isoformat()
     with _connect() as conn:
         conn.execute(
-            "INSERT OR IGNORE INTO suspensions (username, telegram_id, previous_password, suspended_at) "
-            "VALUES (?, ?, ?, ?)",
-            (username, telegram_id, previous_password, now),
+            "INSERT OR IGNORE INTO suspensions "
+            "(username, telegram_id, previous_password, suspended_at, reason) VALUES (?, ?, ?, ?, ?)",
+            (username, telegram_id, previous_password, now, reason),
         )
 
 
-def list_suspensions(telegram_id: int | None = None) -> list[dict]:
+def list_suspensions(telegram_id: int | None = None, reason: str | None = None) -> list[dict]:
+    query = "SELECT * FROM suspensions WHERE 1=1"
+    params: list = []
+    if telegram_id is not None:
+        query += " AND telegram_id = ?"
+        params.append(telegram_id)
+    if reason is not None:
+        query += " AND reason = ?"
+        params.append(reason)
     with _connect() as conn:
-        if telegram_id is None:
-            rows = conn.execute("SELECT * FROM suspensions ORDER BY suspended_at").fetchall()
-        else:
-            rows = conn.execute(
-                "SELECT * FROM suspensions WHERE telegram_id = ? ORDER BY suspended_at",
-                (telegram_id,),
-            ).fetchall()
+        rows = conn.execute(query + " ORDER BY suspended_at", params).fetchall()
         return [dict(r) for r in rows]
 
 

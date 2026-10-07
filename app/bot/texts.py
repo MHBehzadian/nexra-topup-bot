@@ -615,6 +615,28 @@ SETTLE_ALL_APPROVED_WITH_CREDIT = (
     "👛 موجودی کیف پول: {balance:,} تومان"
 )
 
+# --- locking a panel by hand, independent of what anyone owes ---
+BTN_LOCK_PANELS = "⛔️ مسدود کردن پنل‌ها"
+BTN_UNLOCK_PANELS = "✅ آزاد کردن پنل‌ها"
+BTN_CONFIRM_LOCK = "⛔️ بله، مسدود شود"
+BTN_CONFIRM_UNLOCK = "✅ بله، آزاد شود"
+CONFIRM_LOCK = (
+    "⛔️ <b>مسدود کردن پنل‌های این کاربر</b>\n\n"
+    "رمز همه‌ی پنل‌های او عوض می‌شود و دسترسی‌اش به مرزبان و نکسرا قطع می‌شود.\n"
+    "یوزرهای خودش قطع نمی‌شوند.\n\n"
+    "مطمئن هستید؟"
+)
+CONFIRM_UNLOCK = (
+    "✅ <b>آزاد کردن پنل‌های این کاربر</b>\n\n"
+    "رمز قبلی هر پنل بازگردانده می‌شود.\n\n"
+    "مطمئن هستید؟"
+)
+LOCK_CANCELLED = "↩️ لغو شد."
+LOCK_NO_PANELS = "⚠️ پنلی برای این کاربر پیدا نشد یا رمزش در دسترس نبود."
+LOCK_NOT_LOCKED = "ℹ️ پنل‌های این کاربر مسدود نیستند."
+LOCKED_TOAST = "⛔️ مسدود شد."
+UNLOCKED_TOAST = "✅ آزاد شد."
+
 # Told to the superadmin, so a lock is never something only the customer knows.
 SUSPENDED_ADMIN_NOTICE = (
     "⛔️ <b>پنل مسدود شد</b>\n"

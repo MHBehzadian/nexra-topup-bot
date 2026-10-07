@@ -11,7 +11,7 @@ from aiogram import Bot, F, Router
 from aiogram.fsm.context import FSMContext
 from aiogram.types import CallbackQuery, Message
 
-from .. import bills, keyboards, texts
+from .. import bills, enforcement, keyboards, texts
 from ..filters import SuperadminFilter
 from ..invoices import describe_due, due_at_for
 from ..nav import ALL_MENU_TEXTS, superadmin_kb
@@ -144,6 +144,58 @@ async def do_search(message: Message, state: FSMContext) -> None:
         _render_profile(telegram_id, panels),
         reply_markup=keyboards.user_actions_kb(telegram_id),
     )
+
+
+# ---- locking a customer's panels by hand -------------------------------------
+# Same mechanism the weekly-credit rule uses, but recorded as a manual lock so
+# the automatic sweep never lifts it on its own.
+
+@router.callback_query(F.data.startswith("usr_lock:"))
+async def ask_lock(call: CallbackQuery) -> None:
+    target = int(call.data.split(":", 1)[1])
+    await call.answer()
+    await call.message.answer(
+        texts.CONFIRM_LOCK, reply_markup=keyboards.confirm_lock_kb(target, locking=True)
+    )
+
+
+@router.callback_query(F.data.startswith("lockok:"))
+async def do_lock(call: CallbackQuery, bot: Bot) -> None:
+    target = int(call.data.split(":", 1)[1])
+    owed = sum(b.amount for b in bills.open_bills(target))
+    locked = await enforcement.lock_panels(
+        bot, target, reason="manual", total=owed, count=len(bills.open_bills(target))
+    )
+    if not locked:
+        await call.answer(texts.LOCK_NO_PANELS, show_alert=True)
+        return
+    await call.answer(texts.LOCKED_TOAST)
+
+
+@router.callback_query(F.data.startswith("usr_unlock:"))
+async def ask_unlock(call: CallbackQuery) -> None:
+    target = int(call.data.split(":", 1)[1])
+    await call.answer()
+    await call.message.answer(
+        texts.CONFIRM_UNLOCK, reply_markup=keyboards.confirm_lock_kb(target, locking=False)
+    )
+
+
+@router.callback_query(F.data.startswith("unlockok:"))
+async def do_unlock(call: CallbackQuery, bot: Bot) -> None:
+    target = int(call.data.split(":", 1)[1])
+    # Lifts both kinds: told to unlock by hand means unlock, whatever put it on.
+    restored = await enforcement.unlock(bot, target)
+    if not restored:
+        await call.answer(texts.LOCK_NOT_LOCKED, show_alert=True)
+        return
+    await call.answer(texts.UNLOCKED_TOAST)
+
+
+@router.callback_query(F.data == "lock_no")
+async def cancel_lock(call: CallbackQuery) -> None:
+    await call.answer()
+    await call.message.answer(texts.LOCK_CANCELLED, reply_markup=superadmin_kb(call.from_user.id))
 
 
 @router.callback_query(F.data.startswith("usr_deduct:"))

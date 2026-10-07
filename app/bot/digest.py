@@ -28,6 +28,7 @@ TEHRAN = ZoneInfo("Asia/Tehran")
 LOW_TRAFFIC_GB = 50.0
 MAX_LISTED_PANELS = 15
 MAX_LISTED_SETTLEMENTS = 10
+MAX_LISTED_DEBTORS = 20
 
 
 def _who(telegram_id: int | None) -> str:
@@ -91,13 +92,33 @@ async def build(now: datetime | None = None) -> str:
     else:
         text += texts.DIGEST_NO_PENDING
 
-    overdue = [b for b in bills.open_bills(now=now) if b.days_overdue(now) is not None]
+    open_bills = bills.open_bills(now=now)
+    overdue = [b for b in open_bills if b.days_overdue(now) is not None]
     if overdue:
         text += texts.DIGEST_OVERDUE.format(
             count=len(overdue), amount=sum(b.amount for b in overdue)
         )
     else:
         text += texts.DIGEST_NO_OVERDUE
+
+    # Everyone who owes anything, worst first — the counts above say how much is
+    # outstanding, this says who to go after.
+    debtors = bills.by_customer(open_bills)
+    if debtors:
+        rows = ""
+        for customer in debtors[:MAX_LISTED_DEBTORS]:
+            late = customer.worst_overdue
+            rows += texts.DIGEST_DEBTOR_LINE.format(
+                who=_who(customer.telegram_id),
+                amount=customer.total,
+                late=texts.DIGEST_DEBTOR_LATE.format(days=late) if late >= 0 else texts.DIGEST_DEBTOR_DUE,
+            )
+        if len(debtors) > MAX_LISTED_DEBTORS:
+            rows += texts.DIGEST_DEBTORS_MORE.format(count=len(debtors) - MAX_LISTED_DEBTORS)
+        rows += texts.DIGEST_DEBTORS_TOTAL.format(
+            total=sum(c.total for c in debtors), count=len(debtors)
+        )
+        text += texts.DIGEST_DEBTORS.format(rows=rows)
 
     # The only part that needs the panel; an outage costs this section, not the
     # whole message.

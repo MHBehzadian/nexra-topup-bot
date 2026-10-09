@@ -65,6 +65,7 @@ ALL_MENU_TEXTS = {
     texts.BTN_INVOICES,
     texts.BTN_PAY_INVOICE,
     texts.BTN_MY_INVOICES,
+    texts.BTN_PANEL_LOGIN,
     texts.BTN_FORECAST,
     texts.BTN_SEARCH_USER,
     texts.BTN_PARTNERSHIP,

@@ -75,6 +75,11 @@ async def start(message: Message, bot: Bot) -> None:
     )
 
 
+@router.message(F.text == texts.BTN_PANEL_LOGIN)
+async def panel_login(message: Message) -> None:
+    await message.answer(texts.PANEL_LOGIN_TEXT, reply_markup=keyboards.panel_login_kb())
+
+
 @router.message(F.text.in_({texts.BTN_MY_PANELS, texts.BTN_BALANCE}))
 async def my_panels(message: Message) -> None:
     admins = await safe_get_admins(message)

@@ -13,9 +13,20 @@ def main_menu_kb() -> ReplyKeyboardMarkup:
     kb.button(text=texts.BTN_TUTORIALS)
     kb.button(text=texts.BTN_FORECAST)
     kb.button(text=texts.BTN_MY_INVOICES)
+    kb.button(text=texts.BTN_PANEL_LOGIN)
     kb.button(text=texts.BTN_CREATE_PANEL)
-    kb.adjust(2, 2, 2, 2, 1)
+    kb.adjust(2, 2, 2, 2, 2)
     return kb.as_markup(resize_keyboard=True)
+
+
+def panel_login_kb() -> InlineKeyboardMarkup:
+    """Two doors to the same panel: one domain routes from inside Iran, the
+    other doesn't — so the choice is theirs to make, not ours to guess."""
+    kb = InlineKeyboardBuilder()
+    kb.button(text=texts.BTN_LOGIN_WITH_VPN, url=texts.PANEL_URL_WITH_VPN)
+    kb.button(text=texts.BTN_LOGIN_WITHOUT_VPN, url=texts.PANEL_URL_WITHOUT_VPN)
+    kb.adjust(1)
+    return kb.as_markup()
 
 
 def unlinked_menu_kb() -> ReplyKeyboardMarkup:

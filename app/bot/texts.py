@@ -449,6 +449,22 @@ INVOICE_NOT_FOUND = "⚠️ فاکتور یافت نشد."
 BTN_INVOICES = "🧾 فاکتورهای باز"
 NO_INVOICES = "✅ هیچ فاکتور پرداخت‌نشده‌ای وجود ندارد."
 BTN_MY_INVOICES = "🧾 فاکتورهای من"
+
+# --- getting into the panel ---
+# Same panel behind both: panel.* sits on an Iranian network and answers from
+# inside the country, weare.* answers from outside it.
+PANEL_URL_WITH_VPN = "https://weare.nexradns.site/dashboard/login"
+PANEL_URL_WITHOUT_VPN = "https://panel.nexradns.site/dashboard/login"
+BTN_PANEL_LOGIN = "🔐 ورود به پنل"
+BTN_LOGIN_WITH_VPN = "🌐 ورود به پنل با VPN"
+BTN_LOGIN_WITHOUT_VPN = "📶 ورود به پنل بدون VPN"
+PANEL_LOGIN_TEXT = (
+    "🔐 <b>ورود به پنل</b>\n"
+    "━━━━━━━━━━━━━━━\n"
+    "بسته به اینکه VPN شما روشن است یا خیر، یکی از دو گزینه‌ی زیر را انتخاب کنید.\n"
+    "هر دو به یک پنل وصل می‌شوند و نام کاربری و رمز یکسانی دارند.\n\n"
+    "اگر یکی باز نشد، دیگری را امتحان کنید."
+)
 NO_MY_INVOICES = "✅ فاکتور پرداخت‌نشده‌ای ندارید."
 
 BTN_CREATE_ADMIN = "🆕 ساخت پنل جدید (ادمین)"

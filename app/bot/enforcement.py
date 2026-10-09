@@ -36,12 +36,20 @@ LOCK_PASSWORD = "75911304@Mhb"
 # Grace past the settlement date before the lock lands.
 GRACE_HOURS = 24
 
-_CUTOFF_KEY = "enforcement_start"
+# What was already overdue when enforcement started isn't exempt forever, but it
+# is given a fortnight from the start line to be cleared before it can lock
+# anything — nobody is caught out by a bill that predates the rule.
+LEGACY_GRACE_DAYS = 14
+
+# The key is versioned: changing when the start line falls means re-stamping it,
+# and a new key does that on the next run without touching the database by hand.
+_CUTOFF_KEY = "enforcement_start_v2"
 
 
 def cutoff() -> datetime:
-    """The moment enforcement began. Written once, on the first run, so debts
-    already overdue by then stay exempt for as long as they live."""
+    """The moment enforcement began. Written once, on the first run; debts
+    already overdue by then get LEGACY_GRACE_DAYS from here, newer ones the
+    usual 24 hours past their settlement date."""
     stored = db.get_setting(_CUTOFF_KEY)
     if stored:
         try:
@@ -70,8 +78,8 @@ def locking_bills(customer: bills.Customer, now: datetime | None = None) -> list
             continue
         if bill.due is None or bill.due > deadline:
             continue  # not yet past the settlement date plus its grace
-        if bill.due <= started:
-            continue  # fell due before enforcement existed
+        if bill.due <= started and now < started + timedelta(days=LEGACY_GRACE_DAYS):
+            continue  # predates the rule, and its fortnight hasn't run out yet
         eligible.append(bill)
     return eligible
 

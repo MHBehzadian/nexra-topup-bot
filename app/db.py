@@ -220,6 +220,9 @@ def init_db() -> None:
         # When a non-payment warning was last sent for a bill, so the open list
         # can show it and nobody gets warned twice by accident.
         _ensure_column(conn, "invoices", "last_warned_at", "TEXT")
+        # What has come in against an invoice so far; it stays open until this
+        # reaches the amount.
+        _ensure_column(conn, "invoices", "paid_amount", "INTEGER NOT NULL DEFAULT 0")
         _ensure_column(conn, "debts", "last_warned_at", "TEXT")
 
     # Outside the transaction above: it opens its own connection.
@@ -301,6 +304,18 @@ def mark_reviewed(
             WHERE id = ? AND status = 'pending'
             """,
             (status, reviewed_by, now, reason, request_id),
+        )
+        return cur.rowcount == 1
+
+
+def adjust_pending_request(request_id: int, *, amount: int, kind: str) -> bool:
+    """Change what a receipt is worth before it is approved — the money that
+    actually arrived rather than what the customer said they sent. Only while it
+    is still pending; False if it was handled in the meantime."""
+    with _connect() as conn:
+        cur = conn.execute(
+            "UPDATE topup_requests SET toman_amount = ?, kind = ? WHERE id = ? AND status = 'pending'",
+            (amount, kind, request_id),
         )
         return cur.rowcount == 1
 
@@ -657,6 +672,11 @@ class Invoice:
     paid_at: str | None
     last_reminded_date: str | None
     last_warned_at: str | None = None
+    paid_amount: int = 0
+
+    @property
+    def remaining(self) -> int:
+        return max(0, self.amount - self.paid_amount)
 
 
 def create_invoice(
@@ -696,10 +716,43 @@ def mark_invoice_paid(invoice_id: int) -> bool:
     now = datetime.now(timezone.utc).isoformat()
     with _connect() as conn:
         cur = conn.execute(
-            "UPDATE invoices SET status = 'paid', paid_at = ? WHERE id = ? AND status = 'pending'",
+            "UPDATE invoices SET status = 'paid', paid_at = ?, paid_amount = amount "
+            "WHERE id = ? AND status = 'pending'",
             (now, invoice_id),
         )
         return cur.rowcount == 1
+
+
+def pay_invoice(invoice_id: int, amount: int) -> tuple[int, int] | None:
+    """Put money against a pending invoice, closing it once nothing is left.
+
+    Returns (applied, remaining): applied is capped at what was still owed, so
+    the caller can tell whether part of the money was more than the invoice
+    needed. None if the invoice was already settled or cancelled.
+    """
+    now = datetime.now(timezone.utc).isoformat()
+    with _connect() as conn:
+        # Read and write under one lock, so two payments landing at once cannot
+        # both be applied against the same balance.
+        conn.execute("BEGIN IMMEDIATE")
+        row = conn.execute(
+            "SELECT amount, paid_amount FROM invoices WHERE id = ? AND status = 'pending'",
+            (invoice_id,),
+        ).fetchone()
+        if row is None:
+            return None
+        owed = max(0, row["amount"] - row["paid_amount"])
+        applied = min(max(0, amount), owed)
+        conn.execute(
+            "UPDATE invoices SET paid_amount = paid_amount + ? WHERE id = ?",
+            (applied, invoice_id),
+        )
+        remaining = owed - applied
+        if remaining <= 0:
+            conn.execute(
+                "UPDATE invoices SET status = 'paid', paid_at = ? WHERE id = ?", (now, invoice_id)
+            )
+        return applied, remaining
 
 
 def cancel_invoice(invoice_id: int) -> bool:

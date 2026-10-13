@@ -107,7 +107,7 @@ async def send_invoice_reminders(bot: Bot) -> int:
                 invoice.telegram_id,
                 texts.INVOICE_REMINDER.format(
                     id=invoice.id,
-                    amount=invoice.amount,
+                    amount=invoice.remaining,
                     description=invoice.description or "—",
                     due=describe_due(invoice.due_at),
                 ),

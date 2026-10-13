@@ -11,7 +11,7 @@ from .. import auto_approve, keyboards, texts
 from ..approvals import approve_request
 from ..filters import SuperadminFilter
 from ..nav import ALL_MENU_TEXTS, forget_section, superadmin_kb
-from ..states import MessageUser, RejectReason
+from ..states import ApprovePartial, MessageUser, RejectReason
 from ... import db
 
 router = Router(name="approval")
@@ -76,6 +76,7 @@ async def start_reject(call: CallbackQuery, state: FSMContext) -> None:
     await state.set_state(RejectReason.reason)
     await state.update_data(
         request_id=request_id,
+        held_request_id=request_id,
         origin_chat_id=call.message.chat.id,
         origin_message_id=call.message.message_id,
     )
@@ -113,6 +114,95 @@ async def finish_reject(message: Message, state: FSMContext, bot: Bot) -> None:
         pass
 
     await message.answer(texts.REJECTED_TOAST, reply_markup=superadmin_kb(message.from_user.id))
+    try:
+        await bot.edit_message_reply_markup(
+            chat_id=data["origin_chat_id"],
+            message_id=data["origin_message_id"],
+            reply_markup=None,
+        )
+    except Exception:
+        pass
+
+
+# ---- approve only part of what the receipt claims -----------------------------
+# The receipt says one amount, the bank account shows less. Rather than reject
+# and make them start over, take what arrived: it is approved as if the receipt
+# had said that amount, and the customer is told the difference is still owed.
+
+@router.callback_query(F.data.startswith("topup_partial:"))
+async def start_partial_approve(call: CallbackQuery, state: FSMContext) -> None:
+    request_id = int(call.data.split(":")[1])
+    req = db.get_request(request_id)
+    if req is None:
+        await call.answer(texts.NOT_FOUND, show_alert=True)
+        return
+    if req.status != "pending":
+        await call.answer(texts.ALREADY_HANDLED, show_alert=True)
+        return
+
+    # Same race as a rejection: the automatic approver must not approve the
+    # full amount while the real one is being typed.
+    auto_approve.hold(request_id)
+    await state.set_state(ApprovePartial.amount)
+    await state.update_data(
+        request_id=request_id,
+        held_request_id=request_id,
+        origin_chat_id=call.message.chat.id,
+        origin_message_id=call.message.message_id,
+    )
+    prompt = texts.ASK_PARTIAL_APPROVE_AMOUNT.format(amount=req.toman_amount)
+    if req.kind == "topup":
+        prompt += texts.PARTIAL_APPROVE_TOPUP_NOTE
+    await call.answer()
+    await call.message.answer(prompt, reply_markup=keyboards.cancel_kb())
+
+
+@router.message(ApprovePartial.amount, ~F.text.in_(ALL_MENU_TEXTS))
+async def finish_partial_approve(message: Message, state: FSMContext, bot: Bot) -> None:
+    data = await state.get_data()
+    request_id = data["request_id"]
+    req = db.get_request(request_id)
+    if req is None or req.status != "pending":
+        await state.clear()
+        auto_approve.release(request_id)
+        await message.answer(texts.ALREADY_HANDLED, reply_markup=superadmin_kb(message.from_user.id))
+        return
+
+    raw = (message.text or "").strip().replace(",", "").replace("٬", "")
+    if not raw.isdigit() or not 0 < int(raw) < req.toman_amount:
+        await message.answer(
+            texts.INVALID_PARTIAL_APPROVE_AMOUNT.format(amount=req.toman_amount)
+        )
+        return
+    await state.clear()
+    received, claimed = int(raw), req.toman_amount
+
+    # Short money can't buy the traffic it was meant for, so a traffic purchase
+    # becomes wallet credit; every other kind already pays down by the amount.
+    kind = "wallet" if req.kind == "topup" else req.kind
+    if not db.adjust_pending_request(request_id, amount=received, kind=kind):
+        auto_approve.release(request_id)
+        await message.answer(texts.ALREADY_HANDLED, reply_markup=superadmin_kb(message.from_user.id))
+        return
+
+    outcome = await approve_request(bot, request_id, message.from_user.id)
+    auto_approve.release(request_id)
+    if not outcome.ok:
+        await message.answer(outcome.message, reply_markup=superadmin_kb(message.from_user.id))
+        return
+
+    notice = (
+        texts.PARTIAL_RECEIPT_TOPUP_CUSTOMER if req.kind == "topup" else texts.PARTIAL_RECEIPT_CUSTOMER
+    ).format(claimed=claimed, received=received)
+    try:
+        await bot.send_message(req.admin_telegram_id, notice)
+    except Exception:
+        pass
+
+    await message.answer(
+        texts.PARTIAL_APPROVED_DONE.format(id=request_id, received=received, claimed=claimed),
+        reply_markup=superadmin_kb(message.from_user.id),
+    )
     try:
         await bot.edit_message_reply_markup(
             chat_id=data["origin_chat_id"],

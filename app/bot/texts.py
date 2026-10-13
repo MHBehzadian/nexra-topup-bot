@@ -252,6 +252,27 @@ REQUEST_REJECTED_ADMIN_WITH_REASON = "❌ درخواست شارژ حجم شما 
 ASK_REJECT_REASON = "📝 لطفاً علت رد درخواست را بنویسید (یا «-» در صورت عدم نیاز به توضیح):"
 
 ALREADY_HANDLED = "ℹ️ این درخواست قبلاً بررسی شده است."
+
+# --- approving less than the receipt claimed ---
+BTN_APPROVE_PARTIAL = "🟡 تأیید بخشی از واریز"
+ASK_PARTIAL_APPROVE_AMOUNT = (
+    "🟡 مبلغ این رسید {amount:,} تومان اعلام شده است.\n\n"
+    "چه مبلغی (تومان) واقعاً واریز شده است؟"
+)
+PARTIAL_APPROVE_TOPUP_NOTE = (
+    "\n\nℹ️ این رسید خرید حجم است؛ مبلغ واریزشده به‌جای حجم به کیف پول مشتری اضافه می‌شود."
+)
+INVALID_PARTIAL_APPROVE_AMOUNT = "⚠️ مبلغ باید عددی بزرگ‌تر از صفر و کمتر از {amount:,} تومان باشد."
+PARTIAL_APPROVED_DONE = "✅ رسید #{id} با مبلغ {received:,} تومان (از {claimed:,} تومان) تأیید شد."
+PARTIAL_RECEIPT_CUSTOMER = (
+    "⚠️ مبلغ رسید شما {claimed:,} تومان اعلام شده بود، اما {received:,} تومان واریز شده است.\n"
+    "همین مبلغ برای شما ثبت شد. برای باقی‌مانده لطفاً دوباره پرداخت نمایید."
+)
+PARTIAL_RECEIPT_TOPUP_CUSTOMER = (
+    "⚠️ مبلغ رسید خرید حجم شما {claimed:,} تومان بود، اما {received:,} تومان واریز شده است.\n"
+    "چون مبلغ برای این حجم کافی نبود، {received:,} تومان به کیف پول شما اضافه شد. "
+    "می‌توانید با موجودی کیف پول دوباره خرید کنید."
+)
 NOT_FOUND = "⚠️ درخواست یافت نشد."
 APPROVED_TOAST = "تأیید شد ✅"
 REJECTED_TOAST = "رد شد ❌"
@@ -443,6 +464,24 @@ INVOICE_PAYMENT_INSTRUCTIONS = (
 )
 INVOICE_RECEIPT_SUBMITTED = "⏳ رسید فاکتور ثبت شد. پس از بررسی، فاکتور تسویه خواهد شد."
 INVOICE_PAID_CUSTOMER = "✅ فاکتور #{id} تسویه شد. سپاس از پرداخت شما."
+INVOICE_PART_PAID_CUSTOMER = (
+    "✅ مبلغ {paid:,} تومان از فاکتور #{id} پرداخت شد.\n"
+    "💰 باقی‌مانده‌ی فاکتور: {remaining:,} تومان"
+)
+INVOICE_PAID_WITH_CREDIT = (
+    "✅ فاکتور #{id} تسویه شد. سپاس از پرداخت شما.\n"
+    "💼 مبلغ اضافه ({excess:,} تومان) به کیف پول شما افزوده شد. موجودی: {balance:,} تومان"
+)
+
+# --- paying part of a bill ---
+BTN_PAY_PART = "💵 پرداخت بخشی از مبلغ"
+ASK_PART_AMOUNT = (
+    "💵 مبلغ قابل پرداخت: {remaining:,} تومان\n\n"
+    "چه مبلغی (تومان) را اکنون پرداخت می‌کنید؟"
+)
+INVALID_PART_AMOUNT = "⚠️ مبلغ باید عددی بین ۱ و {remaining:,} تومان باشد."
+PART_RECEIPT_SUBMITTED = "⏳ رسید پرداخت ثبت شد. پس از بررسی، این مبلغ از بدهی شما کسر خواهد شد."
+PART_PAYMENT_NOTE = "پس از تأیید، این مبلغ از بدهی شما کسر می‌شود و باقی‌مانده باز می‌ماند."
 INVOICE_ALREADY_PAID = "ℹ️ این فاکتور قبلاً تسویه شده است."
 INVOICE_NOT_FOUND = "⚠️ فاکتور یافت نشد."
 
@@ -581,6 +620,7 @@ BILL_INVOICE_ITEM = (
     "     {description}\n"
     "     {timing}\n"
 )
+BILL_PART_PAID = "     💵 {paid:,} تومان پرداخت شده\n"
 BILL_WEEKLY_ITEM = (
     "▫️ <b>پرداخت هفتگی</b> · {amount:,} تومان\n"
     "     پنل {username}\n"
@@ -669,10 +709,12 @@ UNSUSPENDED_ADMIN_NOTICE = (
 MY_BILL_INVOICE = (
     "🧾 فاکتور #{id}\n\n"
     "💰 مبلغ قابل پرداخت: {amount:,} تومان\n"
+    "{paid}"
     "📝 بابت: {description}\n"
     "{timing}\n\n"
     "برای پرداخت، دکمه‌ی زیر را بزنید."
 )
+MY_BILL_PART_PAID = "💵 پرداخت‌شده تا کنون: {paid:,} تومان\n"
 MY_BILL_WEEKLY = (
     "🗓 پرداخت هفتگی\n\n"
     "▪️ پنل: {username}\n"
@@ -772,6 +814,24 @@ BILL_MARKED_PAID_WEEKLY_CUSTOMER = (
     "✅ بدهی هفتگی پنل «{username}» به مبلغ {amount:,} تومان تسویه شد. سپاس از پرداخت شما."
 )
 MARK_PAID_CANCELLED = "↩️ ثبت پرداخت لغو شد."
+BTN_MARK_PART_PAID = "💵 ثبت پرداخت بخشی"
+CHOOSE_BILL_TO_MARK_PART_PAID = "💵 پرداخت بخشی برای کدام بدهی ثبت شود؟"
+ASK_RECORD_PART_INVOICE = (
+    "💵 فاکتور #{id} — باقی‌مانده: {remaining:,} تومان\n\n"
+    "چه مبلغی (تومان) پرداخت شده است؟"
+)
+ASK_RECORD_PART_WEEKLY = (
+    "💵 بدهی هفتگی پنل «{username}» — باقی‌مانده: {remaining:,} تومان\n\n"
+    "چه مبلغی (تومان) پرداخت شده است؟"
+)
+PART_RECORDED_INVOICE = (
+    "✅ پرداخت {paid:,} تومان برای فاکتور #{id} ثبت شد.\n"
+    "💰 باقی‌مانده: {remaining:,} تومان"
+)
+PART_RECORDED_WEEKLY = (
+    "✅ پرداخت {paid:,} تومان برای بدهی هفتگی پنل «{username}» ثبت شد.\n"
+    "💰 باقی‌مانده: {remaining:,} تومان"
+)
 BILL_NOTICE_NOT_DELIVERED = "⚠️ پیام به مشتری تحویل نشد (احتمالاً ربات را مسدود کرده است)."
 
 # --- the week's sales ---

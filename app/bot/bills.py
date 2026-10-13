@@ -47,6 +47,7 @@ class Bill:
     invoice_id: int | None = None
     username: str | None = None  # the panel, for weekly credit
     description: str | None = None
+    paid: int = 0  # already paid towards an invoice; amount is what is left
 
     @property
     def key(self) -> str:
@@ -88,7 +89,8 @@ def open_bills(telegram_id: int | None = None, now: datetime | None = None) -> l
             Bill(
                 kind="invoice",
                 telegram_id=inv.telegram_id,
-                amount=inv.amount,
+                amount=inv.remaining,
+                paid=inv.paid_amount,
                 due=_parse(inv.due_at),
                 created=_parse(inv.created_at),
                 last_warned=_parse(inv.last_warned_at),
@@ -169,6 +171,36 @@ def mark_paid(bill: Bill) -> int | None:
     return owed
 
 
+def record_payment(bill: Bill, amount: int) -> tuple[int, int] | None:
+    """Put part of a bill's money in, received outside the bot.
+
+    Returns (applied, remaining), or None if the bill was settled or cancelled
+    in the meantime. Applied never exceeds what was owed.
+    """
+    if bill.kind == "invoice":
+        result = db.pay_invoice(bill.invoice_id, amount)
+        if result is None:
+            return None
+        applied, remaining = result
+        method = "invoice"
+    else:
+        owed = db.get_debt(bill.username)
+        if owed <= 0:
+            return None
+        applied = min(amount, owed)
+        remaining = db.reduce_debt(bill.username, applied)
+        method = db.SETTLEMENT_METHOD
+    if applied > 0:
+        db.record_sale(
+            telegram_id=bill.telegram_id,
+            username=bill.username if bill.kind == "weekly" else None,
+            gb=0,
+            amount=applied,
+            method=method,
+        )
+    return applied, remaining
+
+
 # ---- rendering ---------------------------------------------------------------
 
 def describe_timing(bill: Bill, now: datetime | None = None) -> str:
@@ -224,6 +256,8 @@ def render_customer(customer: Customer, now: datetime | None = None) -> str:
                 description=escape(bill.description or "—"),
                 timing=timing,
             )
+            if bill.paid:
+                text += texts.BILL_PART_PAID.format(paid=bill.paid)
         else:
             text += texts.BILL_WEEKLY_ITEM.format(
                 username=escape(bill.username or "—"), amount=bill.amount, timing=timing
@@ -239,6 +273,7 @@ def render_for_customer(bill: Bill, now: datetime | None = None) -> str:
         return texts.MY_BILL_INVOICE.format(
             id=bill.invoice_id,
             amount=bill.amount,
+            paid=texts.MY_BILL_PART_PAID.format(paid=bill.paid) if bill.paid else "",
             description=escape(bill.description or "—"),
             timing=timing,
         )

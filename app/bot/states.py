@@ -13,6 +13,11 @@ class RejectReason(StatesGroup):
     reason = State()
 
 
+class ApprovePartial(StatesGroup):
+    """How much of a receipt's amount actually arrived."""
+    amount = State()
+
+
 class MessageUser(StatesGroup):
     text = State()
 
@@ -72,6 +77,16 @@ class NewInvoice(StatesGroup):
 
 class InvoicePayment(StatesGroup):
     receipt = State()
+
+
+class PartPayment(StatesGroup):
+    """The customer paying only part of an invoice or a weekly debt."""
+    amount = State()
+
+
+class RecordPartPayment(StatesGroup):
+    """The superadmin recording part of a bill as paid outside the bot."""
+    amount = State()
 
 
 class PayAllBills(StatesGroup):

@@ -202,6 +202,8 @@ def invoice_due_kb() -> InlineKeyboardMarkup:
 def pay_invoice_kb(invoice_id: int) -> InlineKeyboardMarkup:
     kb = InlineKeyboardBuilder()
     kb.button(text=texts.BTN_PAY_INVOICE, callback_data=f"pay_invoice:{invoice_id}")
+    kb.button(text=texts.BTN_PAY_PART, callback_data=f"pay_invoice_part:{invoice_id}")
+    kb.adjust(1)
     return kb.as_markup()
 
 
@@ -212,6 +214,7 @@ def user_actions_kb(telegram_id: int) -> InlineKeyboardMarkup:
     kb.button(text=texts.BTN_DEDUCT_WALLET, callback_data=f"usr_deduct:{telegram_id}")
     kb.button(text=texts.BTN_INVOICE_FOR_USER, callback_data=f"usr_invoice:{telegram_id}")
     kb.button(text=texts.BTN_MARK_PAID, callback_data=f"paidpick:{telegram_id}")
+    kb.button(text=texts.BTN_MARK_PART_PAID, callback_data=f"partpick:{telegram_id}")
     kb.button(text=texts.BTN_DELETE_INVOICE, callback_data=f"usr_delinv:{telegram_id}")
     kb.button(text=texts.BTN_MESSAGE_USER, callback_data=f"msg_user:{telegram_id}")
     # Whichever of the two makes sense right now, so there is nothing to read
@@ -220,7 +223,7 @@ def user_actions_kb(telegram_id: int) -> InlineKeyboardMarkup:
         kb.button(text=texts.BTN_UNLOCK_PANELS, callback_data=f"usr_unlock:{telegram_id}")
     else:
         kb.button(text=texts.BTN_LOCK_PANELS, callback_data=f"usr_lock:{telegram_id}")
-    kb.adjust(2, 2, 1, 1)
+    kb.adjust(2, 2, 2, 1)
     return kb.as_markup()
 
 
@@ -240,6 +243,8 @@ def confirm_lock_kb(telegram_id: int, locking: bool) -> InlineKeyboardMarkup:
 def pay_debt_kb(username: str) -> InlineKeyboardMarkup:
     kb = InlineKeyboardBuilder()
     kb.button(text=texts.BTN_PAY_DEBT, callback_data=f"pay_debt:{username}")
+    kb.button(text=texts.BTN_PAY_PART, callback_data=f"pay_debt_part:{username}")
+    kb.adjust(1)
     return kb.as_markup()
 
 
@@ -255,11 +260,12 @@ def bill_actions_kb(customer) -> InlineKeyboardMarkup | None:
     kb = InlineKeyboardBuilder()
     kb.button(text=texts.BTN_WARN_CUSTOMER, callback_data=f"warnall:{customer.telegram_id}")
     kb.button(text=texts.BTN_MARK_PAID, callback_data=f"paidpick:{customer.telegram_id}")
+    kb.button(text=texts.BTN_MARK_PART_PAID, callback_data=f"partpick:{customer.telegram_id}")
     kb.button(
         text=texts.BTN_DELETE_CUSTOMER_BILL, callback_data=f"delpick:{customer.telegram_id}"
     )
     kb.button(text=texts.BTN_MESSAGE_USER, callback_data=f"msg_user:{customer.telegram_id}")
-    kb.adjust(2, 2)
+    kb.adjust(2, 2, 1)
     return kb.as_markup()
 
 
@@ -300,14 +306,16 @@ def confirm_bill_delete_kb(bill) -> InlineKeyboardMarkup:
     return kb.as_markup()
 
 
-def bills_mark_paid_kb(items) -> InlineKeyboardMarkup:
+def bills_mark_paid_kb(items, action: str = "billpaid") -> InlineKeyboardMarkup:
+    """One button per open bill; `action` decides whether picking one records it
+    paid in full ("billpaid") or asks how much came in ("billpart")."""
     kb = InlineKeyboardBuilder()
     for bill in items:
         if bill.kind == "invoice":
             label = texts.BTN_MARK_PAID_INVOICE.format(id=bill.invoice_id)
         else:
             label = texts.BTN_MARK_PAID_WEEKLY.format(username=bill.username)
-        kb.button(text=f"{label} — {bill.amount:,}", callback_data=f"billpaid:{bill.key}")
+        kb.button(text=f"{label} — {bill.amount:,}", callback_data=f"{action}:{bill.key}")
     kb.adjust(1)
     return kb.as_markup()
 
@@ -379,8 +387,9 @@ def approval_kb(request_id: int, admin_telegram_id: int) -> InlineKeyboardMarkup
     kb = InlineKeyboardBuilder()
     kb.button(text="✅ تأیید", callback_data=f"topup_approve:{request_id}")
     kb.button(text="❌ رد", callback_data=f"topup_reject:{request_id}")
+    kb.button(text=texts.BTN_APPROVE_PARTIAL, callback_data=f"topup_partial:{request_id}")
     kb.button(text=texts.BTN_MESSAGE_USER, callback_data=f"msg_user:{admin_telegram_id}")
-    kb.adjust(2, 1)
+    kb.adjust(2, 1, 1)
     return kb.as_markup()
 
 

@@ -99,7 +99,7 @@ def _render_profile(telegram_id: int, panels: list[dict]) -> str:
         text += texts.USER_PROFILE_INVOICES.format(
             invoices="".join(
                 texts.USER_PROFILE_INVOICE_LINE.format(
-                    id=i.id, amount=i.amount, description=i.description or "—"
+                    id=i.id, amount=i.remaining, description=i.description or "—"
                 )
                 for i in invoices
             )

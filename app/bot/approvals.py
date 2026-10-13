@@ -77,12 +77,32 @@ async def approve_request(bot: Bot, request_id: int, reviewer_id: int) -> Outcom
         return Outcome(True, texts.APPROVED_TOAST, finished=True)
 
     if req.kind == "invoice":
-        if not db.mark_invoice_paid(req.invoice_id):
+        # The receipt may cover the whole invoice or only part of it; either way
+        # it goes against what is still owed. More than that (a part was recorded
+        # by hand while this receipt waited) lands in the wallet, not nowhere.
+        result = db.pay_invoice(req.invoice_id, req.toman_amount)
+        if result is None:
             return Outcome(False, texts.INVOICE_ALREADY_PAID, alert=True, finished=True)
-        db.record_sale(
-            telegram_id=customer, username=None, gb=0, amount=req.toman_amount, method="invoice"
-        )
-        await _tell(bot, customer, texts.INVOICE_PAID_CUSTOMER.format(id=req.invoice_id))
+        applied, remaining = result
+        if applied > 0:
+            db.record_sale(
+                telegram_id=customer, username=None, gb=0, amount=applied, method="invoice"
+            )
+        excess = req.toman_amount - applied
+        if excess > 0:
+            db.add_wallet_balance(customer, excess)
+
+        if remaining > 0:
+            text = texts.INVOICE_PART_PAID_CUSTOMER.format(
+                id=req.invoice_id, paid=applied, remaining=remaining
+            )
+        elif excess > 0:
+            text = texts.INVOICE_PAID_WITH_CREDIT.format(
+                id=req.invoice_id, excess=excess, balance=db.get_wallet_balance(customer)
+            )
+        else:
+            text = texts.INVOICE_PAID_CUSTOMER.format(id=req.invoice_id)
+        await _tell(bot, customer, text)
         await enforcement.settle_up(bot, customer)
         return Outcome(True, texts.APPROVED_TOAST, finished=True)
 
@@ -95,8 +115,9 @@ async def approve_request(bot: Bot, request_id: int, reviewer_id: int) -> Outcom
             if left <= 0:
                 break
             if bill.kind == "invoice":
-                # All or nothing: an invoice is a single demand, so covering
-                # part of one must not mark the whole thing settled.
+                # All or nothing here: a lump sum clears whole invoices, and
+                # whatever can't is left for the wallet rather than spread thin.
+                # (bill.amount is what is still owed, after any part payments.)
                 if left < bill.amount or not db.mark_invoice_paid(bill.invoice_id):
                     continue
                 db.record_sale(

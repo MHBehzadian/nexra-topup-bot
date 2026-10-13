@@ -20,7 +20,7 @@ from aiogram.types import CallbackQuery, FSInputFile, Message
 from .. import auto_approve, keyboards, texts
 from ..bills import open_bills, render_for_customer, urgency
 from ..nav import ALL_MENU_TEXTS, menu_kb_for
-from ..states import DebtPayment, InvoicePayment, PayAllBills, WalletTopUp
+from ..states import DebtPayment, InvoicePayment, PartPayment, PayAllBills, WalletTopUp
 from ... import db
 from ...config import settings
 
@@ -280,10 +280,12 @@ async def start_invoice_payment(call: CallbackQuery, state: FSMContext) -> None:
 
     await call.answer()
     await state.set_state(InvoicePayment.receipt)
-    await state.update_data(invoice_id=invoice_id, invoice_amount=invoice.amount)
+    await state.update_data(
+        invoice_id=invoice_id, invoice_amount=invoice.remaining, partial=False
+    )
     await call.message.answer(
         texts.INVOICE_PAYMENT_INSTRUCTIONS.format(
-            amount=invoice.amount, card_number=card_number
+            amount=invoice.remaining, card_number=card_number
         ),
         reply_markup=keyboards.cancel_kb(),
     )
@@ -298,6 +300,7 @@ async def get_invoice_receipt(message: Message, state: FSMContext, bot: Bot) -> 
     data = await state.get_data()
     await state.clear()
     invoice_id, amount = data["invoice_id"], data["invoice_amount"]
+    partial = data.get("partial", False)
     path = await _save_receipt(message, bot)
 
     request_id = db.create_request(
@@ -311,17 +314,17 @@ async def get_invoice_receipt(message: Message, state: FSMContext, bot: Bot) -> 
     )
 
     await message.answer(
-        texts.INVOICE_RECEIPT_SUBMITTED, reply_markup=await menu_kb_for(message.from_user.id)
+        texts.PART_RECEIPT_SUBMITTED if partial else texts.INVOICE_RECEIPT_SUBMITTED,
+        reply_markup=await menu_kb_for(message.from_user.id),
     )
-    await _send_to_superadmins(
-        bot,
-        path,
-        f"🧾 رسید فاکتور #{invoice_id} (درخواست #{request_id})\n"
+    caption = (
+        f"🧾 رسید {'پرداخت بخشی از ' if partial else ''}فاکتور #{invoice_id} (درخواست #{request_id})\n"
         f"👤 آیدی عددی: {message.from_user.id}\n"
-        f"💰 مبلغ: {amount:,} تومان",
-        request_id,
-        message.from_user.id,
+        f"💰 مبلغ: {amount:,} تومان"
     )
+    if partial:
+        caption += f"\n📌 باقی‌مانده‌ی فاکتور پیش از این پرداخت: {data['owed']:,} تومان"
+    await _send_to_superadmins(bot, path, caption, request_id, message.from_user.id)
 
 
 # ---- settling a weekly-credit debt -------------------------------------------
@@ -346,7 +349,7 @@ async def start_debt_payment(call: CallbackQuery, state: FSMContext) -> None:
 
     await call.answer()
     await state.set_state(DebtPayment.receipt)
-    await state.update_data(debt_username=username, debt_amount=amount)
+    await state.update_data(debt_username=username, debt_amount=amount, partial=False)
     await call.message.answer(
         texts.DEBT_PAYMENT_INSTRUCTIONS.format(amount=amount, card_number=card_number),
         reply_markup=keyboards.cancel_kb(),
@@ -362,6 +365,7 @@ async def get_debt_receipt(message: Message, state: FSMContext, bot: Bot) -> Non
     data = await state.get_data()
     await state.clear()
     username, amount = data["debt_username"], data["debt_amount"]
+    partial = data.get("partial", False)
     path = await _save_receipt(message, bot)
 
     request_id = db.create_request(
@@ -374,15 +378,90 @@ async def get_debt_receipt(message: Message, state: FSMContext, bot: Bot) -> Non
     )
 
     await message.answer(
-        texts.SETTLEMENT_SUBMITTED, reply_markup=await menu_kb_for(message.from_user.id)
+        texts.PART_RECEIPT_SUBMITTED if partial else texts.SETTLEMENT_SUBMITTED,
+        reply_markup=await menu_kb_for(message.from_user.id),
     )
-    await _send_to_superadmins(
-        bot,
-        path,
-        f"🗓 رسید تسویه‌ی هفتگی #{request_id}\n"
+    caption = (
+        f"🗓 رسید {'پرداخت بخشی از ' if partial else ''}تسویه‌ی هفتگی #{request_id}\n"
         f"▪️ پنل: {username}\n"
         f"👤 آیدی عددی: {message.from_user.id}\n"
-        f"💰 مبلغ: {amount:,} تومان",
-        request_id,
-        message.from_user.id,
+        f"💰 مبلغ: {amount:,} تومان"
     )
+    if partial:
+        caption += f"\n📌 بدهی پیش از این پرداخت: {data['owed']:,} تومان"
+    await _send_to_superadmins(bot, path, caption, request_id, message.from_user.id)
+
+
+# ---- paying only part of a bill ----------------------------------------------
+# The customer names an amount, then the usual receipt step takes over: the
+# receipt goes through the same request kinds as a full payment, and approval
+# puts whatever it covers against what is owed and leaves the rest open.
+
+@router.callback_query(F.data.startswith("pay_invoice_part:"))
+async def start_invoice_part_payment(call: CallbackQuery, state: FSMContext) -> None:
+    invoice_id = int(call.data.split(":", 1)[1])
+    invoice = db.get_invoice(invoice_id)
+    # An invoice belongs to one person; nobody else may pay or even see it.
+    if invoice is None or invoice.telegram_id != call.from_user.id:
+        await call.answer(texts.INVOICE_NOT_FOUND, show_alert=True)
+        return
+    if invoice.status != "pending" or invoice.remaining <= 0:
+        await call.answer(texts.INVOICE_ALREADY_PAID, show_alert=True)
+        return
+
+    await call.answer()
+    await state.set_state(PartPayment.amount)
+    await state.update_data(part_kind="invoice", invoice_id=invoice_id, owed=invoice.remaining)
+    await call.message.answer(
+        texts.ASK_PART_AMOUNT.format(remaining=invoice.remaining),
+        reply_markup=keyboards.cancel_kb(),
+    )
+
+
+@router.callback_query(F.data.startswith("pay_debt_part:"))
+async def start_debt_part_payment(call: CallbackQuery, state: FSMContext) -> None:
+    username = call.data.split(":", 1)[1]
+    debt = db.get_debt_record(username)
+    # Checked against who is asking, as with paying it in full.
+    if not debt or debt["amount"] <= 0 or debt["telegram_id"] != call.from_user.id:
+        await call.answer(texts.NO_DEBT, show_alert=True)
+        return
+
+    await call.answer()
+    await state.set_state(PartPayment.amount)
+    await state.update_data(part_kind="weekly", debt_username=username, owed=debt["amount"])
+    await call.message.answer(
+        texts.ASK_PART_AMOUNT.format(remaining=debt["amount"]),
+        reply_markup=keyboards.cancel_kb(),
+    )
+
+
+@router.message(PartPayment.amount, ~F.text.in_(ALL_MENU_TEXTS))
+async def get_part_amount(message: Message, state: FSMContext) -> None:
+    data = await state.get_data()
+    owed = data["owed"]
+    amount = _parse_toman(message.text)
+    if amount is None or amount > owed:
+        await message.answer(texts.INVALID_PART_AMOUNT.format(remaining=owed))
+        return
+
+    card_number = db.get_setting("card_number")
+    if not card_number:
+        await state.clear()
+        await message.answer(
+            texts.CARD_NOT_CONFIGURED, reply_markup=await menu_kb_for(message.from_user.id)
+        )
+        return
+
+    if data["part_kind"] == "invoice":
+        await state.set_state(InvoicePayment.receipt)
+        await state.update_data(invoice_amount=amount, partial=amount < owed)
+        instructions = texts.INVOICE_PAYMENT_INSTRUCTIONS
+    else:
+        await state.set_state(DebtPayment.receipt)
+        await state.update_data(debt_amount=amount, partial=amount < owed)
+        instructions = texts.DEBT_PAYMENT_INSTRUCTIONS
+    text = instructions.format(amount=amount, card_number=card_number)
+    if amount < owed:
+        text += "\n\n" + texts.PART_PAYMENT_NOTE
+    await message.answer(text, reply_markup=keyboards.cancel_kb())

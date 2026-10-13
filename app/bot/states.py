@@ -74,6 +74,16 @@ class InvoicePayment(StatesGroup):
     receipt = State()
 
 
+class PartPayment(StatesGroup):
+    """The customer paying only part of an invoice or a weekly debt."""
+    amount = State()
+
+
+class RecordPartPayment(StatesGroup):
+    """The superadmin recording part of a bill as paid outside the bot."""
+    amount = State()
+
+
 class PayAllBills(StatesGroup):
     receipt = State()
 

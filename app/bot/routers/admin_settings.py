@@ -7,7 +7,7 @@ from aiogram import Bot, F, Router
 from aiogram.fsm.context import FSMContext
 from aiogram.types import CallbackQuery, Message
 
-from .. import auto_approve, bills, digest, keyboards, sales, texts
+from .. import auto_approve, bills, digest, enforcement, keyboards, sales, texts
 from ..backups import send_backup
 from ..filters import SuperadminFilter
 from ..invoices import describe_due, due_at_for
@@ -20,6 +20,7 @@ from ..states import (
     GrantWallet,
     NewInvoice,
     PanelHistory,
+    RecordPartPayment,
     SetBulkPin,
     SetCardNumber,
     SetForceJoinChannel,
@@ -634,6 +635,103 @@ async def cancel_bill_paid(call: CallbackQuery) -> None:
     await call.message.answer(
         texts.MARK_PAID_CANCELLED, reply_markup=superadmin_kb(call.from_user.id)
     )
+
+
+# ---- recording part of a bill as paid ----------------------------------------
+
+@router.callback_query(F.data.startswith("partpick:"))
+async def pick_bill_to_mark_part_paid(call: CallbackQuery, state: FSMContext) -> None:
+    telegram_id = int(call.data.split(":", 1)[1])
+    items = sorted(bills.open_bills(telegram_id), key=bills.urgency, reverse=True)
+    if not items:
+        await call.answer(texts.WARNING_BILL_GONE, show_alert=True)
+        return
+    await call.answer()
+    if len(items) == 1:
+        await _ask_part_amount(call, state, items[0])
+        return
+    await call.message.answer(
+        texts.CHOOSE_BILL_TO_MARK_PART_PAID,
+        reply_markup=keyboards.bills_mark_paid_kb(items, action="billpart"),
+    )
+
+
+@router.callback_query(F.data.startswith("billpart:"))
+async def pick_part_paid_bill(call: CallbackQuery, state: FSMContext) -> None:
+    bill = bills.find(call.data.split(":", 1)[1])
+    if bill is None:
+        await call.answer(texts.WARNING_BILL_GONE, show_alert=True)
+        return
+    await call.answer()
+    await _ask_part_amount(call, state, bill)
+
+
+async def _ask_part_amount(call: CallbackQuery, state: FSMContext, bill) -> None:
+    if bill.kind == "invoice":
+        prompt = texts.ASK_RECORD_PART_INVOICE.format(id=bill.invoice_id, remaining=bill.amount)
+    else:
+        prompt = texts.ASK_RECORD_PART_WEEKLY.format(username=bill.username, remaining=bill.amount)
+    await state.set_state(RecordPartPayment.amount)
+    await state.update_data(bill_key=bill.key)
+    await call.message.answer(prompt, reply_markup=keyboards.cancel_kb())
+
+
+@router.message(RecordPartPayment.amount, ~F.text.in_(ALL_MENU_TEXTS))
+async def finish_part_paid(message: Message, state: FSMContext, bot: Bot) -> None:
+    data = await state.get_data()
+    # Looked up again rather than trusted from when the button was pressed: a
+    # receipt may have been approved against it while the amount was typed.
+    bill = bills.find(data["bill_key"])
+    if bill is None:
+        await state.clear()
+        await message.answer(
+            texts.WARNING_BILL_GONE, reply_markup=superadmin_kb(message.from_user.id)
+        )
+        return
+
+    raw = (message.text or "").strip().replace(",", "").replace("٬", "")
+    if not raw.isdigit() or not 0 < int(raw) <= bill.amount:
+        await message.answer(texts.INVALID_PART_AMOUNT.format(remaining=bill.amount))
+        return
+    await state.clear()
+
+    result = bills.record_payment(bill, int(raw))
+    if result is None:
+        await message.answer(
+            texts.WARNING_BILL_GONE, reply_markup=superadmin_kb(message.from_user.id)
+        )
+        return
+    paid, remaining = result
+
+    if bill.kind == "invoice":
+        done = texts.PART_RECORDED_INVOICE.format(
+            id=bill.invoice_id, paid=paid, remaining=remaining
+        )
+        notice = (
+            texts.INVOICE_PART_PAID_CUSTOMER.format(
+                id=bill.invoice_id, paid=paid, remaining=remaining
+            )
+            if remaining > 0
+            else texts.INVOICE_PAID_CUSTOMER.format(id=bill.invoice_id)
+        )
+    else:
+        done = texts.PART_RECORDED_WEEKLY.format(
+            username=bill.username, paid=paid, remaining=remaining
+        )
+        notice = (
+            texts.SETTLEMENT_PARTIAL_ADMIN.format(
+                username=bill.username, paid=paid, remaining=remaining
+            )
+            if remaining > 0
+            else texts.SETTLEMENT_APPROVED_ADMIN.format(username=bill.username)
+        )
+    await message.answer(done, reply_markup=superadmin_kb(message.from_user.id))
+    if bill.telegram_id is not None:
+        try:
+            await bot.send_message(bill.telegram_id, notice)
+        except Exception:
+            await message.answer(texts.BILL_NOTICE_NOT_DELIVERED)
+        await enforcement.settle_up(bot, bill.telegram_id)
 
 
 @router.message(F.text == texts.BTN_SALES_REPORT)

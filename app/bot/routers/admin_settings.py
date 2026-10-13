@@ -658,7 +658,8 @@ async def finish_panel_history(message: Message, state: FSMContext) -> None:
 
 @router.message(F.text == texts.BTN_DIGEST)
 async def show_digest(message: Message) -> None:
-    await message.answer(await digest.build())
+    for chunk in digest.split(await digest.build()):
+        await message.answer(chunk)
 
 
 @router.message(F.text == texts.BTN_TOGGLE_AUTO_APPROVE)

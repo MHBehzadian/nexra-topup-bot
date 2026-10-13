@@ -2,8 +2,8 @@
 
 Everything here is already visible somewhere in the bot; the point is not having
 to go and look. What is worth being told unprompted is what changed today and
-what is waiting: money taken, receipts still unreviewed, debts past their date,
-and panels about to run dry.
+what is waiting: money taken and who it came from, receipts still unreviewed,
+debts past their date, and panels about to run dry.
 """
 
 from __future__ import annotations
@@ -29,6 +29,7 @@ LOW_TRAFFIC_GB = 50.0
 MAX_LISTED_PANELS = 15
 MAX_LISTED_SETTLEMENTS = 10
 MAX_LISTED_DEBTORS = 20
+MESSAGE_LIMIT = 4000
 
 
 def _who(telegram_id: int | None) -> str:
@@ -36,6 +37,76 @@ def _who(telegram_id: int | None) -> str:
         return "—"
     record = db.get_user(telegram_id) or {}
     return escape(record.get("full_name") or str(telegram_id))
+
+
+def _time(stamp: str) -> str:
+    try:
+        return datetime.fromisoformat(stamp).astimezone(TEHRAN).strftime("%H:%M")
+    except Exception:
+        return "—"
+
+
+def _methods_line(today: list[db.Sale]) -> str:
+    per_method: dict[str, int] = {}
+    for sale in today:
+        per_method[sale.method] = per_method.get(sale.method, 0) + 1
+    breakdown = " · ".join(
+        f"{texts.SALES_METHOD_LABELS.get(method, method)} {count}"
+        for method, count in sorted(per_method.items(), key=lambda kv: kv[1], reverse=True)
+    )
+    return texts.DIGEST_SALES_METHODS.format(methods=breakdown)
+
+
+def _buyers_block(today: list[db.Sale]) -> str:
+    """Who bought today, biggest spender first, with every purchase under them."""
+    buyers: dict[object, list[db.Sale]] = {}
+    for sale in today:
+        key = sale.telegram_id if sale.telegram_id is not None else f"panel:{sale.username}"
+        buyers.setdefault(key, []).append(sale)
+
+    ranked = sorted(buyers.values(), key=lambda bought: sum(s.amount for s in bought), reverse=True)
+    text = texts.DIGEST_BUYERS_HEADER.format(count=len(ranked))
+    for bought in ranked:
+        first = bought[0]
+        who = _who(first.telegram_id) if first.telegram_id is not None else escape(first.username or "—")
+        text += texts.DIGEST_BUYER_LINE.format(
+            who=who,
+            amount=sum(s.amount for s in bought),
+            gb=round(sum(s.gb for s in bought), 2),
+            count=len(bought),
+        )
+        for sale in bought:
+            text += texts.DIGEST_PURCHASE_LINE.format(
+                time=_time(sale.created_at),
+                username=escape(sale.username or "—"),
+                gb=round(sale.gb, 2),
+                method=texts.SALES_METHOD_LABELS.get(sale.method, sale.method),
+                amount=sale.amount,
+            )
+    return text + "\n"
+
+
+def split(text: str, limit: int = MESSAGE_LIMIT) -> list[str]:
+    """Telegram refuses messages over 4096 characters, and a busy day's buyer list
+    can run past that. Cut on line breaks so no HTML tag is ever split."""
+    chunks: list[str] = []
+    current = ""
+    for line in text.split("\n"):
+        while len(line) > limit:  # a single absurd line; never expected
+            if current:
+                chunks.append(current)
+                current = ""
+            chunks.append(line[:limit])
+            line = line[limit:]
+        candidate = f"{current}\n{line}" if current else line
+        if len(candidate) > limit:
+            chunks.append(current)
+            current = line
+        else:
+            current = candidate
+    if current.strip():
+        chunks.append(current)
+    return [c for c in chunks if c.strip()]
 
 
 async def build(now: datetime | None = None) -> str:
@@ -51,8 +122,27 @@ async def build(now: datetime | None = None) -> str:
             gb=round(sum(s.gb for s in today), 2),
             count=len(today),
         )
+        text += _methods_line(today)
+        text += _buyers_block(today)
     else:
         text += texts.DIGEST_NO_SALES
+
+    # Traffic handed over for free: not takings, but still something that went
+    # out today and should be seen.
+    granted = [s for s in ledger if s.method == sales.GRANT]
+    if granted:
+        listed = "".join(
+            texts.DIGEST_GRANT_LINE.format(
+                time=_time(s.created_at),
+                username=escape(s.username or "—"),
+                gb=round(s.gb, 2),
+                who=_who(s.telegram_id),
+            )
+            for s in granted
+        )
+        text += texts.DIGEST_GRANTED.format(
+            gb=round(sum(s.gb for s in granted), 2), count=len(granted), lines=listed
+        )
 
     # Money that came in against weekly credit — reported separately so it never
     # inflates the day's sales, but still seen without going to look for it.
@@ -161,7 +251,8 @@ async def tick(bot: Bot) -> bool:
     text = await build(now)
     for superadmin_id in settings.superadmin_id_list:
         try:
-            await bot.send_message(superadmin_id, text)
+            for chunk in split(text):
+                await bot.send_message(superadmin_id, chunk)
         except Exception as exc:
             logger.error(f"failed sending the digest to {superadmin_id}: {exc}")
     db.set_setting("digest_date", stamp)

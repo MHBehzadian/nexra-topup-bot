@@ -387,8 +387,9 @@ def approval_kb(request_id: int, admin_telegram_id: int) -> InlineKeyboardMarkup
     kb = InlineKeyboardBuilder()
     kb.button(text="✅ تأیید", callback_data=f"topup_approve:{request_id}")
     kb.button(text="❌ رد", callback_data=f"topup_reject:{request_id}")
+    kb.button(text=texts.BTN_APPROVE_PARTIAL, callback_data=f"topup_partial:{request_id}")
     kb.button(text=texts.BTN_MESSAGE_USER, callback_data=f"msg_user:{admin_telegram_id}")
-    kb.adjust(2, 1)
+    kb.adjust(2, 1, 1)
     return kb.as_markup()
 
 

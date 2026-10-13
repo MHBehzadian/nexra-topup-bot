@@ -252,6 +252,27 @@ REQUEST_REJECTED_ADMIN_WITH_REASON = "❌ درخواست شارژ حجم شما 
 ASK_REJECT_REASON = "📝 لطفاً علت رد درخواست را بنویسید (یا «-» در صورت عدم نیاز به توضیح):"
 
 ALREADY_HANDLED = "ℹ️ این درخواست قبلاً بررسی شده است."
+
+# --- approving less than the receipt claimed ---
+BTN_APPROVE_PARTIAL = "🟡 تأیید بخشی از واریز"
+ASK_PARTIAL_APPROVE_AMOUNT = (
+    "🟡 مبلغ این رسید {amount:,} تومان اعلام شده است.\n\n"
+    "چه مبلغی (تومان) واقعاً واریز شده است؟"
+)
+PARTIAL_APPROVE_TOPUP_NOTE = (
+    "\n\nℹ️ این رسید خرید حجم است؛ مبلغ واریزشده به‌جای حجم به کیف پول مشتری اضافه می‌شود."
+)
+INVALID_PARTIAL_APPROVE_AMOUNT = "⚠️ مبلغ باید عددی بزرگ‌تر از صفر و کمتر از {amount:,} تومان باشد."
+PARTIAL_APPROVED_DONE = "✅ رسید #{id} با مبلغ {received:,} تومان (از {claimed:,} تومان) تأیید شد."
+PARTIAL_RECEIPT_CUSTOMER = (
+    "⚠️ مبلغ رسید شما {claimed:,} تومان اعلام شده بود، اما {received:,} تومان واریز شده است.\n"
+    "همین مبلغ برای شما ثبت شد. برای باقی‌مانده لطفاً دوباره پرداخت نمایید."
+)
+PARTIAL_RECEIPT_TOPUP_CUSTOMER = (
+    "⚠️ مبلغ رسید خرید حجم شما {claimed:,} تومان بود، اما {received:,} تومان واریز شده است.\n"
+    "چون مبلغ برای این حجم کافی نبود، {received:,} تومان به کیف پول شما اضافه شد. "
+    "می‌توانید با موجودی کیف پول دوباره خرید کنید."
+)
 NOT_FOUND = "⚠️ درخواست یافت نشد."
 APPROVED_TOAST = "تأیید شد ✅"
 REJECTED_TOAST = "رد شد ❌"

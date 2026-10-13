@@ -13,6 +13,11 @@ class RejectReason(StatesGroup):
     reason = State()
 
 
+class ApprovePartial(StatesGroup):
+    """How much of a receipt's amount actually arrived."""
+    amount = State()
+
+
 class MessageUser(StatesGroup):
     text = State()
 

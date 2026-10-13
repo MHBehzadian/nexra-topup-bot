@@ -308,6 +308,18 @@ def mark_reviewed(
         return cur.rowcount == 1
 
 
+def adjust_pending_request(request_id: int, *, amount: int, kind: str) -> bool:
+    """Change what a receipt is worth before it is approved — the money that
+    actually arrived rather than what the customer said they sent. Only while it
+    is still pending; False if it was handled in the meantime."""
+    with _connect() as conn:
+        cur = conn.execute(
+            "UPDATE topup_requests SET toman_amount = ?, kind = ? WHERE id = ? AND status = 'pending'",
+            (amount, kind, request_id),
+        )
+        return cur.rowcount == 1
+
+
 def revert_to_pending(request_id: int) -> None:
     """Roll back to pending if the panel API call failed after approval was recorded locally."""
     with _connect() as conn:

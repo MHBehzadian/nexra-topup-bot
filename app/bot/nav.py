@@ -114,5 +114,12 @@ async def menu_kb_for(user_id: int):
 
 
 async def cancel_and_show_menu(message: Message, state: FSMContext) -> None:
+    # A receipt held back from the automatic approver while the superadmin was
+    # typing goes back to it, or it would sit unapproved until someone noticed.
+    held = (await state.get_data()).get("held_request_id")
+    if held is not None:
+        from . import auto_approve  # here: auto_approve pulls in most of the bot
+
+        auto_approve.release(held)
     await state.clear()
     await message.answer(texts.CANCELLED, reply_markup=await menu_kb_for(message.from_user.id))

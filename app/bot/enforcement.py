@@ -109,10 +109,13 @@ async def _passwords() -> dict[str, str]:
 
 
 async def _tell(bot: Bot, chat_id: int, text: str, **kwargs) -> None:
+    """A failed send must never undo a lock that already happened, but it must
+    not vanish either: losing the notice silently is how a customer ends up
+    locked out with no idea why."""
     try:
         await bot.send_message(chat_id, text, **kwargs)
-    except Exception:
-        pass
+    except Exception as exc:
+        logger.error(f"could not notify {chat_id}: {type(exc).__name__}: {exc}")
 
 
 async def _tell_superadmins(bot: Bot, text: str) -> None:

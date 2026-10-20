@@ -1,6 +1,6 @@
 """Reseller applications: the entry point for someone who isn't a customer yet.
 
-Collects name, expected monthly volume and how they sell, then hands the lead to
+Collects an alias (not their real name), expected monthly volume and how they sell, then hands the lead to
 the superadmin. Open to anyone — this is precisely the flow for people with no
 panel linked.
 """

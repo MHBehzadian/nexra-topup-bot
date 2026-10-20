@@ -160,10 +160,20 @@ async def run_settlement(bot: Bot) -> None:
                         ),
                     )
                 else:
+                    # Said now, with the time, rather than left to the lock
+                    # itself: this is the last routine message before it lands.
+                    deadline = enforcement.deadline_for(telegram_id)
+                    lock_line = (
+                        texts.WEEKLY_LOCK_LINE.format(
+                            deadline=enforcement.describe_deadline(deadline)
+                        )
+                        if deadline
+                        else ""
+                    )
                     await bot.send_message(
                         telegram_id,
                         texts.WEEKLY_WALLET_PARTIAL.format(
-                            username=username, paid=paid, remaining=remaining
+                            username=username, paid=paid, remaining=remaining, lock_line=lock_line
                         ),
                         reply_markup=keyboards.pay_debt_kb(username),
                     )

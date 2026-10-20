@@ -149,7 +149,8 @@ WEEKLY_REMINDER = (
     "🗓 یادآوری تسویه‌ی هفتگی\n\n"
     "▪️ پنل: {username}\n"
     "💰 مبلغ قابل پرداخت: {amount:,} تومان\n\n"
-    "لطفاً تا پایان هفته نسبت به تسویه اقدام نمایید."
+    "لطفاً تا پایان هفته نسبت به تسویه اقدام نمایید.\n"
+    "⛔️ اگر این مبلغ تا ۲۴ ساعت پس از تسویه‌ی جمعه پرداخت نشود، پنل شما به‌صورت خودکار مسدود می‌شود."
 )
 OVERDUE_REMINDER = (
     "⚠️ بدهی تسویه‌نشده\n\n"
@@ -201,7 +202,10 @@ WEEKLY_WALLET_PARTIAL = (
     "▪️ پنل: {username}\n"
     "💼 از کیف پول کسر شد: {paid:,} تومان\n"
     "💰 باقی‌مانده جهت پرداخت: {remaining:,} تومان"
+    "{lock_line}"
 )
+# Appended to the settlement notice when what is left will lock the panel.
+WEEKLY_LOCK_LINE = "\n\n⛔️ در صورت عدم پرداخت تا {deadline}، پنل شما به‌صورت خودکار مسدود می‌شود."
 
 BTN_WALLET = "💼 کیف پول"
 BTN_PAY_WALLET = "💼 پرداخت از کیف پول"
@@ -361,7 +365,7 @@ GRANT_NOTIFY_ADMIN = (
 )
 
 BTN_PARTNERSHIP = "🤝 ثبت درخواست همکاری"
-ASK_PARTNER_NAME = "🤝 لطفاً نام و نام خانوادگی خود را وارد نمایید:"
+ASK_PARTNER_NAME = "🤝 لطفاً یک نام مستعار برای خود وارد نمایید:"
 ASK_PARTNER_VOLUME = "📊 حجم فروش ماهانه‌ی شما چقدر است؟"
 VOL_UNDER_1TB = "کمتر از ۱ ترابایت"
 VOL_1TB = "۱ ترابایت"
@@ -375,7 +379,7 @@ PARTNER_SUBMITTED = (
 )
 PARTNER_NOTIFY_SUPERADMIN = (
     "🤝 درخواست همکاری جدید\n\n"
-    "👤 نام: {name}\n"
+    "👤 نام مستعار: {name}\n"
     "📎 یوزرنیم: {mention}\n"
     "🆔 آیدی عددی: <code>{telegram_id}</code>\n"
     "📊 حجم فروش ماهانه: {volume}\n"
@@ -639,11 +643,36 @@ MY_BILLS_SUMMARY = (
 SUSPENDED_NOTICE = (
     "⛔️ <b>پنل شما مسدود شد</b>\n"
     "━━━━━━━━━━━━━━━\n"
-    "متأسفانه پنل شما به علت عدم پرداخت فاکتور پرداخت هفتگی مسدود شد.\n\n"
+    "متأسفانه پنل شما به علت عدم پرداخت فاکتور پرداخت هفتگی مسدود شد "
+    "و تا پرداخت، ورود به پنل ممکن نیست.\n\n"
     "💰 جمع بدهی: <b>{total:,}</b> تومان · {count} مورد\n\n"
-    "برای جلوگیری از قطع شدن کانفیگ یوزرها، نسبت به پرداخت فاکتورها اقدام کنید."
+    "برای جلوگیری از قطع شدن کانفیگ یوزرها، نسبت به پرداخت فاکتورها اقدام کنید. "
+    "پس از پرداخت، دسترسی پنل با همان رمز قبلی به‌صورت خودکار برمی‌گردد."
 )
 BTN_SHOW_ALL_BILLS = "🧾 نمایش همه فاکتورها"
+# Shown when a locked customer opens the bot or tries to reach the panel, so
+# the lock is explained wherever they look, not only in a notice they missed.
+SUSPENDED_REMINDER = (
+    "⛔️ <b>پنل شما مسدود است</b>\n"
+    "━━━━━━━━━━━━━━━\n"
+    "پنل «{panels}» به علت عدم پرداخت فاکتور پرداخت هفتگی مسدود شده است، "
+    "به همین دلیل ورود با رمز قبلی ممکن نیست.\n\n"
+    "پس از پرداخت، دسترسی پنل با همان رمز قبلی به‌صورت خودکار برمی‌گردد."
+)
+SUSPENDED_CANNOT_CHANGE_PASSWORD = (
+    "⛔️ پنل «{username}» به علت عدم پرداخت مسدود است و تا پرداخت فاکتورها، رمز آن قابل تغییر نیست."
+)
+# Sent ahead of a lock, at each of the hours in enforcement.WARNING_HOURS.
+LOCK_WARNING = (
+    "⚠️ <b>هشدار مسدود شدن پنل</b>\n"
+    "━━━━━━━━━━━━━━━\n"
+    "فاکتور پرداخت هفتگی شما هنوز پرداخت نشده است.\n\n"
+    "▪️ پنل: {panels}\n"
+    "💰 مبلغ بدهی: <b>{amount:,}</b> تومان\n\n"
+    "⛔️ در صورت عدم پرداخت تا {deadline}، پنل شما به‌صورت خودکار مسدود می‌شود "
+    "و ورود به پنل ممکن نخواهد بود."
+)
+LOCK_DEADLINE = "<b>{when}</b> (حدود {hours} ساعت دیگر)"
 BTN_PAY_ALL_BILLS = "💳 پرداخت همه فاکتورها"
 UNSUSPENDED_NOTICE = (
     "✅ <b>پنل شما باز شد</b>\n"

@@ -3,10 +3,15 @@ from aiogram.utils.keyboard import InlineKeyboardBuilder, ReplyKeyboardBuilder
 
 from . import texts
 
+# Telegram's blue button. Kept to the one action each screen is there for —
+# pay, top up, get into the panel — so the colour points somewhere instead of
+# painting every keyboard.
+PRIMARY = "primary"
+
 
 def main_menu_kb() -> ReplyKeyboardMarkup:
     kb = ReplyKeyboardBuilder()
-    kb.button(text=texts.BTN_TOPUP)
+    kb.button(text=texts.BTN_TOPUP, style=PRIMARY)
     kb.button(text=texts.BTN_MY_PANELS)
     kb.button(text=texts.BTN_WALLET)
     kb.button(text=texts.BTN_CHANGE_PASSWORD)
@@ -23,8 +28,8 @@ def panel_login_kb() -> InlineKeyboardMarkup:
     """Two doors to the same panel: one domain routes from inside Iran, the
     other doesn't — so the choice is theirs to make, not ours to guess."""
     kb = InlineKeyboardBuilder()
-    kb.button(text=texts.BTN_LOGIN_WITH_VPN, url=texts.PANEL_URL_WITH_VPN)
-    kb.button(text=texts.BTN_LOGIN_WITHOUT_VPN, url=texts.PANEL_URL_WITHOUT_VPN)
+    kb.button(text=texts.BTN_LOGIN_WITH_VPN, url=texts.PANEL_URL_WITH_VPN, style=PRIMARY)
+    kb.button(text=texts.BTN_LOGIN_WITHOUT_VPN, url=texts.PANEL_URL_WITHOUT_VPN, style=PRIMARY)
     kb.adjust(1)
     return kb.as_markup()
 
@@ -44,7 +49,7 @@ def prospect_menu_kb() -> ReplyKeyboardMarkup:
     """Someone we have no business with yet — no panel, never billed. Only the way
     in: no wallet, and so no card number, until there is something to pay."""
     kb = ReplyKeyboardBuilder()
-    kb.button(text=texts.BTN_MY_PANELS)
+    kb.button(text=texts.BTN_MY_PANELS, style=PRIMARY)
     kb.adjust(1)
     return kb.as_markup(resize_keyboard=True)
 
@@ -53,17 +58,17 @@ def panel_request_kb() -> ReplyKeyboardMarkup:
     """Shown alongside the activation notice, so the two ways of asking for a
     panel sit where someone actually looks for them."""
     kb = ReplyKeyboardBuilder()
-    kb.button(text=texts.BTN_PARTNERSHIP)
-    kb.button(text=texts.BTN_CREATE_PANEL)
+    kb.button(text=texts.BTN_PARTNERSHIP, style=PRIMARY)
+    kb.button(text=texts.BTN_CREATE_PANEL, style=PRIMARY)
     kb.button(text=texts.BTN_BACK)
     kb.adjust(1, 1, 1)
     return kb.as_markup(resize_keyboard=True)
 
 
-def _reply_kb(*labels, layout=(2,)) -> ReplyKeyboardMarkup:
+def _reply_kb(*labels, layout=(2,), primary=()) -> ReplyKeyboardMarkup:
     kb = ReplyKeyboardBuilder()
     for label in labels:
-        kb.button(text=label)
+        kb.button(text=label, style=PRIMARY if label in primary else None)
     kb.adjust(*layout)
     return kb.as_markup(resize_keyboard=True)
 
@@ -83,6 +88,7 @@ def superadmin_menu_kb() -> ReplyKeyboardMarkup:
         texts.BTN_TUTORIALS,
         texts.BTN_SEC_SETTINGS,
         layout=(1, 2, 2, 1),
+        primary=(texts.BTN_PENDING_REQUESTS,),
     )
 
 
@@ -164,7 +170,7 @@ def cancel_kb() -> ReplyKeyboardMarkup:
 def force_join_kb(channel: str) -> InlineKeyboardMarkup:
     kb = InlineKeyboardBuilder()
     handle = channel.lstrip("@")
-    kb.button(text="📢 عضویت در کانال", url=f"https://t.me/{handle}")
+    kb.button(text="📢 عضویت در کانال", url=f"https://t.me/{handle}", style=PRIMARY)
     kb.button(text="✅ عضو شدم", callback_data="fj_check")
     kb.adjust(1)
     return kb.as_markup()
@@ -172,7 +178,7 @@ def force_join_kb(channel: str) -> InlineKeyboardMarkup:
 
 def invoice_kb() -> InlineKeyboardMarkup:
     kb = InlineKeyboardBuilder()
-    kb.button(text=texts.BTN_PAY, callback_data="topup_pay")
+    kb.button(text=texts.BTN_PAY, callback_data="topup_pay", style=PRIMARY)
     return kb.as_markup()
 
 
@@ -181,7 +187,7 @@ def payment_methods_kb() -> InlineKeyboardMarkup:
     the button is shown to everyone so those without it get a clear explanation
     rather than silently missing an option."""
     kb = InlineKeyboardBuilder()
-    kb.button(text=texts.BTN_PAY_CARD, callback_data="pay_method:card")
+    kb.button(text=texts.BTN_PAY_CARD, callback_data="pay_method:card", style=PRIMARY)
     kb.button(text=texts.BTN_PAY_WALLET, callback_data="pay_method:wallet")
     kb.button(text=texts.BTN_PAY_WEEKLY, callback_data="pay_method:weekly")
     kb.adjust(1)
@@ -201,7 +207,7 @@ def invoice_due_kb() -> InlineKeyboardMarkup:
 
 def pay_invoice_kb(invoice_id: int) -> InlineKeyboardMarkup:
     kb = InlineKeyboardBuilder()
-    kb.button(text=texts.BTN_PAY_INVOICE, callback_data=f"pay_invoice:{invoice_id}")
+    kb.button(text=texts.BTN_PAY_INVOICE, callback_data=f"pay_invoice:{invoice_id}", style=PRIMARY)
     kb.button(text=texts.BTN_PAY_PART, callback_data=f"pay_invoice_part:{invoice_id}")
     kb.adjust(1)
     return kb.as_markup()
@@ -242,7 +248,7 @@ def confirm_lock_kb(telegram_id: int, locking: bool) -> InlineKeyboardMarkup:
 
 def pay_debt_kb(username: str) -> InlineKeyboardMarkup:
     kb = InlineKeyboardBuilder()
-    kb.button(text=texts.BTN_PAY_DEBT, callback_data=f"pay_debt:{username}")
+    kb.button(text=texts.BTN_PAY_DEBT, callback_data=f"pay_debt:{username}", style=PRIMARY)
     kb.button(text=texts.BTN_PAY_PART, callback_data=f"pay_debt_part:{username}")
     kb.adjust(1)
     return kb.as_markup()
@@ -281,7 +287,7 @@ def bill_pay_all_kb(items) -> InlineKeyboardMarkup:
         else:
             label = texts.BTN_PAY_BILL_WEEKLY.format(username=bill.username)
             data = f"pay_debt:{bill.username}"
-        kb.button(text=label, callback_data=data)
+        kb.button(text=label, callback_data=data, style=PRIMARY)
     kb.adjust(1)
     return kb.as_markup()
 
@@ -332,7 +338,7 @@ def suspended_kb() -> InlineKeyboardMarkup:
     """Shown with the lock notice: see what is owed, or pay all of it at once."""
     kb = InlineKeyboardBuilder()
     kb.button(text=texts.BTN_SHOW_ALL_BILLS, callback_data="bills_all")
-    kb.button(text=texts.BTN_PAY_ALL_BILLS, callback_data="pay_all")
+    kb.button(text=texts.BTN_PAY_ALL_BILLS, callback_data="pay_all", style=PRIMARY)
     kb.adjust(1)
     return kb.as_markup()
 
@@ -379,13 +385,13 @@ def partner_volume_kb() -> InlineKeyboardMarkup:
 
 def wallet_kb() -> InlineKeyboardMarkup:
     kb = InlineKeyboardBuilder()
-    kb.button(text=texts.BTN_CHARGE_WALLET, callback_data="wallet_charge")
+    kb.button(text=texts.BTN_CHARGE_WALLET, callback_data="wallet_charge", style=PRIMARY)
     return kb.as_markup()
 
 
 def approval_kb(request_id: int, admin_telegram_id: int) -> InlineKeyboardMarkup:
     kb = InlineKeyboardBuilder()
-    kb.button(text="✅ تأیید", callback_data=f"topup_approve:{request_id}")
+    kb.button(text="✅ تأیید", callback_data=f"topup_approve:{request_id}", style=PRIMARY)
     kb.button(text="❌ رد", callback_data=f"topup_reject:{request_id}")
     kb.button(text=texts.BTN_APPROVE_PARTIAL, callback_data=f"topup_partial:{request_id}")
     kb.button(text=texts.BTN_MESSAGE_USER, callback_data=f"msg_user:{admin_telegram_id}")
@@ -455,7 +461,7 @@ def topup_panel_kb(username: str) -> InlineKeyboardMarkup:
     """Attached to low-traffic warnings so the admin can jump straight to topping
     up the panel the warning is about."""
     kb = InlineKeyboardBuilder()
-    kb.button(text=texts.BTN_TOPUP_THIS_PANEL, callback_data=f"pick:topup:{username}")
+    kb.button(text=texts.BTN_TOPUP_THIS_PANEL, callback_data=f"pick:topup:{username}", style=PRIMARY)
     return kb.as_markup()
 
 

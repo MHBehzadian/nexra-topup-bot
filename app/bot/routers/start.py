@@ -73,11 +73,25 @@ async def start(message: Message, bot: Bot) -> None:
         texts.START_LINKED.format(name=message.from_user.full_name),
         reply_markup=keyboards.main_menu_kb(),
     )
+    await tell_if_suspended(message)
+
+
+async def tell_if_suspended(message: Message) -> None:
+    """A locked customer is told so wherever they look for the panel: the lock
+    changes the password, and on its own that only ever reads as "wrong
+    password"."""
+    locked = db.list_suspensions(message.from_user.id)
+    if locked:
+        await message.answer(
+            texts.SUSPENDED_REMINDER.format(panels="، ".join(r["username"] for r in locked)),
+            reply_markup=keyboards.suspended_kb(),
+        )
 
 
 @router.message(F.text == texts.BTN_PANEL_LOGIN)
 async def panel_login(message: Message) -> None:
     await message.answer(texts.PANEL_LOGIN_TEXT, reply_markup=keyboards.panel_login_kb())
+    await tell_if_suspended(message)
 
 
 @router.message(F.text.in_({texts.BTN_MY_PANELS, texts.BTN_BALANCE}))

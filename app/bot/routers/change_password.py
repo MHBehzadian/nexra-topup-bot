@@ -16,6 +16,7 @@ from .. import keyboards, texts
 from ..nav import ALL_MENU_TEXTS
 from ..panels import choose_panel, owned_panel
 from ..states import ChangePassword
+from ... import db
 from ...config import settings
 from ...services.nexra_panel import NexraPanelError, nexra_panel
 
@@ -23,6 +24,13 @@ router = Router(name="change_password")
 
 
 async def _ask_current(message: Message, state: FSMContext, username: str) -> None:
+    # The lock replaced this password; asking for the old one could only fail.
+    if db.is_suspended(username):
+        await message.answer(
+            texts.SUSPENDED_CANNOT_CHANGE_PASSWORD.format(username=username),
+            reply_markup=keyboards.suspended_kb(),
+        )
+        return
     await state.update_data(panel_username=username)
     await state.set_state(ChangePassword.current_password)
     await message.answer(texts.ASK_CURRENT_PASSWORD, reply_markup=keyboards.cancel_kb())

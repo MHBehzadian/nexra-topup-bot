@@ -14,13 +14,15 @@ from . import texts
 
 TEHRAN = ZoneInfo("Asia/Tehran")
 
-# key -> (button label, offset from now; None means no deadline at all)
+# key -> (name of the button label in texts, offset from now; None means no
+# deadline at all). Names rather than the labels, which can be changed from the
+# Nexra panel after this module has loaded.
 DUE_OPTIONS: dict[str, tuple[str, timedelta | None]] = {
-    "now": (texts.DUE_IMMEDIATE, timedelta(0)),
-    "today": (texts.DUE_TODAY, timedelta(hours=12)),
-    "3d": (texts.DUE_3_DAYS, timedelta(days=3)),
-    "1w": (texts.DUE_1_WEEK, timedelta(days=7)),
-    "none": (texts.DUE_NONE, None),
+    "now": ("DUE_IMMEDIATE", timedelta(0)),
+    "today": ("DUE_TODAY", timedelta(hours=12)),
+    "3d": ("DUE_3_DAYS", timedelta(days=3)),
+    "1w": ("DUE_1_WEEK", timedelta(days=7)),
+    "none": ("DUE_NONE", None),
 }
 
 

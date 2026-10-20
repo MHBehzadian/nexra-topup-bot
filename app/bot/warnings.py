@@ -23,11 +23,13 @@ from ..units import bytes_to_gb
 logger = logging.getLogger(__name__)
 
 # Ordered most-severe first; the first match wins.
+# Templates by name, read when a warning is sent: the wording can be changed
+# from the Nexra panel after this module has loaded.
 _THRESHOLDS: list[tuple[str, float, str]] = [
-    ("empty", 0.0, texts.WARN_EMPTY),
-    ("20", 20.0, texts.WARN_20),
-    ("50", 50.0, texts.WARN_50),
-    ("100", 100.0, texts.WARN_100),
+    ("empty", 0.0, "WARN_EMPTY"),
+    ("20", 20.0, "WARN_20"),
+    ("50", 50.0, "WARN_50"),
+    ("100", 100.0, "WARN_100"),
 ]
 
 
@@ -39,7 +41,7 @@ def bucket_for(remaining_gb: float) -> tuple[str, str] | None:
         if name == "empty":
             continue
         if remaining_gb < limit:
-            return name, template
+            return name, getattr(texts, template)
     return None
 
 

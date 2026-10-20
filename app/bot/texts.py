@@ -63,6 +63,8 @@ SUPERADMIN_WELCOME = (
 BTN_PENDING_REQUESTS = "📋 درخواست‌های در انتظار"
 NO_PENDING_REQUESTS = "ℹ️ در حال حاضر درخواست شارژ در انتظاری وجود ندارد."
 
+BTN_JOIN_CHANNEL = "📢 عضویت در کانال"
+BTN_JOINED = "✅ عضو شدم"
 FORCE_JOIN_TEXT = "📢 برای استفاده از ربات، ابتدا در کانال زیر عضو شوید و سپس «✅ عضو شدم» را بزنید."
 FORCE_JOIN_CONFIRMED = "✅ عضویت شما تأیید شد. برای ادامه، دستور /start را ارسال نمایید."
 BTN_TOGGLE_FORCE_JOIN = "🔀 روشن/خاموش‌کردن جوین اجباری"
@@ -258,6 +260,8 @@ ASK_REJECT_REASON = "📝 لطفاً علت رد درخواست را بنویس�
 ALREADY_HANDLED = "ℹ️ این درخواست قبلاً بررسی شده است."
 
 # --- approving less than the receipt claimed ---
+BTN_APPROVE = "✅ تأیید"
+BTN_REJECT = "❌ رد"
 BTN_APPROVE_PARTIAL = "🟡 تأیید بخشی از واریز"
 ASK_PARTIAL_APPROVE_AMOUNT = (
     "🟡 مبلغ این رسید {amount:,} تومان اعلام شده است.\n\n"

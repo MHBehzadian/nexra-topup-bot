@@ -9,7 +9,7 @@ from aiogram.types import CallbackQuery, FSInputFile, Message
 
 from .. import auto_approve, keyboards, texts
 from ..approvals import approve_request
-from ..filters import SuperadminFilter
+from ..filters import Label, SuperadminFilter
 from ..nav import ALL_MENU_TEXTS, forget_section, superadmin_kb
 from ..states import ApprovePartial, MessageUser, RejectReason
 from ... import db
@@ -22,7 +22,7 @@ router.callback_query.filter(SuperadminFilter())
 
 # ---- on-demand list of pending requests --------------------------------------
 
-@router.message(F.text == texts.BTN_PENDING_REQUESTS)
+@router.message(Label("BTN_PENDING_REQUESTS"))
 async def list_pending(message: Message) -> None:
     # Reached from the root menu, so stop returning them into a section.
     forget_section(message.from_user.id)

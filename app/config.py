@@ -34,6 +34,18 @@ class Settings(BaseSettings):
     # Hour (Asia/Tehran) for the nightly summary.
     digest_hour: int = 22
 
+    # The management API the Nexra panel uses to run this bot (texts, buttons,
+    # settings). 0 turns it off. The panel authenticates with
+    # management_api_key, or with the key it already shares with the bot
+    # (nexra_panel_bot_api_key) when that is left empty.
+    management_port: int = 8090
+    management_host: str = "0.0.0.0"
+    management_api_key: str = ""
+
+    @property
+    def management_key(self) -> str:
+        return self.management_api_key or self.nexra_panel_bot_api_key
+
     @property
     def panel_login_link(self) -> str:
         return (self.panel_login_url or self.nexra_panel_api_url).rstrip("/") + (

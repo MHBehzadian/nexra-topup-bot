@@ -10,6 +10,7 @@ from aiogram.client.default import DefaultBotProperties
 from aiogram.enums import ParseMode
 from aiogram.fsm.storage.memory import MemoryStorage
 
+from . import api, customize
 from .. import db
 from ..config import settings
 from .middlewares import ForceJoinMiddleware
@@ -42,6 +43,8 @@ async def run() -> None:
             "NEXRA_PANEL_API_URL / NEXRA_PANEL_BOT_API_KEY are not set — configure them in .env"
         )
     db.init_db()
+    # Before anything is sent: the texts and buttons changed from the panel.
+    customize.apply()
     bot = Bot(
         token=settings.bot_token,
         default=DefaultBotProperties(parse_mode=ParseMode.HTML),
@@ -57,11 +60,14 @@ async def run() -> None:
         asyncio.create_task(run_auto_approver(bot)),
         asyncio.create_task(run_digest_scheduler(bot)),
     ]
+    management = await api.start(bot)
     try:
         await dp.start_polling(bot)
     finally:
         for task in background:
             task.cancel()
+        if management:
+            await management.cleanup()
         await bot.session.close()
 
 

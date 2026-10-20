@@ -10,6 +10,7 @@ from aiogram.fsm.context import FSMContext
 from aiogram.types import CallbackQuery, Message
 
 from .. import keyboards, sales, texts
+from ..filters import Label
 from ..forecast import render
 from ..nav import cancel_and_show_menu, forget_section, menu_kb_for
 from ..panels import format_panel_line, owned_panel, safe_get_admins
@@ -88,13 +89,13 @@ async def tell_if_suspended(message: Message) -> None:
         )
 
 
-@router.message(F.text == texts.BTN_PANEL_LOGIN)
+@router.message(Label("BTN_PANEL_LOGIN"))
 async def panel_login(message: Message) -> None:
     await message.answer(texts.PANEL_LOGIN_TEXT, reply_markup=keyboards.panel_login_kb())
     await tell_if_suspended(message)
 
 
-@router.message(F.text.in_({texts.BTN_MY_PANELS, texts.BTN_BALANCE}))
+@router.message(Label("BTN_MY_PANELS", "BTN_BALANCE"))
 async def my_panels(message: Message) -> None:
     admins = await safe_get_admins(message)
     if admins is None:
@@ -128,7 +129,7 @@ async def panel_history(call: CallbackQuery) -> None:
     await call.message.answer(sales.history(username))
 
 
-@router.message(F.text == texts.BTN_BACK)
+@router.message(Label("BTN_BACK"))
 async def back_to_menu(message: Message, state: FSMContext) -> None:
     """One Back for everyone: this router is registered first, so a copy in the
     superadmin router could never run. Dropping the remembered section is what
@@ -140,7 +141,7 @@ async def back_to_menu(message: Message, state: FSMContext) -> None:
     )
 
 
-@router.message(F.text == texts.BTN_FORECAST)
+@router.message(Label("BTN_FORECAST"))
 async def show_forecast(message: Message) -> None:
     admins = await safe_get_admins(message)
     if admins is None:
@@ -159,12 +160,12 @@ async def show_forecast(message: Message) -> None:
         )
 
 
-@router.message(F.text == texts.BTN_CREATE_PANEL)
+@router.message(Label("BTN_CREATE_PANEL"))
 async def create_panel_stub(message: Message) -> None:
     await message.answer(texts.CREATE_PANEL_SOON)
 
 
-@router.message(F.text == texts.BTN_CANCEL)
+@router.message(Label("BTN_CANCEL"))
 async def cancel(message: Message, state: FSMContext) -> None:
     await cancel_and_show_menu(message, state)
 

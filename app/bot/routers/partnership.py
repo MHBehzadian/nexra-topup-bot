@@ -12,22 +12,24 @@ from aiogram.fsm.context import FSMContext
 from aiogram.types import CallbackQuery, Message
 
 from .. import keyboards, texts
+from ..filters import Label
 from ..nav import ALL_MENU_TEXTS, menu_kb_for
 from ..states import Partnership
 from ...config import settings
 
 router = Router(name="partnership")
 
+# key -> name of its label in texts (names, since labels can change at runtime)
 VOLUME_LABELS = {
-    "u1": texts.VOL_UNDER_1TB,
-    "1": texts.VOL_1TB,
-    "2": texts.VOL_2TB,
-    "3": texts.VOL_3TB,
-    "o3": texts.VOL_OVER_3TB,
+    "u1": "VOL_UNDER_1TB",
+    "1": "VOL_1TB",
+    "2": "VOL_2TB",
+    "3": "VOL_3TB",
+    "o3": "VOL_OVER_3TB",
 }
 
 
-@router.message(F.text == texts.BTN_PARTNERSHIP)
+@router.message(Label("BTN_PARTNERSHIP"))
 async def start_partnership(message: Message, state: FSMContext) -> None:
     await state.set_state(Partnership.name)
     await message.answer(texts.ASK_PARTNER_NAME, reply_markup=keyboards.cancel_kb())
@@ -47,7 +49,7 @@ async def partner_name(message: Message, state: FSMContext) -> None:
 @router.callback_query(F.data.startswith("pvol:"), Partnership.volume)
 async def partner_volume(call: CallbackQuery, state: FSMContext) -> None:
     key = call.data.split(":", 1)[1]
-    await state.update_data(partner_volume=VOLUME_LABELS.get(key, key))
+    await state.update_data(partner_volume=getattr(texts, VOLUME_LABELS.get(key, ""), key))
     await state.set_state(Partnership.method)
     await call.answer()
     await call.message.answer(texts.ASK_PARTNER_METHOD, reply_markup=keyboards.cancel_kb())

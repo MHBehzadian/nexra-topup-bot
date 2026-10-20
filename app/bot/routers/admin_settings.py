@@ -7,9 +7,9 @@ from aiogram import Bot, F, Router
 from aiogram.fsm.context import FSMContext
 from aiogram.types import CallbackQuery, Message
 
-from .. import auto_approve, bills, digest, enforcement, keyboards, sales, texts
+from .. import auto_approve, bills, customize, digest, enforcement, keyboards, sales, texts
 from ..backups import send_backup
-from ..filters import SuperadminFilter
+from ..filters import Label, SuperadminFilter
 from ..invoices import describe_due, due_at_for
 from ..nav import ALL_MENU_TEXTS, menu_kb_for, remember_section, superadmin_kb
 from ..states import (
@@ -38,26 +38,29 @@ router.message.filter(SuperadminFilter())
 router.callback_query.filter(SuperadminFilter())
 
 
+# button name -> (name of the prompt text, section)
 _SECTIONS = {
-    texts.BTN_SEC_PANELS: (texts.SECTION_PANELS, "panels"),
-    texts.BTN_SEC_FINANCE: (texts.SECTION_FINANCE, "finance"),
-    texts.BTN_SEC_USERS: (texts.SECTION_USERS, "users"),
-    texts.BTN_SEC_SETTINGS: (texts.SECTION_SETTINGS, "settings"),
-    texts.BTN_TUTORIALS: (texts.SECTION_TUTORIALS, "tutorials"),
+    "BTN_SEC_PANELS": ("SECTION_PANELS", "panels"),
+    "BTN_SEC_FINANCE": ("SECTION_FINANCE", "finance"),
+    "BTN_SEC_USERS": ("SECTION_USERS", "users"),
+    "BTN_SEC_SETTINGS": ("SECTION_SETTINGS", "settings"),
+    "BTN_TUTORIALS": ("SECTION_TUTORIALS", "tutorials"),
 }
 
 
-@router.message(F.text.in_(_SECTIONS))
+@router.message(Label(*_SECTIONS))
 async def open_section(message: Message, state: FSMContext) -> None:
     # Leaving a half-finished flow by tapping a section is a deliberate exit, so
     # drop the state rather than letting the next answer land in it.
     await state.clear()
-    prompt, section = _SECTIONS[message.text]
+    button = next(n for n in _SECTIONS if message.text in customize.labels_for(n))
+    prompt_name, section = _SECTIONS[button]
+    prompt = getattr(texts, prompt_name)
     remember_section(message.from_user.id, section)
     await message.answer(prompt, reply_markup=superadmin_kb(message.from_user.id))
 
 
-@router.message(F.text == texts.BTN_SET_PRICE)
+@router.message(Label("BTN_SET_PRICE"))
 async def start_set_price(message: Message, state: FSMContext) -> None:
     await state.set_state(SetPricePerGb.value)
     await message.answer(texts.ASK_PRICE_PER_GB, reply_markup=keyboards.cancel_kb())
@@ -80,7 +83,7 @@ async def finish_set_price(message: Message, state: FSMContext) -> None:
     )
 
 
-@router.message(F.text == texts.BTN_SET_CARD)
+@router.message(Label("BTN_SET_CARD"))
 async def start_set_card(message: Message, state: FSMContext) -> None:
     await state.set_state(SetCardNumber.value)
     await message.answer(texts.ASK_CARD_NUMBER, reply_markup=keyboards.cancel_kb())
@@ -97,7 +100,7 @@ async def finish_set_card(message: Message, state: FSMContext) -> None:
     await message.answer(texts.CARD_SET_CONFIRM, reply_markup=superadmin_kb(message.from_user.id))
 
 
-@router.message(F.text == texts.BTN_SET_FORCE_JOIN_CHANNEL)
+@router.message(Label("BTN_SET_FORCE_JOIN_CHANNEL"))
 async def start_set_channel(message: Message, state: FSMContext) -> None:
     await state.set_state(SetForceJoinChannel.value)
     await message.answer(texts.ASK_FORCE_JOIN_CHANNEL, reply_markup=keyboards.cancel_kb())
@@ -137,7 +140,7 @@ async def finish_set_channel(message: Message, state: FSMContext, bot: Bot) -> N
     await _report_channel_access(message, bot, channel)
 
 
-@router.message(F.text == texts.BTN_TOGGLE_FORCE_JOIN)
+@router.message(Label("BTN_TOGGLE_FORCE_JOIN"))
 async def toggle_force_join(message: Message, bot: Bot) -> None:
     channel = db.get_setting("force_join_channel")
     currently_on = db.get_setting("force_join_enabled") == "1"
@@ -152,7 +155,7 @@ async def toggle_force_join(message: Message, bot: Bot) -> None:
         await _report_channel_access(message, bot, channel)
 
 
-@router.message(F.text == texts.BTN_SET_BULK_PIN)
+@router.message(Label("BTN_SET_BULK_PIN"))
 async def start_set_bulk_pin(message: Message, state: FSMContext) -> None:
     await state.set_state(SetBulkPin.value)
     await message.answer(texts.ASK_BULK_PIN_SET, reply_markup=keyboards.cancel_kb())
@@ -169,7 +172,7 @@ async def finish_set_bulk_pin(message: Message, state: FSMContext) -> None:
     await message.answer(texts.BULK_PIN_SET_CONFIRM, reply_markup=superadmin_kb(message.from_user.id))
 
 
-@router.message(F.text == texts.BTN_EXPORT_ALL_PASSWORDS)
+@router.message(Label("BTN_EXPORT_ALL_PASSWORDS"))
 async def start_export_credentials(message: Message, state: FSMContext) -> None:
     if not db.get_setting("bulk_password_pin"):
         await message.answer(texts.BULK_PIN_NOT_SET)
@@ -218,7 +221,7 @@ async def finish_export_credentials(message: Message, state: FSMContext) -> None
         await message.answer(chunk, reply_markup=superadmin_kb(message.from_user.id) if is_last else None)
 
 
-@router.message(F.text == texts.BTN_ALL_PANELS)
+@router.message(Label("BTN_ALL_PANELS"))
 async def list_all_panels(message: Message) -> None:
     try:
         admins = await nexra_panel.list_all_admins()
@@ -250,7 +253,7 @@ async def list_all_panels(message: Message) -> None:
         await message.answer(chunk)
 
 
-@router.message(F.text == texts.BTN_GRANT_TRAFFIC)
+@router.message(Label("BTN_GRANT_TRAFFIC"))
 async def start_grant(message: Message, state: FSMContext) -> None:
     await state.set_state(GrantTraffic.username)
     await message.answer(texts.ASK_GRANT_USERNAME, reply_markup=keyboards.cancel_kb())
@@ -320,7 +323,7 @@ async def finish_grant(message: Message, state: FSMContext, bot: Bot) -> None:
             pass
 
 
-@router.message(F.text == texts.BTN_NEW_INVOICE)
+@router.message(Label("BTN_NEW_INVOICE"))
 async def start_invoice(message: Message, state: FSMContext) -> None:
     await state.set_state(NewInvoice.target)
     await message.answer(texts.ASK_INVOICE_TARGET, reply_markup=keyboards.cancel_kb())
@@ -414,7 +417,7 @@ async def invoice_due(call: CallbackQuery, state: FSMContext, bot: Bot) -> None:
             pass
 
 
-@router.message(F.text.in_({texts.BTN_INVOICES, texts.BTN_DEBTS}))
+@router.message(Label("BTN_INVOICES", "BTN_DEBTS"))
 async def list_invoices(message: Message) -> None:
     """Everything owed — invoices and weekly credit alike — grouped by customer,
     most urgent first, each with its own warning buttons.
@@ -734,12 +737,12 @@ async def finish_part_paid(message: Message, state: FSMContext, bot: Bot) -> Non
         await enforcement.settle_up(bot, bill.telegram_id)
 
 
-@router.message(F.text == texts.BTN_SALES_REPORT)
+@router.message(Label("BTN_SALES_REPORT"))
 async def show_sales(message: Message) -> None:
     await message.answer(sales.report())
 
 
-@router.message(F.text == texts.BTN_PANEL_HISTORY)
+@router.message(Label("BTN_PANEL_HISTORY"))
 async def start_panel_history(message: Message, state: FSMContext) -> None:
     await state.set_state(PanelHistory.username)
     await message.answer(texts.ASK_HISTORY_USERNAME, reply_markup=keyboards.cancel_kb())
@@ -754,13 +757,13 @@ async def finish_panel_history(message: Message, state: FSMContext) -> None:
     )
 
 
-@router.message(F.text == texts.BTN_DIGEST)
+@router.message(Label("BTN_DIGEST"))
 async def show_digest(message: Message) -> None:
     for chunk in digest.split(await digest.build()):
         await message.answer(chunk)
 
 
-@router.message(F.text == texts.BTN_TOGGLE_AUTO_APPROVE)
+@router.message(Label("BTN_TOGGLE_AUTO_APPROVE"))
 async def toggle_auto_approve(message: Message) -> None:
     turning_on = not auto_approve.is_enabled()
     auto_approve.set_enabled(turning_on)
@@ -770,7 +773,7 @@ async def toggle_auto_approve(message: Message) -> None:
     )
 
 
-@router.message(F.text == texts.BTN_CREATE_ADMIN)
+@router.message(Label("BTN_CREATE_ADMIN"))
 async def start_create_admin(message: Message, state: FSMContext) -> None:
     await state.set_state(CreateAdmin.username)
     await message.answer(texts.ASK_NEW_ADMIN_USERNAME, reply_markup=keyboards.cancel_kb())
@@ -938,14 +941,14 @@ async def create_admin_finish(message: Message, state: FSMContext, bot: Bot) -> 
         await message.answer(texts.CREATE_ADMIN_NOT_DELIVERED)
 
 
-@router.message(F.text == texts.BTN_BACKUP)
+@router.message(Label("BTN_BACKUP"))
 async def manual_backup(message: Message, bot: Bot) -> None:
     await message.answer(texts.BACKUP_RUNNING)
     if not await send_backup(bot, targets=[message.from_user.id]):
         await message.answer(texts.BACKUP_FAILED, reply_markup=superadmin_kb(message.from_user.id))
 
 
-@router.message(F.text == texts.BTN_TOGGLE_WEEKLY)
+@router.message(Label("BTN_TOGGLE_WEEKLY"))
 async def start_toggle_weekly(message: Message, state: FSMContext) -> None:
     await state.set_state(ToggleWeekly.username)
     enabled = db.list_weekly_enabled()
@@ -968,7 +971,7 @@ async def finish_toggle_weekly(message: Message, state: FSMContext) -> None:
     )
 
 
-@router.message(F.text == texts.BTN_GRANT_WALLET)
+@router.message(Label("BTN_GRANT_WALLET"))
 async def start_grant_wallet(message: Message, state: FSMContext) -> None:
     await state.set_state(GrantWallet.telegram_id)
     await message.answer(texts.ASK_GRANT_WALLET_ID, reply_markup=keyboards.cancel_kb())
@@ -1015,7 +1018,7 @@ async def finish_grant_wallet(message: Message, state: FSMContext, bot: Bot) -> 
         pass
 
 
-@router.message(F.text == texts.BTN_BROADCAST)
+@router.message(Label("BTN_BROADCAST"))
 async def start_broadcast(message: Message, state: FSMContext) -> None:
     await state.set_state(Broadcast.text)
     await message.answer(texts.ASK_BROADCAST_TEXT, reply_markup=keyboards.cancel_kb())
@@ -1043,7 +1046,7 @@ async def finish_broadcast(message: Message, state: FSMContext, bot: Bot) -> Non
     )
 
 
-@router.message(F.text == texts.BTN_SYNC_TELEGRAM_IDS)
+@router.message(Label("BTN_SYNC_TELEGRAM_IDS"))
 async def sync_telegram_ids(message: Message) -> None:
     await message.answer(texts.SYNC_RUNNING)
     try:

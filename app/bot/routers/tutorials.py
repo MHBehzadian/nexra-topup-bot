@@ -10,7 +10,7 @@ from aiogram.fsm.context import FSMContext
 from aiogram.types import CallbackQuery, Message
 
 from .. import keyboards, texts
-from ..filters import SuperadminFilter
+from ..filters import Label, SuperadminFilter
 from ..nav import ALL_MENU_TEXTS, superadmin_kb
 from ..states import AddTutorial
 from ... import db
@@ -18,7 +18,7 @@ from ... import db
 router = Router(name="tutorials")
 
 
-@router.message(F.text.in_({texts.BTN_TUTORIALS, texts.BTN_VIEW_TUTORIALS}))
+@router.message(Label("BTN_TUTORIALS", "BTN_VIEW_TUTORIALS"))
 async def list_tutorials(message: Message) -> None:
     """BTN_TUTORIALS is the customer's button; for a superadmin that label
     opens the section instead (admin_settings runs first), and they browse
@@ -73,7 +73,7 @@ async def send_tutorial(call: CallbackQuery, bot: Bot) -> None:
         await bot.send_message(chat_id, tutorial.text or "")
 
 
-@router.message(F.text == texts.BTN_DELETE_TUTORIAL, SuperadminFilter())
+@router.message(Label("BTN_DELETE_TUTORIAL"), SuperadminFilter())
 async def start_delete_tutorial(message: Message) -> None:
     tutorials = db.list_tutorials()
     if not tutorials:
@@ -120,7 +120,7 @@ async def cancel_delete_tutorial(call: CallbackQuery) -> None:
     await call.message.answer(texts.DELETE_CANCELLED, reply_markup=superadmin_kb(call.from_user.id))
 
 
-@router.message(F.text == texts.BTN_ADD_TUTORIAL, SuperadminFilter())
+@router.message(Label("BTN_ADD_TUTORIAL"), SuperadminFilter())
 async def start_add_tutorial(message: Message, state: FSMContext) -> None:
     await state.set_state(AddTutorial.title)
     await message.answer(texts.ASK_TUTORIAL_TITLE, reply_markup=keyboards.cancel_kb())

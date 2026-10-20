@@ -14,6 +14,7 @@ from aiogram.fsm.context import FSMContext
 from aiogram.types import CallbackQuery, FSInputFile, Message
 
 from .. import auto_approve, keyboards, texts
+from ..filters import Label
 from ..nav import ALL_MENU_TEXTS, menu_kb_for
 from ..panels import choose_panel, owned_panel
 from ..states import TopUp
@@ -33,7 +34,7 @@ async def _ask_amount(message: Message, state: FSMContext, username: str) -> Non
     )
 
 
-@router.message(F.text == texts.BTN_TOPUP)
+@router.message(Label("BTN_TOPUP"))
 async def start_topup(message: Message, state: FSMContext) -> None:
     admin = await choose_panel(message, "topup")
     if admin:

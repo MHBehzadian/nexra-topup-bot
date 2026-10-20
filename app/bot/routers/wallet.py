@@ -18,6 +18,7 @@ from aiogram.fsm.context import FSMContext
 from aiogram.types import CallbackQuery, FSInputFile, Message
 
 from .. import auto_approve, keyboards, texts
+from ..filters import Label
 from ..bills import open_bills, render_for_customer, urgency
 from ..nav import ALL_MENU_TEXTS, menu_kb_for
 from ..states import DebtPayment, InvoicePayment, PartPayment, PayAllBills, WalletTopUp
@@ -64,7 +65,7 @@ async def _has_access(message: Message, user_id: int) -> bool:
 
 # ---- wallet balance & top-up -------------------------------------------------
 
-@router.message(F.text == texts.BTN_WALLET)
+@router.message(Label("BTN_WALLET"))
 async def show_wallet(message: Message) -> None:
     if not await _has_access(message, message.from_user.id):
         return
@@ -161,7 +162,7 @@ async def get_wallet_receipt(message: Message, state: FSMContext, bot: Bot) -> N
 
 # ---- invoices and weekly credit, as one list ----------------------------------
 
-@router.message(F.text == texts.BTN_MY_INVOICES)
+@router.message(Label("BTN_MY_INVOICES"))
 async def my_invoices(message: Message) -> None:
     # An invoice and a weekly-credit debt are the same thing to whoever owes
     # them, so they come as one list, most urgent first.

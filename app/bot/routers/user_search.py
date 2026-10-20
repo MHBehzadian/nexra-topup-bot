@@ -12,7 +12,7 @@ from aiogram.fsm.context import FSMContext
 from aiogram.types import CallbackQuery, Message
 
 from .. import bills, enforcement, keyboards, texts
-from ..filters import SuperadminFilter
+from ..filters import Label, SuperadminFilter
 from ..invoices import describe_due, due_at_for
 from ..nav import ALL_MENU_TEXTS, superadmin_kb
 from ..states import DeductWallet, NewInvoice, SearchUser
@@ -126,7 +126,7 @@ def _render_profile(telegram_id: int, panels: list[dict]) -> str:
     return text
 
 
-@router.message(F.text == texts.BTN_SEARCH_USER)
+@router.message(Label("BTN_SEARCH_USER"))
 async def start_search(message: Message, state: FSMContext) -> None:
     await state.set_state(SearchUser.query)
     await message.answer(texts.ASK_SEARCH_QUERY, reply_markup=keyboards.cancel_kb())

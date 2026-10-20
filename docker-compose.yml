@@ -5,3 +5,9 @@ services:
     restart: unless-stopped
     volumes:
       - ./data:/app/data
+    # The management API the Nexra panel runs this bot through. Every call
+    # needs the key, but it is better still to firewall the port to the
+    # panel's server — or set MANAGEMENT_BIND=127.0.0.1 when the panel isn't
+    # in Docker on this same machine.
+    ports:
+      - "${MANAGEMENT_BIND:-0.0.0.0}:${MANAGEMENT_PORT:-8090}:${MANAGEMENT_PORT:-8090}"

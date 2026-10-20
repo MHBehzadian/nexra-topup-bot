@@ -45,6 +45,15 @@ LEGACY_GRACE_DAYS = 14
 # and a new key does that on the next run without touching the database by hand.
 _CUTOFF_KEY = "enforcement_start_v2"
 
+# How long before a lock lands the customer is warned, longest first. Each
+# stage goes out once per deadline: a lock that arrived with nothing but the
+# routine reminders before it read as a surprise, not a consequence.
+WARNING_HOURS = (12, 2)
+
+# Set once every lock that predates the panel knowing about locks has been
+# told to it, so those admins also see why they can't log in.
+_PANEL_SYNC_KEY = "suspensions_synced_to_panel_v1"
+
 
 def cutoff() -> datetime:
     """The moment enforcement began. Written once, on the first run; debts
@@ -62,26 +71,52 @@ def cutoff() -> datetime:
     return now
 
 
-def locking_bills(customer: bills.Customer, now: datetime | None = None) -> list[bills.Bill]:
-    """The customer's bills that are late enough, and recent enough, to lock for.
+def lock_time(bill: bills.Bill, started: datetime) -> datetime | None:
+    """When this bill becomes grounds for a lock, or None if it never can.
 
     Weekly credit only. A manual invoice is a one-off arrangement rather than
     the standing weekly obligation this is meant to enforce, so it never locks
     anything — and never holds a lock closed either (see `owes_weekly`).
     """
+    if bill.kind != "weekly" or bill.due is None or bill.amount <= 0:
+        return None
+    at = bill.due + timedelta(hours=GRACE_HOURS)
+    if bill.due <= started:
+        # Predates the rule: it gets its fortnight from the start line first.
+        at = max(at, started + timedelta(days=LEGACY_GRACE_DAYS))
+    return at
+
+
+def locking_bills(customer: bills.Customer, now: datetime | None = None) -> list[bills.Bill]:
+    """The customer's bills that are late enough, and recent enough, to lock for."""
     now = now or datetime.now(bills.TEHRAN)
     started = cutoff()
-    deadline = now - timedelta(hours=GRACE_HOURS)
-    eligible = []
-    for bill in customer.bills:
-        if bill.kind != "weekly":
-            continue
-        if bill.due is None or bill.due > deadline:
-            continue  # not yet past the settlement date plus its grace
-        if bill.due <= started and now < started + timedelta(days=LEGACY_GRACE_DAYS):
-            continue  # predates the rule, and its fortnight hasn't run out yet
-        eligible.append(bill)
-    return eligible
+    return [
+        bill
+        for bill in customer.bills
+        if (at := lock_time(bill, started)) is not None and at <= now
+    ]
+
+
+def lock_deadline(customer: bills.Customer) -> datetime | None:
+    """The earliest moment one of this customer's bills will lock their panels."""
+    started = cutoff()
+    times = [at for b in customer.bills if (at := lock_time(b, started)) is not None]
+    return min(times) if times else None
+
+
+def deadline_for(telegram_id: int) -> datetime | None:
+    customers = bills.by_customer(bills.open_bills(telegram_id))
+    return lock_deadline(customers[0]) if customers else None
+
+
+def describe_deadline(at: datetime, now: datetime | None = None) -> str:
+    """The lock time as the customer reads it: Tehran clock time and hours left."""
+    now = now or datetime.now(bills.TEHRAN)
+    hours = max(1, round((at - now).total_seconds() / 3600))
+    return texts.LOCK_DEADLINE.format(
+        when=at.astimezone(bills.TEHRAN).strftime("%Y-%m-%d %H:%M"), hours=hours
+    )
 
 
 def owes_weekly(telegram_id: int) -> bool:
@@ -123,6 +158,18 @@ async def _tell_superadmins(bot: Bot, text: str) -> None:
         await _tell(bot, superadmin_id, text)
 
 
+async def _flag_on_panel(telegram_id: int, username: str, reason: str | None) -> bool:
+    """Tell the panel a lock went on or came off, so its login page can say why
+    instead of "wrong password". Best effort: the lock itself is the password
+    change, and a panel that hasn't been updated yet simply doesn't know."""
+    try:
+        await nexra_panel.set_suspension(telegram_id, username, reason)
+        return True
+    except NexraPanelError as exc:
+        logger.warning(f"could not flag {username} as {reason or 'unlocked'} on the panel: {exc}")
+        return False
+
+
 async def lock_panels(
     bot: Bot, telegram_id: int, *, reason: str = "unpaid", total: int = 0, count: int = 0
 ) -> list[str]:
@@ -154,6 +201,7 @@ async def lock_panels(
         # Written only after the panel confirms, so a failed change never
         # leaves a record claiming a lock that isn't there.
         db.record_suspension(username, telegram_id, current, reason=reason)
+        await _flag_on_panel(telegram_id, username, reason)
         locked.append(username)
 
     if not locked:
@@ -198,6 +246,7 @@ async def unlock(bot: Bot, telegram_id: int, *, reason: str | None = None) -> li
             logger.error(f"failed to unlock {row['username']}: {exc}")
             continue
         db.clear_suspension(row["username"])
+        await _flag_on_panel(telegram_id, row["username"], None)
         restored.append(row["username"])
 
     if not restored:
@@ -225,21 +274,82 @@ async def settle_up(bot: Bot, telegram_id: int) -> None:
     await unlock(bot, telegram_id, reason="unpaid")
 
 
-async def tick(bot: Bot) -> None:
-    """One sweep: lock whoever has run out of grace, unlock whoever has paid."""
-    cutoff()  # make sure the start line exists before anything is judged against it
+def _warned_stage(telegram_id: int, deadline: datetime) -> int | None:
+    """The smallest warning stage already sent for this deadline, if any."""
+    stored = db.get_setting(f"lock_warning:{telegram_id}")
+    if not stored:
+        return None
+    at, _, stage = stored.rpartition("|")
+    if at != deadline.isoformat():
+        return None  # sent for an earlier deadline, which has since been paid
+    try:
+        return int(stage)
+    except ValueError:
+        return None
 
+
+async def warn_before_lock(bot: Bot, customer: bills.Customer, now: datetime) -> None:
+    """Warn once at each of WARNING_HOURS before this customer's panels lock."""
+    deadline = lock_deadline(customer)
+    if deadline is None or deadline <= now:
+        return
+    hours_left = (deadline - now).total_seconds() / 3600
+    due_stages = [h for h in WARNING_HOURS if hours_left <= h]
+    if not due_stages:
+        return
+    # Only the nearest stage: a bot that was down for the 12-hour one shouldn't
+    # send it and the 2-hour one back to back.
+    stage = min(due_stages)
+    sent = _warned_stage(customer.telegram_id, deadline)
+    if sent is not None and sent <= stage:
+        return
+
+    weekly = [b for b in customer.bills if b.kind == "weekly"]
+    await _tell(
+        bot,
+        customer.telegram_id,
+        texts.LOCK_WARNING.format(
+            panels="، ".join(b.username for b in weekly),
+            amount=sum(b.amount for b in weekly),
+            deadline=describe_deadline(deadline, now),
+        ),
+        reply_markup=keyboards.suspended_kb(),
+    )
+    # Stamped either way, like every other reminder: a blocked chat must not be
+    # retried on every tick, and the failure is already in the log.
+    db.set_setting(f"lock_warning:{customer.telegram_id}", f"{deadline.isoformat()}|{stage}")
+
+
+async def _sync_existing_to_panel() -> None:
+    """Once: tell the panel about every lock placed before it could be told."""
+    if db.get_setting(_PANEL_SYNC_KEY):
+        return
+    ok = True
+    for row in db.list_suspensions():
+        ok &= await _flag_on_panel(row["telegram_id"], row["username"], row["reason"])
+    if ok:
+        db.set_setting(_PANEL_SYNC_KEY, datetime.now(timezone.utc).isoformat())
+
+
+async def tick(bot: Bot) -> None:
+    """One sweep: warn whoever is about to run out of grace, lock whoever has,
+    unlock whoever has paid."""
+    cutoff()  # make sure the start line exists before anything is judged against it
+    await _sync_existing_to_panel()
+
+    now = datetime.now(bills.TEHRAN)
     for customer in bills.by_customer(bills.open_bills()):
         if customer.telegram_id is None:
             continue
-        overdue = locking_bills(customer)
-        if overdue:
+        if locking_bills(customer, now):
             await lock_panels(
                 bot,
                 customer.telegram_id,
                 total=customer.total,
                 count=len(customer.bills),
             )
+        elif not db.list_suspensions(customer.telegram_id):
+            await warn_before_lock(bot, customer, now)
 
     # Locks the rule put on come off as soon as the weekly credit is settled.
     for row in db.list_suspensions(reason="unpaid"):

@@ -132,6 +132,18 @@ class NexraPanelClient:
         )
         return self._ok(resp)
 
+    async def set_suspension(
+        self, telegram_id: int, username: str, reason: str | None
+    ) -> dict:
+        """Record why a panel is locked (None: it isn't any more), so the panel's
+        login page can tell its admin instead of just rejecting the password."""
+        resp = await self._request(
+            "POST",
+            "/bot/admin/suspension",
+            json={"telegram_id": telegram_id, "username": username, "reason": reason},
+        )
+        return self._ok(resp)
+
     async def get_all_credentials(self) -> list[dict]:
         resp = await self._request("GET", "/bot/admins/credentials")
         return self._ok(resp)

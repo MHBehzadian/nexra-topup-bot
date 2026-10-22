@@ -15,6 +15,7 @@ from __future__ import annotations
 import json
 import re
 import string
+import unicodedata
 
 from . import texts
 from .. import db
@@ -287,28 +288,52 @@ def _without_custom_emoji(text: str, entities) -> str:
     return out.decode("utf-16-le", errors="ignore")
 
 
+# Characters that change how an emoji is drawn, not what it is. Clients add or
+# drop them freely, so a label is compared without them.
+_INVISIBLE = dict.fromkeys(map(ord, "\ufe0f\ufe0e\u200d\u200c\u200b\u2060"), None)
+
+
+def _norm(text: str) -> str:
+    return " ".join(text.translate(_INVISIBLE).split())
+
+
+def _is_word(ch: str) -> bool:
+    """A Latin or Persian letter — what a label is made of, as opposed to the
+    emoji, keycaps and symbols an icon's fallback may be."""
+    category = unicodedata.category(ch)
+    return category.startswith("L") and (ch.isascii() or category == "Lo")
+
+
 def tapped_label(text: str | None, entities=None) -> str | None:
     """The button label a tap was meant to send, when the text differs from it.
 
     A reply button with a premium icon (set from the panel) sends its icon along
-    with its label — the icon's emoji in front, marked as a custom emoji — so the
-    text no longer equals the label and the tap went unrecognised, landing in
-    whatever flow was waiting for typed input. None when the text is already a
-    label, or isn't a button at all.
+    with its label, so the text no longer equals the label and the tap went
+    unrecognised, landing in whatever flow was waiting for typed input. Matched
+    loosely: custom-emoji spans cut out (by their UTF-16 offsets), invisible
+    emoji modifiers and extra spaces ignored, and a few characters of emoji on
+    either side of the label accepted for clients that send the icon as a plain
+    emoji. None when the text is already a label, or isn't a button at all.
     """
     if not text:
         return None
     labels = all_button_labels()
     if text in labels:
         return None
-    stripped = _without_custom_emoji(text, entities).strip()
-    if stripped in labels:
-        return stripped
-    # Some clients send the icon as a plain emoji with no entity: accept a
-    # label preceded by a few characters of emoji and spacing, and nothing else.
-    for label in sorted(labels, key=len, reverse=True):
-        if text.endswith(label):
-            prefix = text[: -len(label)]
-            if len(prefix) <= 12 and not any(ch.isalnum() for ch in prefix):
-                return label
+    by_norm = {_norm(label): label for label in labels}
+    whole = _norm(text)
+    for candidate in (_norm(_without_custom_emoji(text, entities)), whole):
+        if candidate in by_norm:
+            return by_norm[candidate]
+    for norm_label in sorted(by_norm, key=len, reverse=True):
+        if not norm_label:
+            continue
+        if whole.endswith(norm_label):
+            extra = whole[: -len(norm_label)]
+        elif whole.startswith(norm_label):
+            extra = whole[len(norm_label) :]
+        else:
+            continue
+        if len(extra) <= 16 and not any(_is_word(ch) for ch in extra):
+            return by_norm[norm_label]
     return None

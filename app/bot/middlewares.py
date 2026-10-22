@@ -5,6 +5,7 @@ from __future__ import annotations
 import logging
 
 from aiogram import BaseMiddleware
+from aiogram.dispatcher.event.bases import UNHANDLED
 from aiogram.types import CallbackQuery, Message
 from aiogram.types import User as TgUser
 
@@ -65,8 +66,19 @@ class ButtonTapMiddleware(BaseMiddleware):
     button's plain label, so they recognise it (see customize.tapped_label)."""
 
     async def __call__(self, handler, event, data):
-        if isinstance(event, Message):
-            label = customize.tapped_label(event.text, event.entities)
-            if label is not None:
-                event = event.model_copy(update={"text": label, "entities": None})
-        return await handler(event, data)
+        if not isinstance(event, Message):
+            return await handler(event, data)
+        label = customize.tapped_label(event.text, event.entities)
+        if label is not None:
+            event = event.model_copy(update={"text": label, "entities": None})
+        result = await handler(event, data)
+        if result is UNHANDLED and event.text:
+            # Nothing took it. Logged exactly as it arrived, so a button whose
+            # tap still isn't recognised shows what Telegram really sent.
+            logger.info(
+                "unhandled message from %s: text=%r entities=%r",
+                event.from_user.id if event.from_user else None,
+                event.text,
+                [(e.type, e.offset, e.length) for e in event.entities or []],
+            )
+        return result

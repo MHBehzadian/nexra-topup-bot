@@ -5,12 +5,12 @@ from __future__ import annotations
 import logging
 
 from aiogram import BaseMiddleware
-from aiogram.types import CallbackQuery
+from aiogram.types import CallbackQuery, Message
 from aiogram.types import User as TgUser
 
 from .. import db
 from ..config import settings
-from . import keyboards, texts
+from . import customize, keyboards, texts
 
 logger = logging.getLogger(__name__)
 
@@ -58,3 +58,15 @@ class ForceJoinMiddleware(BaseMiddleware):
             # keeps one blocked user from raising out of every update.
             pass
         return None
+
+
+class ButtonTapMiddleware(BaseMiddleware):
+    """Hands a tap on a reply button with a premium icon to the handlers as the
+    button's plain label, so they recognise it (see customize.tapped_label)."""
+
+    async def __call__(self, handler, event, data):
+        if isinstance(event, Message):
+            label = customize.tapped_label(event.text, event.entities)
+            if label is not None:
+                event = event.model_copy(update={"text": label, "entities": None})
+        return await handler(event, data)

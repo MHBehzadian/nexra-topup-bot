@@ -261,3 +261,54 @@ def refresh_menu_texts() -> None:
 
     nav.ALL_MENU_TEXTS.clear()
     nav.ALL_MENU_TEXTS.update(labels_for(*nav.MENU_KEYS))
+
+
+# ------------------------------------------------------------------ taps on iconed buttons
+
+
+def all_button_labels() -> set[str]:
+    return labels_for(*(name for name in DEFAULTS if is_button(name)))
+
+
+def _without_custom_emoji(text: str, entities) -> str:
+    """The text with every custom-emoji span cut out. Entity offsets count
+    UTF-16 code units, not Python characters, hence the round trip."""
+    spans = sorted(
+        (e.offset, e.offset + e.length) for e in entities or [] if e.type == "custom_emoji"
+    )
+    if not spans:
+        return text
+    raw = text.encode("utf-16-le")
+    out, pos = bytearray(), 0
+    for start, end in spans:
+        out += raw[pos * 2 : start * 2]
+        pos = max(pos, end)
+    out += raw[pos * 2 :]
+    return out.decode("utf-16-le", errors="ignore")
+
+
+def tapped_label(text: str | None, entities=None) -> str | None:
+    """The button label a tap was meant to send, when the text differs from it.
+
+    A reply button with a premium icon (set from the panel) sends its icon along
+    with its label — the icon's emoji in front, marked as a custom emoji — so the
+    text no longer equals the label and the tap went unrecognised, landing in
+    whatever flow was waiting for typed input. None when the text is already a
+    label, or isn't a button at all.
+    """
+    if not text:
+        return None
+    labels = all_button_labels()
+    if text in labels:
+        return None
+    stripped = _without_custom_emoji(text, entities).strip()
+    if stripped in labels:
+        return stripped
+    # Some clients send the icon as a plain emoji with no entity: accept a
+    # label preceded by a few characters of emoji and spacing, and nothing else.
+    for label in sorted(labels, key=len, reverse=True):
+        if text.endswith(label):
+            prefix = text[: -len(label)]
+            if len(prefix) <= 12 and not any(ch.isalnum() for ch in prefix):
+                return label
+    return None

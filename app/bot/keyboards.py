@@ -473,6 +473,22 @@ def topup_panel_kb(username: str) -> InlineKeyboardMarkup:
     return kb.as_markup()
 
 
+def topup_panels_kb(usernames) -> InlineKeyboardMarkup:
+    """A top-up button per panel, under a message about several of them."""
+    if len(usernames) == 1:
+        return topup_panel_kb(usernames[0])
+    kb = InlineKeyboardBuilder()
+    for username in usernames:
+        _b(
+            kb,
+            "BTN_TOPUP_THIS_PANEL",
+            text=f"{texts.BTN_TOPUP_THIS_PANEL} · {username}",
+            callback_data=f"pick:topup:{username}",
+        )
+    kb.adjust(1)
+    return kb.as_markup()
+
+
 def tutorials_list_kb(tutorials) -> InlineKeyboardMarkup:
     kb = InlineKeyboardBuilder()
     for t in tutorials:

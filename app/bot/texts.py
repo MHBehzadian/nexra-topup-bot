@@ -345,6 +345,9 @@ FORECAST_NO_USAGE = (
     "✅ در روزهای اخیر مصرفی ثبت نشده است."
 )
 FORECAST_NO_PANELS = "ℹ️ پنلی برای پیش‌بینی مصرف یافت نشد."
+# Sent unasked only when a panel will run out soon (see forecast.ALERT_DAYS);
+# the full forecast stays one tap away on the menu button.
+FORECAST_ALERT_TITLE = "⏳ <b>حجم پنل شما رو به اتمام است</b>\n\n"
 
 BTN_ALL_PANELS = "🗄 همه پنل‌ها"
 ALL_PANELS_HEADER = "📋 لیست کامل پنل‌ها ({count} مورد):\n\n"
@@ -463,6 +466,37 @@ INVOICE_REMINDER = (
     "📝 بابت: {description}\n"
     "⏳ مهلت: {due}\n\n"
     "لطفاً در اسرع وقت نسبت به پرداخت اقدام نمایید."
+)
+
+# --- one message per customer, however many bills they have ---
+OWED_LINE_WEEKLY = "▪️ پنل «{username}»: {amount:,} تومان\n"
+OWED_LINE_WEEKLY_OVERDUE = "▪️ پنل «{username}»: {amount:,} تومان — {days} روز از موعد گذشته\n"
+OWED_LINE_INVOICE = "▪️ فاکتور #{id} ({description}): {amount:,} تومان — مهلت {due}\n"
+WEEKLY_REMINDER_MULTI = (
+    "🗓 یادآوری تسویه‌ی هفتگی\n\n"
+    "{lines}\n"
+    "💰 جمع: <b>{total:,}</b> تومان\n\n"
+    "لطفاً تا پایان هفته نسبت به تسویه اقدام نمایید.\n"
+    "⛔️ اگر این مبلغ تا ۲۴ ساعت پس از تسویه‌ی جمعه پرداخت نشود، پنل شما به‌صورت خودکار مسدود می‌شود."
+)
+OVERDUE_REMINDER_MULTI = (
+    "⚠️ بدهی‌های پرداخت‌نشده\n\n"
+    "{lines}\n"
+    "💰 جمع: <b>{total:,}</b> تومان\n\n"
+    "لطفاً در اسرع وقت نسبت به تسویه اقدام نمایید."
+)
+SETTLEMENT_LINE_PAID = "▪️ پنل «{username}»: {paid:,} تومان از کیف پول تسویه شد ✅\n"
+SETTLEMENT_LINE_LEFT = "▪️ پنل «{username}»: {remaining:,} تومان باقی‌مانده (از کیف پول: {paid:,})\n"
+WEEKLY_SETTLEMENT_MULTI = (
+    "🗓 زمان تسویه‌ی هفتگی رسید.\n\n"
+    "{lines}\n"
+    "💰 باقی‌مانده جهت پرداخت: <b>{remaining:,}</b> تومان"
+    "{lock_line}"
+)
+WEEKLY_WALLET_SETTLED_MULTI = (
+    "✅ بدهی هفتگی همه‌ی پنل‌های شما از کیف پول تسویه شد.\n\n"
+    "{lines}\n"
+    "💼 موجودی کیف پول: {balance:,} تومان"
 )
 BTN_PAY_INVOICE = "💳 پرداخت فاکتور"
 INVOICE_PAYMENT_INSTRUCTIONS = (

@@ -3,6 +3,8 @@ force-join channel, and the bulk-credentials-export PIN."""
 
 from __future__ import annotations
 
+import asyncio
+
 from aiogram import Bot, F, Router
 from aiogram.fsm.context import FSMContext
 from aiogram.types import CallbackQuery, Message
@@ -1027,18 +1029,33 @@ async def start_broadcast(message: Message, state: FSMContext) -> None:
 @router.message(Broadcast.text, ~F.text.in_(ALL_MENU_TEXTS))
 async def finish_broadcast(message: Message, state: FSMContext, bot: Bot) -> None:
     await state.clear()
-    body = message.text or ""
-    if not body.strip():
-        await message.answer(texts.INVALID_PASSWORD, reply_markup=superadmin_kb(message.from_user.id))
+    # html_text, not text: the plain text drops every entity the superadmin
+    # wrote with — premium emoji, bold, links — and sent as HTML, a bare "<" in
+    # it broke the whole message.
+    body = message.html_text if (message.text or message.caption) else ""
+    media = bool(message.photo or message.video or message.animation or message.document)
+    if not body.strip() and not media:
+        await message.answer(texts.BROADCAST_EMPTY, reply_markup=superadmin_kb(message.from_user.id))
         return
 
     sent = failed = 0
     for telegram_id in db.list_known_users():
         try:
-            await bot.send_message(telegram_id, texts.BROADCAST_PREFIX + body)
+            if media:
+                await bot.copy_message(
+                    telegram_id,
+                    from_chat_id=message.chat.id,
+                    message_id=message.message_id,
+                    caption=texts.BROADCAST_PREFIX + body,
+                )
+            else:
+                await bot.send_message(telegram_id, texts.BROADCAST_PREFIX + body)
             sent += 1
         except Exception:
             failed += 1
+        # Telegram allows about 30 messages a second; a larger list sent flat
+        # out starts failing part-way through.
+        await asyncio.sleep(0.05)
 
     await message.answer(
         texts.BROADCAST_RESULT.format(sent=sent, failed=failed),

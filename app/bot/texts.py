@@ -715,6 +715,7 @@ LOCK_WARNING = (
     "و ورود به پنل ممکن نخواهد بود."
 )
 LOCK_DEADLINE = "<b>{when}</b> (حدود {hours} ساعت دیگر)"
+LOCK_DEADLINE_DAYS = "<b>{when}</b> (حدود {days} روز دیگر)"
 BTN_PAY_ALL_BILLS = "💳 پرداخت همه فاکتورها"
 UNSUSPENDED_NOTICE = (
     "✅ <b>پنل شما باز شد</b>\n"
@@ -756,7 +757,19 @@ CONFIRM_LOCK = (
 CONFIRM_UNLOCK = (
     "✅ <b>آزاد کردن پنل‌های این کاربر</b>\n\n"
     "رمز قبلی هر پنل بازگردانده می‌شود.\n\n"
-    "مطمئن هستید؟"
+    "تا کی قفل خودکار برای او خاموش بماند؟ بعد از آن، اگر هنوز بدهی داشته باشد، "
+    "با همان هشدارهای ۱۲ و ۲ ساعته دوباره مسدود می‌شود."
+)
+BTN_RESPITE_1 = "⏳ ۱ روز مهلت"
+BTN_RESPITE_3 = "⏳ ۳ روز مهلت"
+BTN_RESPITE_7 = "⏳ ۷ روز مهلت"
+BTN_RESPITE_PAID = "♾ تا وقتی پرداخت کند"
+UNLOCKED_RESPITE_TOAST = "✅ آزاد شد. قفل خودکار تا {until} خاموش است."
+UNLOCKED_UNTIL_PAID_TOAST = "✅ آزاد شد. تا پرداخت بدهی، دوباره خودکار مسدود نمی‌شود."
+# Added to the customer's unlock notice when there is still something to pay.
+UNSUSPENDED_RESPITE_NOTE = (
+    "\n\n⏳ تا {until} فرصت دارید بدهی‌تان را تسویه کنید؛ "
+    "پس از آن، در صورت عدم پرداخت، پنل دوباره مسدود می‌شود."
 )
 LOCK_CANCELLED = "↩️ لغو شد."
 LOCK_NO_PANELS = "⚠️ پنلی برای این کاربر پیدا نشد یا رمزش در دسترس نبود."

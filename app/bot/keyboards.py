@@ -239,16 +239,25 @@ def user_actions_kb(telegram_id: int) -> InlineKeyboardMarkup:
 
 
 def confirm_lock_kb(telegram_id: int, locking: bool) -> InlineKeyboardMarkup:
-    """Changing someone's password is not undoable by them, so it takes a second tap."""
+    """Changing someone's password is not undoable by them, so it takes a second
+    tap. Unlocking asks how long the automatic lock stays off for them (0 days
+    in the callback: until they pay)."""
     kb = InlineKeyboardBuilder()
-    action = "lockok" if locking else "unlockok"
-    _b(
-        kb,
-        "BTN_CONFIRM_LOCK" if locking else "BTN_CONFIRM_UNLOCK",
-        callback_data=f"{action}:{telegram_id}",
-    )
+    if locking:
+        _b(kb, "BTN_CONFIRM_LOCK", callback_data=f"lockok:{telegram_id}")
+    else:
+        for name, days in (
+            ("BTN_RESPITE_1", 1),
+            ("BTN_RESPITE_3", 3),
+            ("BTN_RESPITE_7", 7),
+            ("BTN_RESPITE_PAID", 0),
+        ):
+            _b(kb, name, callback_data=f"unlockok:{telegram_id}:{days}")
     _b(kb, "BTN_KEEP", callback_data="lock_no")
-    kb.adjust(1)
+    if locking:
+        kb.adjust(1)
+    else:
+        kb.adjust(3, 1, 1)
     return kb.as_markup()
 
 

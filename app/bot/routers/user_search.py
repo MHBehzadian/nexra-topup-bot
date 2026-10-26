@@ -7,6 +7,8 @@ an invoice, or remove one.
 
 from __future__ import annotations
 
+import re
+
 from aiogram import Bot, F, Router
 from aiogram.fsm.context import FSMContext
 from aiogram.types import CallbackQuery, Message
@@ -183,13 +185,26 @@ async def ask_unlock(call: CallbackQuery) -> None:
 
 @router.callback_query(F.data.startswith("unlockok:"))
 async def do_unlock(call: CallbackQuery, bot: Bot) -> None:
-    target = int(call.data.split(":", 1)[1])
+    parts = call.data.split(":")
+    target = int(parts[1])
+    # A confirm button sent before respites existed carries no length.
+    days = int(parts[2]) if len(parts) > 2 and parts[2].isdigit() else 3
+    # Granted before the unlock, so a sweep running meanwhile can't relock.
+    until = enforcement.grant_respite(target, days or None)
+    owes = enforcement.owes_weekly(target)
+    when = enforcement.describe_deadline(until) if days else ""
+    note = texts.UNSUSPENDED_RESPITE_NOTE.format(until=when) if days and owes else ""
     # Lifts both kinds: told to unlock by hand means unlock, whatever put it on.
-    restored = await enforcement.unlock(bot, target)
+    restored = await enforcement.unlock(bot, target, note=note)
     if not restored:
+        enforcement.clear_respite(target)
         await call.answer(texts.LOCK_NOT_LOCKED, show_alert=True)
         return
-    await call.answer(texts.UNLOCKED_TOAST)
+    if days:
+        plain = re.sub(r"<[^>]+>", "", when)
+        await call.answer(texts.UNLOCKED_RESPITE_TOAST.format(until=plain), show_alert=True)
+    else:
+        await call.answer(texts.UNLOCKED_UNTIL_PAID_TOAST, show_alert=True)
 
 
 @router.callback_query(F.data == "lock_no")

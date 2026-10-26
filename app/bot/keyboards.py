@@ -100,13 +100,14 @@ def superadmin_menu_kb() -> ReplyKeyboardMarkup:
 def panels_section_kb() -> ReplyKeyboardMarkup:
     return _reply_kb(
         "BTN_ALL_PANELS",
+        "BTN_LOCKED_PANELS",
         "BTN_GRANT_TRAFFIC",
         "BTN_PANEL_HISTORY",
         "BTN_CREATE_ADMIN",
         "BTN_SYNC_TELEGRAM_IDS",
         "BTN_EXPORT_ALL_PASSWORDS",
         "BTN_BACK",
-        layout=(2, 2, 2, 1),
+        layout=(2, 2, 2, 1, 1),
     )
 
 
@@ -235,6 +236,21 @@ def user_actions_kb(telegram_id: int) -> InlineKeyboardMarkup:
     else:
         _b(kb, "BTN_LOCK_PANELS", callback_data=f"usr_lock:{telegram_id}")
     kb.adjust(2, 2, 2, 1)
+    return kb.as_markup()
+
+
+def locked_customers_kb(customers) -> InlineKeyboardMarkup:
+    """An unlock button per locked customer: (telegram_id, name) pairs. Each
+    leads to the usual confirmation, which asks how long a respite to give."""
+    kb = InlineKeyboardBuilder()
+    for telegram_id, who in customers:
+        _b(
+            kb,
+            "BTN_UNLOCK_PANELS",
+            text=texts.BTN_UNLOCK_CUSTOMER.format(who=who),
+            callback_data=f"usr_unlock:{telegram_id}",
+        )
+    kb.adjust(1)
     return kb.as_markup()
 
 

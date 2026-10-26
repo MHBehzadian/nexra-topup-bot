@@ -772,6 +772,20 @@ UNSUSPENDED_RESPITE_NOTE = (
     "پس از آن، در صورت عدم پرداخت، پنل دوباره مسدود می‌شود."
 )
 LOCK_CANCELLED = "↩️ لغو شد."
+
+# --- every panel currently locked, in one place ---
+BTN_LOCKED_PANELS = "⛔️ پنل‌های مسدود"
+LOCKED_LIST_HEADER = "⛔️ <b>پنل‌های مسدود</b> — {panels} پنل از {people} نفر\n\n"
+LOCKED_LIST_NONE = "✅ در حال حاضر هیچ پنلی مسدود نیست."
+LOCKED_LINE = (
+    "▫️ <b>{panels}</b>\n"
+    "   👤 {who} · <code>{telegram_id}</code>\n"
+    "   🔒 {reason} · از {since}\n"
+    "   💰 بدهی: {owed:,} تومان\n\n"
+)
+LOCK_REASON_UNPAID = "عدم پرداخت"
+LOCK_REASON_MANUAL = "دستی"
+BTN_UNLOCK_CUSTOMER = "✅ آزاد کردن · {who}"
 LOCK_NO_PANELS = "⚠️ پنلی برای این کاربر پیدا نشد یا رمزش در دسترس نبود."
 LOCK_NOT_LOCKED = "ℹ️ پنل‌های این کاربر مسدود نیستند."
 LOCKED_TOAST = "⛔️ مسدود شد."

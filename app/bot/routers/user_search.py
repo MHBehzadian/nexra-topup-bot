@@ -8,6 +8,8 @@ an invoice, or remove one.
 from __future__ import annotations
 
 import re
+from datetime import datetime
+from html import escape
 
 from aiogram import Bot, F, Router
 from aiogram.fsm.context import FSMContext
@@ -172,6 +174,63 @@ async def do_lock(call: CallbackQuery, bot: Bot) -> None:
         await call.answer(texts.LOCK_NO_PANELS, show_alert=True)
         return
     await call.answer(texts.LOCKED_TOAST)
+
+
+def _who(telegram_id: int) -> str:
+    user = db.get_user(telegram_id) or {}
+    if user.get("username"):
+        return f"@{user['username']}"
+    return user.get("full_name") or str(telegram_id)
+
+
+@router.message(Label("BTN_LOCKED_PANELS"))
+async def list_locked(message: Message) -> None:
+    """Every panel locked right now, by customer, with a way to free each."""
+    rows = db.list_suspensions()
+    if not rows:
+        await message.answer(texts.LOCKED_LIST_NONE)
+        return
+
+    by_customer: dict[int, list[dict]] = {}
+    for row in rows:
+        by_customer.setdefault(row["telegram_id"], []).append(row)
+
+    lines, buttons = [], []
+    for telegram_id, locks in by_customer.items():
+        who = _who(telegram_id)
+        since = min(r["suspended_at"] for r in locks)
+        try:
+            since = datetime.fromisoformat(since).astimezone(bills.TEHRAN).strftime("%Y-%m-%d %H:%M")
+        except ValueError:
+            pass
+        reasons = {r.get("reason") or "unpaid" for r in locks}
+        lines.append(
+            texts.LOCKED_LINE.format(
+                panels="، ".join(r["username"] for r in locks),
+                who=escape(who),
+                telegram_id=telegram_id,
+                reason="، ".join(
+                    texts.LOCK_REASON_MANUAL if r == "manual" else texts.LOCK_REASON_UNPAID
+                    for r in sorted(reasons)
+                ),
+                since=since,
+                owed=sum(b.amount for b in bills.open_bills(telegram_id)),
+            )
+        )
+        buttons.append((telegram_id, who[:30]))
+
+    header = texts.LOCKED_LIST_HEADER.format(panels=len(rows), people=len(by_customer))
+    # One message for a short list; a long one is split, buttons under the last.
+    chunks, current = [], header
+    for line in lines:
+        if len(current) + len(line) > 3800:
+            chunks.append(current)
+            current = ""
+        current += line
+    chunks.append(current)
+    for chunk in chunks[:-1]:
+        await message.answer(chunk)
+    await message.answer(chunks[-1], reply_markup=keyboards.locked_customers_kb(buttons))
 
 
 @router.callback_query(F.data.startswith("usr_unlock:"))

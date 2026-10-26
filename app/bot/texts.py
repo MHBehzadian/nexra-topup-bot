@@ -720,7 +720,7 @@ BTN_PAY_ALL_BILLS = "💳 پرداخت همه فاکتورها"
 UNSUSPENDED_NOTICE = (
     "✅ <b>پنل شما باز شد</b>\n"
     "━━━━━━━━━━━━━━━\n"
-    "پرداخت شما ثبت شد و دسترسی پنل‌تان با همان رمز قبلی برقرار است.\n"
+    "پرداخت شما ثبت شد و دسترسی پنل‌تان برقرار است.\n"
     "از همراهی شما سپاسگزاریم."
 )
 PAY_ALL_INSTRUCTIONS = (
@@ -767,10 +767,7 @@ BTN_RESPITE_PAID = "♾ تا وقتی پرداخت کند"
 UNLOCKED_RESPITE_TOAST = "✅ آزاد شد. قفل خودکار تا {until} خاموش است."
 UNLOCKED_UNTIL_PAID_TOAST = "✅ آزاد شد. تا پرداخت بدهی، دوباره خودکار مسدود نمی‌شود."
 # Added to the customer's unlock notice when there is still something to pay.
-UNSUSPENDED_RESPITE_NOTE = (
-    "\n\n⏳ تا {until} فرصت دارید بدهی‌تان را تسویه کنید؛ "
-    "پس از آن، در صورت عدم پرداخت، پنل دوباره مسدود می‌شود."
-)
+UNSUSPENDED_RESPITE_NOTE = "\n\n⏳ تا {until} فرصت پرداخت برای باقی مبلغ اعمال شد 🙏🏻"
 LOCK_CANCELLED = "↩️ لغو شد."
 
 # --- every panel currently locked, in one place ---

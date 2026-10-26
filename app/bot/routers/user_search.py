@@ -7,6 +7,10 @@ an invoice, or remove one.
 
 from __future__ import annotations
 
+import re
+from datetime import datetime
+from html import escape
+
 from aiogram import Bot, F, Router
 from aiogram.fsm.context import FSMContext
 from aiogram.types import CallbackQuery, Message
@@ -172,6 +176,63 @@ async def do_lock(call: CallbackQuery, bot: Bot) -> None:
     await call.answer(texts.LOCKED_TOAST)
 
 
+def _who(telegram_id: int) -> str:
+    user = db.get_user(telegram_id) or {}
+    if user.get("username"):
+        return f"@{user['username']}"
+    return user.get("full_name") or str(telegram_id)
+
+
+@router.message(Label("BTN_LOCKED_PANELS"))
+async def list_locked(message: Message) -> None:
+    """Every panel locked right now, by customer, with a way to free each."""
+    rows = db.list_suspensions()
+    if not rows:
+        await message.answer(texts.LOCKED_LIST_NONE)
+        return
+
+    by_customer: dict[int, list[dict]] = {}
+    for row in rows:
+        by_customer.setdefault(row["telegram_id"], []).append(row)
+
+    lines, buttons = [], []
+    for telegram_id, locks in by_customer.items():
+        who = _who(telegram_id)
+        since = min(r["suspended_at"] for r in locks)
+        try:
+            since = datetime.fromisoformat(since).astimezone(bills.TEHRAN).strftime("%Y-%m-%d %H:%M")
+        except ValueError:
+            pass
+        reasons = {r.get("reason") or "unpaid" for r in locks}
+        lines.append(
+            texts.LOCKED_LINE.format(
+                panels="، ".join(r["username"] for r in locks),
+                who=escape(who),
+                telegram_id=telegram_id,
+                reason="، ".join(
+                    texts.LOCK_REASON_MANUAL if r == "manual" else texts.LOCK_REASON_UNPAID
+                    for r in sorted(reasons)
+                ),
+                since=since,
+                owed=sum(b.amount for b in bills.open_bills(telegram_id)),
+            )
+        )
+        buttons.append((telegram_id, who[:30]))
+
+    header = texts.LOCKED_LIST_HEADER.format(panels=len(rows), people=len(by_customer))
+    # One message for a short list; a long one is split, buttons under the last.
+    chunks, current = [], header
+    for line in lines:
+        if len(current) + len(line) > 3800:
+            chunks.append(current)
+            current = ""
+        current += line
+    chunks.append(current)
+    for chunk in chunks[:-1]:
+        await message.answer(chunk)
+    await message.answer(chunks[-1], reply_markup=keyboards.locked_customers_kb(buttons))
+
+
 @router.callback_query(F.data.startswith("usr_unlock:"))
 async def ask_unlock(call: CallbackQuery) -> None:
     target = int(call.data.split(":", 1)[1])
@@ -183,13 +244,26 @@ async def ask_unlock(call: CallbackQuery) -> None:
 
 @router.callback_query(F.data.startswith("unlockok:"))
 async def do_unlock(call: CallbackQuery, bot: Bot) -> None:
-    target = int(call.data.split(":", 1)[1])
+    parts = call.data.split(":")
+    target = int(parts[1])
+    # A confirm button sent before respites existed carries no length.
+    days = int(parts[2]) if len(parts) > 2 and parts[2].isdigit() else 3
+    # Granted before the unlock, so a sweep running meanwhile can't relock.
+    until = enforcement.grant_respite(target, days or None)
+    owes = enforcement.owes_weekly(target)
+    when = enforcement.describe_deadline(until) if days else ""
+    note = texts.UNSUSPENDED_RESPITE_NOTE.format(until=when) if days and owes else ""
     # Lifts both kinds: told to unlock by hand means unlock, whatever put it on.
-    restored = await enforcement.unlock(bot, target)
+    restored = await enforcement.unlock(bot, target, note=note)
     if not restored:
+        enforcement.clear_respite(target)
         await call.answer(texts.LOCK_NOT_LOCKED, show_alert=True)
         return
-    await call.answer(texts.UNLOCKED_TOAST)
+    if days:
+        plain = re.sub(r"<[^>]+>", "", when)
+        await call.answer(texts.UNLOCKED_RESPITE_TOAST.format(until=plain), show_alert=True)
+    else:
+        await call.answer(texts.UNLOCKED_UNTIL_PAID_TOAST, show_alert=True)
 
 
 @router.callback_query(F.data == "lock_no")

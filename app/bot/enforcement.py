@@ -87,9 +87,55 @@ def lock_time(bill: bills.Bill, started: datetime) -> datetime | None:
     return at
 
 
+# A lock lifted by hand is the superadmin's decision, and the next sweep used
+# to put it straight back on — the debt that caused it was still there. An
+# unlock by hand now comes with a respite: no automatic lock for this customer
+# until it ends, or, with no end, until their weekly credit is settled.
+UNTIL_PAID = datetime.max.replace(tzinfo=timezone.utc)
+
+
+def _respite_key(telegram_id: int) -> str:
+    return f"lock_respite:{telegram_id}"
+
+
+def grant_respite(telegram_id: int, days: int | None) -> datetime:
+    """No automatic lock for `days` from now (None: until the weekly credit is
+    settled). Returns when it ends."""
+    until = UNTIL_PAID if days is None else datetime.now(timezone.utc) + timedelta(days=days)
+    db.set_setting(_respite_key(telegram_id), until.isoformat())
+    return until
+
+
+def clear_respite(telegram_id: int) -> None:
+    db.set_setting(_respite_key(telegram_id), "")
+
+
+def respite_until(telegram_id: int | None, now: datetime | None = None) -> datetime | None:
+    """When this customer's respite ends, or None if they have none (left)."""
+    if telegram_id is None:
+        return None
+    stored = db.get_setting(_respite_key(telegram_id))
+    if not stored:
+        return None
+    try:
+        until = datetime.fromisoformat(stored)
+    except ValueError:
+        return None
+    # An until-paid respite ends once nothing weekly is owed, so the customer's
+    # next unpaid week is treated like anyone else's.
+    if until <= (now or datetime.now(timezone.utc)) or (
+        until == UNTIL_PAID and not owes_weekly(telegram_id)
+    ):
+        clear_respite(telegram_id)
+        return None
+    return until
+
+
 def locking_bills(customer: bills.Customer, now: datetime | None = None) -> list[bills.Bill]:
     """The customer's bills that are late enough, and recent enough, to lock for."""
     now = now or datetime.now(bills.TEHRAN)
+    if respite_until(customer.telegram_id, now):
+        return []
     started = cutoff()
     return [
         bill
@@ -99,10 +145,17 @@ def locking_bills(customer: bills.Customer, now: datetime | None = None) -> list
 
 
 def lock_deadline(customer: bills.Customer) -> datetime | None:
-    """The earliest moment one of this customer's bills will lock their panels."""
+    """The earliest moment one of this customer's bills will lock their panels;
+    None if none will (or not before they pay, under an until-paid respite)."""
     started = cutoff()
     times = [at for b in customer.bills if (at := lock_time(b, started)) is not None]
-    return min(times) if times else None
+    if not times:
+        return None
+    respite = respite_until(customer.telegram_id)
+    if respite == UNTIL_PAID:
+        return None
+    # Under a respite the lock waits for its end, and the warnings follow it.
+    return max(min(times), respite) if respite else min(times)
 
 
 def deadline_for(telegram_id: int) -> datetime | None:
@@ -114,9 +167,10 @@ def describe_deadline(at: datetime, now: datetime | None = None) -> str:
     """The lock time as the customer reads it: Tehran clock time and hours left."""
     now = now or datetime.now(bills.TEHRAN)
     hours = max(1, round((at - now).total_seconds() / 3600))
-    return texts.LOCK_DEADLINE.format(
-        when=at.astimezone(bills.TEHRAN).strftime("%Y-%m-%d %H:%M"), hours=hours
-    )
+    when = at.astimezone(bills.TEHRAN).strftime("%Y-%m-%d %H:%M")
+    if hours >= 48:
+        return texts.LOCK_DEADLINE_DAYS.format(when=when, days=round(hours / 24))
+    return texts.LOCK_DEADLINE.format(when=when, hours=hours)
 
 
 def owes_weekly(telegram_id: int) -> bool:
@@ -223,7 +277,9 @@ async def lock_panels(
     return locked
 
 
-async def unlock(bot: Bot, telegram_id: int, *, reason: str | None = None) -> list[str]:
+async def unlock(
+    bot: Bot, telegram_id: int, *, reason: str | None = None, note: str = ""
+) -> list[str]:
     """Put back every password this customer's panels had before the lock.
 
     `reason` narrows it: the automatic sweep passes 'unpaid' so a lock placed by
@@ -252,7 +308,7 @@ async def unlock(bot: Bot, telegram_id: int, *, reason: str | None = None) -> li
     if not restored:
         return []
 
-    await _tell(bot, telegram_id, texts.UNSUSPENDED_NOTICE)
+    await _tell(bot, telegram_id, texts.UNSUSPENDED_NOTICE + note)
     await _tell_superadmins(
         bot,
         texts.UNSUSPENDED_ADMIN_NOTICE.format(

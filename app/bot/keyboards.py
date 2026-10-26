@@ -100,13 +100,14 @@ def superadmin_menu_kb() -> ReplyKeyboardMarkup:
 def panels_section_kb() -> ReplyKeyboardMarkup:
     return _reply_kb(
         "BTN_ALL_PANELS",
+        "BTN_LOCKED_PANELS",
         "BTN_GRANT_TRAFFIC",
         "BTN_PANEL_HISTORY",
         "BTN_CREATE_ADMIN",
         "BTN_SYNC_TELEGRAM_IDS",
         "BTN_EXPORT_ALL_PASSWORDS",
         "BTN_BACK",
-        layout=(2, 2, 2, 1),
+        layout=(2, 2, 2, 1, 1),
     )
 
 
@@ -238,17 +239,41 @@ def user_actions_kb(telegram_id: int) -> InlineKeyboardMarkup:
     return kb.as_markup()
 
 
-def confirm_lock_kb(telegram_id: int, locking: bool) -> InlineKeyboardMarkup:
-    """Changing someone's password is not undoable by them, so it takes a second tap."""
+def locked_customers_kb(customers) -> InlineKeyboardMarkup:
+    """An unlock button per locked customer: (telegram_id, name) pairs. Each
+    leads to the usual confirmation, which asks how long a respite to give."""
     kb = InlineKeyboardBuilder()
-    action = "lockok" if locking else "unlockok"
-    _b(
-        kb,
-        "BTN_CONFIRM_LOCK" if locking else "BTN_CONFIRM_UNLOCK",
-        callback_data=f"{action}:{telegram_id}",
-    )
-    _b(kb, "BTN_KEEP", callback_data="lock_no")
+    for telegram_id, who in customers:
+        _b(
+            kb,
+            "BTN_UNLOCK_PANELS",
+            text=texts.BTN_UNLOCK_CUSTOMER.format(who=who),
+            callback_data=f"usr_unlock:{telegram_id}",
+        )
     kb.adjust(1)
+    return kb.as_markup()
+
+
+def confirm_lock_kb(telegram_id: int, locking: bool) -> InlineKeyboardMarkup:
+    """Changing someone's password is not undoable by them, so it takes a second
+    tap. Unlocking asks how long the automatic lock stays off for them (0 days
+    in the callback: until they pay)."""
+    kb = InlineKeyboardBuilder()
+    if locking:
+        _b(kb, "BTN_CONFIRM_LOCK", callback_data=f"lockok:{telegram_id}")
+    else:
+        for name, days in (
+            ("BTN_RESPITE_1", 1),
+            ("BTN_RESPITE_3", 3),
+            ("BTN_RESPITE_7", 7),
+            ("BTN_RESPITE_PAID", 0),
+        ):
+            _b(kb, name, callback_data=f"unlockok:{telegram_id}:{days}")
+    _b(kb, "BTN_KEEP", callback_data="lock_no")
+    if locking:
+        kb.adjust(1)
+    else:
+        kb.adjust(3, 1, 1)
     return kb.as_markup()
 
 
@@ -470,6 +495,22 @@ def topup_panel_kb(username: str) -> InlineKeyboardMarkup:
     up the panel the warning is about."""
     kb = InlineKeyboardBuilder()
     _b(kb, "BTN_TOPUP_THIS_PANEL", callback_data=f"pick:topup:{username}")
+    return kb.as_markup()
+
+
+def topup_panels_kb(usernames) -> InlineKeyboardMarkup:
+    """A top-up button per panel, under a message about several of them."""
+    if len(usernames) == 1:
+        return topup_panel_kb(usernames[0])
+    kb = InlineKeyboardBuilder()
+    for username in usernames:
+        _b(
+            kb,
+            "BTN_TOPUP_THIS_PANEL",
+            text=f"{texts.BTN_TOPUP_THIS_PANEL} · {username}",
+            callback_data=f"pick:topup:{username}",
+        )
+    kb.adjust(1)
     return kb.as_markup()
 
 

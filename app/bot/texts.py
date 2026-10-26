@@ -345,6 +345,9 @@ FORECAST_NO_USAGE = (
     "✅ در روزهای اخیر مصرفی ثبت نشده است."
 )
 FORECAST_NO_PANELS = "ℹ️ پنلی برای پیش‌بینی مصرف یافت نشد."
+# Sent unasked only when a panel will run out soon (see forecast.ALERT_DAYS);
+# the full forecast stays one tap away on the menu button.
+FORECAST_ALERT_TITLE = "⏳ <b>حجم پنل شما رو به اتمام است</b>\n\n"
 
 BTN_ALL_PANELS = "🗄 همه پنل‌ها"
 ALL_PANELS_HEADER = "📋 لیست کامل پنل‌ها ({count} مورد):\n\n"
@@ -464,6 +467,37 @@ INVOICE_REMINDER = (
     "⏳ مهلت: {due}\n\n"
     "لطفاً در اسرع وقت نسبت به پرداخت اقدام نمایید."
 )
+
+# --- one message per customer, however many bills they have ---
+OWED_LINE_WEEKLY = "▪️ پنل «{username}»: {amount:,} تومان\n"
+OWED_LINE_WEEKLY_OVERDUE = "▪️ پنل «{username}»: {amount:,} تومان — {days} روز از موعد گذشته\n"
+OWED_LINE_INVOICE = "▪️ فاکتور #{id} ({description}): {amount:,} تومان — مهلت {due}\n"
+WEEKLY_REMINDER_MULTI = (
+    "🗓 یادآوری تسویه‌ی هفتگی\n\n"
+    "{lines}\n"
+    "💰 جمع: <b>{total:,}</b> تومان\n\n"
+    "لطفاً تا پایان هفته نسبت به تسویه اقدام نمایید.\n"
+    "⛔️ اگر این مبلغ تا ۲۴ ساعت پس از تسویه‌ی جمعه پرداخت نشود، پنل شما به‌صورت خودکار مسدود می‌شود."
+)
+OVERDUE_REMINDER_MULTI = (
+    "⚠️ بدهی‌های پرداخت‌نشده\n\n"
+    "{lines}\n"
+    "💰 جمع: <b>{total:,}</b> تومان\n\n"
+    "لطفاً در اسرع وقت نسبت به تسویه اقدام نمایید."
+)
+SETTLEMENT_LINE_PAID = "▪️ پنل «{username}»: {paid:,} تومان از کیف پول تسویه شد ✅\n"
+SETTLEMENT_LINE_LEFT = "▪️ پنل «{username}»: {remaining:,} تومان باقی‌مانده (از کیف پول: {paid:,})\n"
+WEEKLY_SETTLEMENT_MULTI = (
+    "🗓 زمان تسویه‌ی هفتگی رسید.\n\n"
+    "{lines}\n"
+    "💰 باقی‌مانده جهت پرداخت: <b>{remaining:,}</b> تومان"
+    "{lock_line}"
+)
+WEEKLY_WALLET_SETTLED_MULTI = (
+    "✅ بدهی هفتگی همه‌ی پنل‌های شما از کیف پول تسویه شد.\n\n"
+    "{lines}\n"
+    "💼 موجودی کیف پول: {balance:,} تومان"
+)
 BTN_PAY_INVOICE = "💳 پرداخت فاکتور"
 INVOICE_PAYMENT_INSTRUCTIONS = (
     "💳 لطفاً مبلغ {amount:,} تومان را به شماره کارت زیر واریز نمایید:\n\n"
@@ -555,7 +589,11 @@ BACKUP_RUNNING = "⏳ در حال تهیه‌ی بکاپ..."
 BACKUP_FAILED = "⚠️ تهیه‌ی بکاپ ناموفق بود."
 
 BTN_BROADCAST = "📣 پیام همگانی"
-ASK_BROADCAST_TEXT = "📣 متن پیامی که برای همه‌ی کاربران ارسال شود را بنویسید:"
+ASK_BROADCAST_TEXT = (
+    "📣 پیامی که برای همه‌ی کاربران ارسال شود را بفرستید.\n"
+    "متن، عکس یا ویدیو با کپشن؛ ایموجی پریمیوم، متن پررنگ و لینک همان‌طور که نوشته‌اید ارسال می‌شوند."
+)
+BROADCAST_EMPTY = "⚠️ پیام خالی بود؛ ارسال نشد."
 BROADCAST_RESULT = "📣 پیام همگانی ارسال شد.\n✅ موفق: {sent}\n❌ ناموفق: {failed}"
 BROADCAST_PREFIX = "📣 اطلاعیه:\n\n"
 
@@ -677,11 +715,12 @@ LOCK_WARNING = (
     "و ورود به پنل ممکن نخواهد بود."
 )
 LOCK_DEADLINE = "<b>{when}</b> (حدود {hours} ساعت دیگر)"
+LOCK_DEADLINE_DAYS = "<b>{when}</b> (حدود {days} روز دیگر)"
 BTN_PAY_ALL_BILLS = "💳 پرداخت همه فاکتورها"
 UNSUSPENDED_NOTICE = (
     "✅ <b>پنل شما باز شد</b>\n"
     "━━━━━━━━━━━━━━━\n"
-    "پرداخت شما ثبت شد و دسترسی پنل‌تان با همان رمز قبلی برقرار است.\n"
+    "پرداخت شما ثبت شد و دسترسی پنل‌تان برقرار است.\n"
     "از همراهی شما سپاسگزاریم."
 )
 PAY_ALL_INSTRUCTIONS = (
@@ -718,9 +757,32 @@ CONFIRM_LOCK = (
 CONFIRM_UNLOCK = (
     "✅ <b>آزاد کردن پنل‌های این کاربر</b>\n\n"
     "رمز قبلی هر پنل بازگردانده می‌شود.\n\n"
-    "مطمئن هستید؟"
+    "تا کی قفل خودکار برای او خاموش بماند؟ بعد از آن، اگر هنوز بدهی داشته باشد، "
+    "با همان هشدارهای ۱۲ و ۲ ساعته دوباره مسدود می‌شود."
 )
+BTN_RESPITE_1 = "⏳ ۱ روز مهلت"
+BTN_RESPITE_3 = "⏳ ۳ روز مهلت"
+BTN_RESPITE_7 = "⏳ ۷ روز مهلت"
+BTN_RESPITE_PAID = "♾ تا وقتی پرداخت کند"
+UNLOCKED_RESPITE_TOAST = "✅ آزاد شد. قفل خودکار تا {until} خاموش است."
+UNLOCKED_UNTIL_PAID_TOAST = "✅ آزاد شد. تا پرداخت بدهی، دوباره خودکار مسدود نمی‌شود."
+# Added to the customer's unlock notice when there is still something to pay.
+UNSUSPENDED_RESPITE_NOTE = "\n\n⏳ تا {until} فرصت پرداخت برای باقی مبلغ اعمال شد 🙏🏻"
 LOCK_CANCELLED = "↩️ لغو شد."
+
+# --- every panel currently locked, in one place ---
+BTN_LOCKED_PANELS = "⛔️ پنل‌های مسدود"
+LOCKED_LIST_HEADER = "⛔️ <b>پنل‌های مسدود</b> — {panels} پنل از {people} نفر\n\n"
+LOCKED_LIST_NONE = "✅ در حال حاضر هیچ پنلی مسدود نیست."
+LOCKED_LINE = (
+    "▫️ <b>{panels}</b>\n"
+    "   👤 {who} · <code>{telegram_id}</code>\n"
+    "   🔒 {reason} · از {since}\n"
+    "   💰 بدهی: {owed:,} تومان\n\n"
+)
+LOCK_REASON_UNPAID = "عدم پرداخت"
+LOCK_REASON_MANUAL = "دستی"
+BTN_UNLOCK_CUSTOMER = "✅ آزاد کردن · {who}"
 LOCK_NO_PANELS = "⚠️ پنلی برای این کاربر پیدا نشد یا رمزش در دسترس نبود."
 LOCK_NOT_LOCKED = "ℹ️ پنل‌های این کاربر مسدود نیستند."
 LOCKED_TOAST = "⛔️ مسدود شد."

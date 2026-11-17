@@ -91,7 +91,8 @@ def _render_profile(telegram_id: int, panels: list[dict]) -> str:
     if panels:
         lines = "".join(
             texts.USER_PROFILE_PANEL_LINE.format(
-                username=p["username"],
+                username=p["username"]
+                + (texts.PANEL_LOCKED_MARK if p.get("suspended_reason") else ""),
                 remaining_gb=bytes_to_gb(p.get("traffic")),
                 initial_gb=bytes_to_gb(p.get("initial_traffic")),
             )
@@ -161,7 +162,10 @@ async def show_profile(message: Message, telegram_id: int, panels: list[dict] | 
     text = _render_profile(telegram_id, panels)
     if unreachable:
         text += "\n" + texts.PANEL_UNREACHABLE
-    await message.answer(text, reply_markup=keyboards.user_actions_kb(telegram_id))
+    locked_on_panel = any(p.get("suspended_reason") for p in panels)
+    await message.answer(
+        text, reply_markup=keyboards.user_actions_kb(telegram_id, locked=locked_on_panel)
+    )
 
 
 @router.message(Label("BTN_SEARCH_USER"))
@@ -272,6 +276,22 @@ def _who(telegram_id: int) -> str:
 async def list_locked(message: Message) -> None:
     """Every panel locked right now, by customer, with a way to free each."""
     rows = db.list_suspensions()
+    # Locked on the panel with no record here (see enforcement.unlock) still
+    # counts: the admin is locked out all the same.
+    try:
+        recorded = {r["username"] for r in rows}
+        rows += [
+            {
+                "username": a["username"],
+                "telegram_id": a["telegram_id"],
+                "suspended_at": "—",
+                "reason": a["suspended_reason"],
+            }
+            for a in await nexra_panel.list_all_admins()
+            if a.get("suspended_reason") and a.get("telegram_id") and a["username"] not in recorded
+        ]
+    except NexraPanelError as exc:
+        logger.warning("could not read lock flags from the panel: %s", exc)
     if not rows:
         await message.answer(texts.LOCKED_LIST_NONE)
         return
@@ -339,10 +359,24 @@ async def do_unlock(call: CallbackQuery, bot: Bot) -> None:
     when = enforcement.describe_deadline(until) if days else ""
     note = texts.UNSUSPENDED_RESPITE_NOTE.format(until=when) if days and owes else ""
     # Lifts both kinds: told to unlock by hand means unlock, whatever put it on.
-    restored = await enforcement.unlock(bot, target, note=note)
-    if not restored:
+    result = await enforcement.unlock(bot, target, note=note)
+    if result.failed:
+        # Said in full, in a message: "not locked" here would be a lie, and the
+        # reason is what decides what to do next.
+        await call.message.answer(
+            texts.UNLOCK_FAILED.format(
+                lines="".join(
+                    texts.UNLOCK_FAILED_LINE.format(username=escape(u), reason=escape(why))
+                    for u, why in result.failed
+                )
+            )
+        )
+    if not result:
         enforcement.clear_respite(target)
-        await call.answer(texts.LOCK_NOT_LOCKED, show_alert=True)
+        if result.failed:
+            await call.answer()
+        else:
+            await call.answer(texts.LOCK_NOT_LOCKED, show_alert=True)
         return
     if days:
         plain = re.sub(r"<[^>]+>", "", when)

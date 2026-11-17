@@ -822,6 +822,15 @@ LOCK_REASON_MANUAL = "دستی"
 BTN_UNLOCK_CUSTOMER = "✅ آزاد کردن · {who}"
 LOCK_NO_PANELS = "⚠️ پنلی برای این کاربر پیدا نشد یا رمزش در دسترس نبود."
 LOCK_NOT_LOCKED = "ℹ️ پنل‌های این کاربر مسدود نیستند."
+UNLOCK_FAILED = "⚠️ این پنل‌ها آزاد نشدند:\n{lines}"
+UNLOCK_FAILED_LINE = "▪️ <b>{username}</b>: {reason}\n"
+UNLOCK_NO_ORIGINAL = (
+    "رمز قبلی این پنل ثبت نشده و رمز فعلی‌اش همان رمز مسدودی است؛ "
+    "از پنل Nexra یک رمز جدید برایش بگذارید."
+)
+UNLOCK_FLAG_NOT_CLEARED = "رمز برگشت، ولی پنل Nexra هنوز آن را مسدود نشان می‌دهد؛ دوباره «آزاد کردن» را بزنید."
+PANEL_LOCKED_MARK = " 🔒"
+UNLOCK_PASSWORD_UNKNOWN = "رمز فعلی این پنل از پنل Nexra خوانده نشد؛ چند دقیقه دیگر دوباره امتحان کنید."
 LOCKED_TOAST = "⛔️ مسدود شد."
 UNLOCKED_TOAST = "✅ آزاد شد."
 

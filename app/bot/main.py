@@ -13,7 +13,7 @@ from aiogram.fsm.storage.memory import MemoryStorage
 from . import api, customize
 from .. import db
 from ..config import settings
-from .middlewares import ForceJoinMiddleware
+from .middlewares import ButtonTapMiddleware, ForceJoinMiddleware
 from .routers import all_routers
 from .auto_approve import run_auto_approver
 from .backups import run_backup_scheduler
@@ -28,6 +28,7 @@ logger = logging.getLogger(__name__)
 def build_dispatcher() -> Dispatcher:
     dp = Dispatcher(storage=MemoryStorage())
     force_join = ForceJoinMiddleware()
+    dp.message.outer_middleware(ButtonTapMiddleware())
     dp.message.outer_middleware(force_join)
     dp.callback_query.outer_middleware(force_join)
     for router in all_routers:

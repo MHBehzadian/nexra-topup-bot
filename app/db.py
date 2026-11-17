@@ -406,6 +406,12 @@ def list_suspensions(telegram_id: int | None = None, reason: str | None = None) 
         return [dict(r) for r in rows]
 
 
+def get_suspension(username: str) -> dict | None:
+    with _connect() as conn:
+        row = conn.execute("SELECT * FROM suspensions WHERE username = ?", (username,)).fetchone()
+        return dict(row) if row else None
+
+
 def clear_suspension(username: str) -> None:
     with _connect() as conn:
         conn.execute("DELETE FROM suspensions WHERE username = ?", (username,))

@@ -18,7 +18,9 @@ Two deliberate limits:
 
 from __future__ import annotations
 
+import json
 import logging
+from dataclasses import dataclass, field
 from datetime import datetime, timedelta, timezone
 
 from aiogram import Bot
@@ -277,46 +279,119 @@ async def lock_panels(
     return locked
 
 
+@dataclass
+class UnlockResult:
+    """What an unlock did. Truthy when anything was freed."""
+
+    restored: list[str] = field(default_factory=list)
+    # (panel username, why it couldn't be freed) - shown to whoever asked, so a
+    # failure is never mistaken for "it wasn't locked".
+    failed: list[tuple[str, str]] = field(default_factory=list)
+
+    def __bool__(self) -> bool:
+        return bool(self.restored)
+
+
+def _why(exc: Exception) -> str:
+    """The panel's own explanation from an error, not its raw JSON."""
+    text = str(exc)
+    _, _, body = text.partition(": ")
+    try:
+        data = json.loads(body)
+        return str(data.get("message") or data.get("detail") or text)
+    except (ValueError, AttributeError):
+        return text
+
+
 async def unlock(
     bot: Bot, telegram_id: int, *, reason: str | None = None, note: str = ""
-) -> list[str]:
-    """Put back every password this customer's panels had before the lock.
+) -> UnlockResult:
+    """Put back every password this customer's panels had before the lock, and
+    take the lock off the panel's own record of it.
 
     `reason` narrows it: the automatic sweep passes 'unpaid' so a lock placed by
     hand is never lifted by someone simply settling their weekly credit.
-    """
-    rows = db.list_suspensions(telegram_id, reason=reason)
-    if not rows:
-        return []
 
-    restored: list[str] = []
-    for row in rows:
+    The bot's record and the panel's flag are two copies of one fact and can
+    disagree - a flag left behind when clearing it failed, or a panel linked to
+    another Telegram account since it was locked. An unlock by hand (no
+    `reason`) goes by both, so whatever the panel still shows as locked is freed.
+    """
+    rows = {r["username"]: r for r in db.list_suspensions(telegram_id, reason=reason)}
+    flagged: list[str] = []
+    if reason is None:
+        for panel in await _panels_of(telegram_id):
+            username = panel.get("username")
+            if not username or username in rows:
+                continue
+            recorded = db.get_suspension(username)  # locked under another account
+            if recorded:
+                rows[username] = recorded
+            elif panel.get("suspended_reason"):
+                flagged.append(username)
+
+    result = UnlockResult()
+    if not rows and not flagged:
+        return result
+
+    passwords: dict[str, str] | None = None
+
+    async def current_password(username: str) -> str | None:
+        nonlocal passwords
+        if passwords is None:
+            passwords = await _passwords()
+        return passwords.get(username)
+
+    for username, row in rows.items():
         try:
             await nexra_panel.change_password(
                 telegram_id=telegram_id,
                 current_password=LOCK_PASSWORD,
                 new_password=row["previous_password"],
-                username=row["username"],
+                username=username,
             )
         except NexraPanelError as exc:
-            logger.error(f"failed to unlock {row['username']}: {exc}")
-            continue
-        db.clear_suspension(row["username"])
-        await _flag_on_panel(telegram_id, row["username"], None)
-        restored.append(row["username"])
+            # Already back on its own password (put back by hand, or by an
+            # earlier attempt whose reply was lost): only the record is left.
+            if await current_password(username) != row["previous_password"]:
+                logger.error(f"failed to unlock {username}: {exc}")
+                result.failed.append((username, _why(exc)))
+                continue
+            logger.info(f"{username} already had its own password back")
+        db.clear_suspension(username)
+        if not await _flag_on_panel(telegram_id, username, None):
+            result.failed.append((username, texts.UNLOCK_FLAG_NOT_CLEARED))
+        result.restored.append(username)
 
-    if not restored:
-        return []
+    for username in flagged:
+        # Flagged, but the bot holds no record of the password to put back. If
+        # the password is still the lock one, clearing the flag alone would only
+        # turn "locked" into "wrong password".
+        current = await current_password(username)
+        if current is None:
+            result.failed.append((username, texts.UNLOCK_PASSWORD_UNKNOWN))
+            continue
+        if current == LOCK_PASSWORD:
+            result.failed.append((username, texts.UNLOCK_NO_ORIGINAL))
+            continue
+        if await _flag_on_panel(telegram_id, username, None):
+            logger.info(f"cleared a lock flag left on {username}")
+            result.restored.append(username)
+        else:
+            result.failed.append((username, texts.UNLOCK_FLAG_NOT_CLEARED))
+
+    if not result.restored:
+        return result
 
     await _tell(bot, telegram_id, texts.UNSUSPENDED_NOTICE + note)
     await _tell_superadmins(
         bot,
         texts.UNSUSPENDED_ADMIN_NOTICE.format(
-            panels="، ".join(restored), telegram_id=telegram_id
+            panels="، ".join(result.restored), telegram_id=telegram_id
         ),
     )
-    logger.info(f"unlocked {restored} for {telegram_id}")
-    return restored
+    logger.info(f"unlocked {result.restored} for {telegram_id}")
+    return result
 
 
 async def settle_up(bot: Bot, telegram_id: int) -> None:

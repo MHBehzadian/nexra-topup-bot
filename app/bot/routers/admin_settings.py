@@ -7,7 +7,17 @@ from aiogram import Bot, F, Router
 from aiogram.fsm.context import FSMContext
 from aiogram.types import CallbackQuery, Message
 
-from .. import auto_approve, bills, customize, digest, enforcement, keyboards, sales, texts
+from .. import (
+    auto_approve,
+    bills,
+    customize,
+    digest,
+    enforcement,
+    keyboards,
+    sales,
+    texts,
+    traffic,
+)
 from ..backups import send_backup
 from ..filters import Label, SuperadminFilter
 from ..invoices import describe_due, due_at_for
@@ -285,42 +295,8 @@ async def finish_grant(message: Message, state: FSMContext, bot: Bot) -> None:
 
     data = await state.get_data()
     await state.clear()
-    username = data["grant_username"]
-
-    try:
-        result = await nexra_panel.grant(username, amount)
-    except NexraPanelError as exc:
-        await message.answer(
-            texts.GRANT_FAILED.format(error=exc), reply_markup=superadmin_kb(message.from_user.id)
-        )
-        return
-
-    new_gb = bytes_to_gb(result.get("new_traffic_bytes"))
-    db.clear_warning_bucket(username)
-    # No money changed hands, but it still belongs in the panel's history.
-    db.record_sale(
-        telegram_id=result.get("telegram_id"),
-        username=username,
-        gb=amount,
-        amount=0,
-        method=sales.GRANT,
-    )
-    await message.answer(
-        texts.GRANT_SUCCESS.format(added_gb=amount, username=username, new_gb=new_gb),
-        reply_markup=superadmin_kb(message.from_user.id),
-    )
-
-    target_telegram_id = result.get("telegram_id")
-    if target_telegram_id:
-        try:
-            await bot.send_message(
-                target_telegram_id,
-                texts.GRANT_NOTIFY_ADMIN.format(
-                    username=username, added_gb=amount, new_gb=new_gb
-                ),
-            )
-        except Exception:
-            pass
+    _, reply = await traffic.change(bot, data["grant_username"], amount, traffic.ADD)
+    await message.answer(reply, reply_markup=superadmin_kb(message.from_user.id))
 
 
 @router.message(Label("BTN_NEW_INVOICE"))

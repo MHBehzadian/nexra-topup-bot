@@ -11,6 +11,10 @@ class NexraPanelError(Exception):
     pass
 
 
+class DeductUnsupported(NexraPanelError):
+    """The panel is running a build without /bot/admin/deduct."""
+
+
 class NexraPanelClient:
     def __init__(self) -> None:
         self._base_url = settings.nexra_panel_api_url.rstrip("/")
@@ -115,6 +119,21 @@ class NexraPanelClient:
         resp = await self._request(
             "POST", "/bot/admin/grant", json={"username": username, "added_gb": added_gb}
         )
+        return self._ok(resp)
+
+    async def deduct(self, username: str, removed_gb: float) -> dict:
+        """Take traffic off a panel — the reverse of grant, so its total quota
+        shrinks as well as what's left of it.
+
+        A panel too old to have the endpoint answers FastAPI's bare 404, which is
+        told apart from "no such panel" so the superadmin knows to update it
+        rather than doubting the username.
+        """
+        resp = await self._request(
+            "POST", "/bot/admin/deduct", json={"username": username, "removed_gb": removed_gb}
+        )
+        if resp.status_code in (404, 405) and "success" not in resp.text:
+            raise DeductUnsupported(resp.text)
         return self._ok(resp)
 
     async def change_password(

@@ -2,6 +2,7 @@ from aiogram.types import InlineKeyboardMarkup, ReplyKeyboardMarkup
 from aiogram.utils.keyboard import InlineKeyboardBuilder, ReplyKeyboardBuilder
 
 from . import customize, texts
+from ..units import bytes_to_gb
 
 
 def _b(kb, name: str, text: str | None = None, **kwargs) -> None:
@@ -101,12 +102,13 @@ def panels_section_kb() -> ReplyKeyboardMarkup:
     return _reply_kb(
         "BTN_ALL_PANELS",
         "BTN_GRANT_TRAFFIC",
+        "BTN_DEDUCT_TRAFFIC",
         "BTN_PANEL_HISTORY",
         "BTN_CREATE_ADMIN",
         "BTN_SYNC_TELEGRAM_IDS",
         "BTN_EXPORT_ALL_PASSWORDS",
         "BTN_BACK",
-        layout=(2, 2, 2, 1),
+        layout=(1, 2, 2, 2, 1),
     )
 
 
@@ -222,6 +224,8 @@ def user_actions_kb(telegram_id: int) -> InlineKeyboardMarkup:
     from .. import db  # here rather than at import time: keyboards is imported very early
 
     kb = InlineKeyboardBuilder()
+    _b(kb, "BTN_ADD_PANEL_TRAFFIC", callback_data=f"usr_trf:add:{telegram_id}")
+    _b(kb, "BTN_REDUCE_PANEL_TRAFFIC", callback_data=f"usr_trf:sub:{telegram_id}")
     _b(kb, "BTN_DEDUCT_WALLET", callback_data=f"usr_deduct:{telegram_id}")
     _b(kb, "BTN_INVOICE_FOR_USER", callback_data=f"usr_invoice:{telegram_id}")
     _b(kb, "BTN_MARK_PAID", callback_data=f"paidpick:{telegram_id}")
@@ -234,7 +238,7 @@ def user_actions_kb(telegram_id: int) -> InlineKeyboardMarkup:
         _b(kb, "BTN_UNLOCK_PANELS", callback_data=f"usr_unlock:{telegram_id}")
     else:
         _b(kb, "BTN_LOCK_PANELS", callback_data=f"usr_lock:{telegram_id}")
-    kb.adjust(2, 2, 2, 1)
+    kb.adjust(2, 2, 2, 2, 1)
     return kb.as_markup()
 
 
@@ -431,6 +435,18 @@ def panel_picker_kb(admins, action: str) -> InlineKeyboardMarkup:
     kb = InlineKeyboardBuilder()
     for a in admins:
         kb.button(text=f"▪️ {a['username']}", callback_data=f"pick:{action}:{a['username']}")
+    kb.adjust(1)
+    return kb.as_markup()
+
+
+def traffic_panel_picker_kb(admins, mode: str) -> InlineKeyboardMarkup:
+    """Which of a customer's panels to add traffic to ("add") or take it from ("sub")."""
+    kb = InlineKeyboardBuilder()
+    for a in admins:
+        kb.button(
+            text=f"▪️ {a['username']} — {bytes_to_gb(a.get('traffic')):.2f} GB",
+            callback_data=f"trf:{mode}:{a['username']}",
+        )
     kb.adjust(1)
     return kb.as_markup()
 

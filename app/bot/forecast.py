@@ -97,34 +97,58 @@ def render(username: str, remaining_bytes: int) -> tuple[str, bool] | None:
     )
 
 
+# A daily forecast for every panel was most of what the bot sent, and buried the
+# messages that matter. It now goes out unasked only for a panel that will run
+# out within this many days, once per decline; the menu button still shows the
+# full forecast whenever someone wants it.
+ALERT_DAYS = 3
+
+
+def _alert_key(username: str) -> str:
+    return f"forecast_alerted:{username}"
+
+
 async def send_daily_forecasts(bot: Bot) -> int:
-    """Push every linked admin their panels' forecast."""
+    """Warn each owner, in one message, about the panels about to run dry."""
     try:
         admins = await nexra_panel.list_all_admins()
     except Exception as exc:
         logger.warning(f"forecast run skipped: {exc}")
         return 0
 
-    sent = 0
+    due: dict[int, list[tuple[str, str]]] = {}
     for admin in admins:
         username, telegram_id = admin.get("username"), admin.get("telegram_id")
         if not username or not telegram_id or not admin.get("is_active", True):
             continue
-
+        data = forecast_for(username, admin.get("traffic") or 0)
+        running_out = bool(data and data["days_left"] is not None and data["days_left"] <= ALERT_DAYS)
+        if not running_out:
+            # Topped up, or slowed down: the next decline may warn again.
+            if db.get_setting(_alert_key(username)):
+                db.set_setting(_alert_key(username), "")
+            continue
+        if db.get_setting(_alert_key(username)):
+            continue  # already warned on this decline
         rendered = render(username, admin.get("traffic") or 0)
         if rendered is None:
             continue
-        body, show_buy = rendered
+        due.setdefault(telegram_id, []).append((username, rendered[0]))
 
+    sent = 0
+    for telegram_id, panels in due.items():
         try:
             await bot.send_message(
                 telegram_id,
-                texts.FORECAST_TITLE + body,
-                reply_markup=keyboards.topup_panel_kb(username) if show_buy else None,
+                texts.FORECAST_ALERT_TITLE + "\n\n".join(body for _, body in panels),
+                reply_markup=keyboards.topup_panels_kb([name for name, _ in panels]),
             )
             sent += 1
         except Exception:
-            continue
+            pass
+        # Stamped either way, so a blocked chat isn't retried every day.
+        for name, _ in panels:
+            db.set_setting(_alert_key(name), today_stamp())
     return sent
 
 
@@ -139,7 +163,7 @@ async def tick(bot: Bot) -> None:
     count = await send_daily_forecasts(bot)
     db.set_setting("forecast_sent_date", stamp)
     db.prune_traffic_history((now - timedelta(days=RETENTION_DAYS)).strftime("%Y-%m-%d"))
-    logger.info(f"daily forecasts sent: {count}")
+    logger.info(f"forecast alerts sent: {count}")
 
 
 async def run_forecast_scheduler(bot: Bot) -> None:

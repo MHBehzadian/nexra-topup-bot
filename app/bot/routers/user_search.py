@@ -1,15 +1,29 @@
 """Superadmin: look a customer up and act on them in one place.
 
 Shows everything the bot knows about a person — panels, wallet, debts, open
-invoices, recent transactions — with buttons to deduct from their wallet, issue
-an invoice, or remove one.
+invoices, recent transactions — with buttons to change a panel's traffic,
+deduct from their wallet, issue an invoice, or remove one.
+
+A person can be looked up by typing who they are, or by forwarding one of
+their messages to the bot.
 """
 
 from __future__ import annotations
 
+import logging
+from html import escape
+
 from aiogram import Bot, F, Router
+from aiogram.filters import StateFilter
 from aiogram.fsm.context import FSMContext
-from aiogram.types import CallbackQuery, Message
+from aiogram.types import (
+    CallbackQuery,
+    Message,
+    MessageOriginChannel,
+    MessageOriginChat,
+    MessageOriginHiddenUser,
+    MessageOriginUser,
+)
 
 from .. import bills, enforcement, keyboards, texts
 from ..filters import Label, SuperadminFilter
@@ -19,6 +33,8 @@ from ..states import DeductWallet, NewInvoice, SearchUser
 from ... import db
 from ...services.nexra_panel import NexraPanelError, nexra_panel
 from ...units import bytes_to_gb
+
+logger = logging.getLogger(__name__)
 
 router = Router(name="user_search")
 router.message.filter(SuperadminFilter())
@@ -59,7 +75,7 @@ async def _resolve(query: str) -> tuple[int | None, list[dict]]:
 
 def _render_profile(telegram_id: int, panels: list[dict]) -> str:
     record = db.get_user(telegram_id)
-    name = (record or {}).get("full_name") or "—"
+    name = escape((record or {}).get("full_name") or "—")
     mention = f"@{record['username']}" if record and record.get("username") else "—"
 
     text = texts.USER_PROFILE.format(
@@ -126,10 +142,84 @@ def _render_profile(telegram_id: int, panels: list[dict]) -> str:
     return text
 
 
+async def show_profile(message: Message, telegram_id: int, panels: list[dict] | None = None) -> None:
+    """Send a customer's card, with everything that can be done about them.
+
+    Without `panels`, their panels are fetched; a panel that can't be reached
+    still leaves the rest of the card worth showing, so it says so instead.
+    """
+    unreachable = False
+    if panels is None:
+        try:
+            panels = await nexra_panel.get_admins(telegram_id)
+        except NexraPanelError as exc:
+            logger.error("panel lookup failed for %s: %s", telegram_id, exc)
+            panels, unreachable = [], True
+
+    text = _render_profile(telegram_id, panels)
+    if unreachable:
+        text += "\n" + texts.PANEL_UNREACHABLE
+    await message.answer(text, reply_markup=keyboards.user_actions_kb(telegram_id))
+
+
 @router.message(Label("BTN_SEARCH_USER"))
 async def start_search(message: Message, state: FSMContext) -> None:
     await state.set_state(SearchUser.query)
     await message.answer(texts.ASK_SEARCH_QUERY, reply_markup=keyboards.cancel_kb())
+
+
+# Before do_search: while it waits for a name, a forwarded message is a better
+# answer than the text inside it.
+@router.message(StateFilter(None, SearchUser.query), F.forward_origin)
+async def from_forward(message: Message, state: FSMContext) -> None:
+    """A message the superadmin forwarded here: open its sender's card if they
+    are a customer, otherwise just show whose it is."""
+    await state.clear()
+    origin = message.forward_origin
+
+    if isinstance(origin, MessageOriginUser):
+        await _open_or_identify(message, origin.sender_user.id)
+        return
+
+    if isinstance(origin, MessageOriginHiddenUser):
+        # Telegram hands over only their name. When exactly one customer goes by
+        # it, that's who it is; with none or several, guessing would be worse
+        # than saying the id is hidden.
+        matches = db.find_users_by_full_name(origin.sender_user_name)
+        if len(matches) == 1:
+            await show_profile(message, matches[0])
+        else:
+            await message.answer(
+                texts.FORWARD_HIDDEN_USER.format(name=escape(origin.sender_user_name)),
+                reply_markup=superadmin_kb(message.from_user.id),
+            )
+        return
+
+    if isinstance(origin, (MessageOriginChat, MessageOriginChannel)):
+        chat = origin.sender_chat if isinstance(origin, MessageOriginChat) else origin.chat
+        await message.answer(
+            texts.FORWARD_FROM_CHAT.format(title=escape(chat.title or "—"), chat_id=chat.id),
+            reply_markup=superadmin_kb(message.from_user.id),
+        )
+
+
+async def _open_or_identify(message: Message, telegram_id: int) -> None:
+    """Their card if they have used the bot or own a panel; their id otherwise."""
+    try:
+        panels = await nexra_panel.get_admins(telegram_id)
+    except NexraPanelError as exc:
+        logger.error("panel lookup failed for %s: %s", telegram_id, exc)
+        panels = None
+
+    if panels or db.get_user(telegram_id):
+        await show_profile(message, telegram_id, panels)
+        return
+
+    text = texts.FORWARD_NOT_A_USER.format(telegram_id=telegram_id)
+    if panels is None:
+        # They may still own a panel we couldn't see.
+        text += "\n\n" + texts.PANEL_UNREACHABLE
+    await message.answer(text, reply_markup=superadmin_kb(message.from_user.id))
 
 
 @router.message(SearchUser.query, ~F.text.in_(ALL_MENU_TEXTS))
@@ -140,10 +230,7 @@ async def do_search(message: Message, state: FSMContext) -> None:
         await message.answer(texts.USER_NOT_FOUND, reply_markup=superadmin_kb(message.from_user.id))
         return
 
-    await message.answer(
-        _render_profile(telegram_id, panels),
-        reply_markup=keyboards.user_actions_kb(telegram_id),
-    )
+    await show_profile(message, telegram_id, panels)
 
 
 # ---- locking a customer's panels by hand -------------------------------------

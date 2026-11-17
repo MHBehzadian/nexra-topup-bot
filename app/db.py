@@ -1018,6 +1018,17 @@ def is_user_linked(telegram_id: int) -> bool:
         return bool(row["is_linked"]) if row else False
 
 
+def find_users_by_full_name(full_name: str) -> list[int]:
+    """Everyone whose Telegram display name is exactly this. A forward from
+    someone who hides their account carries only this name, so it is the one
+    way left to tell who sent it."""
+    with _connect() as conn:
+        rows = conn.execute(
+            "SELECT telegram_id FROM bot_users WHERE full_name = ?", (full_name,)
+        ).fetchall()
+        return [r["telegram_id"] for r in rows]
+
+
 def list_known_users() -> list[int]:
     """Telegram IDs of everyone who has ever started the bot (broadcast targets)."""
     with _connect() as conn:

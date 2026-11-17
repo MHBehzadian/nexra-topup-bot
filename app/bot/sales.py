@@ -19,12 +19,15 @@ DAYS = 7
 # Traffic the superadmin handed over without charging: part of a panel's
 # history, but not a sale, so it stays out of the takings.
 GRANT = "grant"
+# Traffic the superadmin took back: written down with negative GB so a panel's
+# history still adds up to what it holds.
+DEDUCT = "deduct"
 # Payments towards weekly credit: reported beside the sales, never inside them.
 SETTLEMENT = db.SETTLEMENT_METHOD
 # Money put into a wallet: reported beside the sales, never inside them.
 WALLET_CHARGE = db.WALLET_CHARGE_METHOD
 # Everything in the ledger that isn't takings.
-NOT_SALES = (GRANT, *db.PAYMENT_METHODS)
+NOT_SALES = (GRANT, DEDUCT, *db.PAYMENT_METHODS)
 MAX_LISTED_SETTLEMENTS = 20
 
 # Python's weekday(): Monday is 0.

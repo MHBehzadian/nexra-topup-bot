@@ -367,6 +367,35 @@ GRANT_NOTIFY_ADMIN = (
     "➕ {added_gb:g} گیگابایت اضافه شد.\n"
     "📊 موجودی جدید: {new_gb:.2f} گیگابایت"
 )
+BTN_DEDUCT_TRAFFIC = "➖ کسر حجم"
+ASK_DEDUCT_TRAFFIC_USERNAME = "➖ نام کاربری پنلی که می‌خواهید از حجمش کسر شود را وارد نمایید:"
+ASK_DEDUCT_TRAFFIC_AMOUNT = (
+    "➖ چند گیگابایت از پنل «{username}» کسر شود؟\n"
+    "📊 حجم باقی‌مانده: {remaining_gb:.2f} گیگابایت"
+)
+DEDUCT_TRAFFIC_TOO_MUCH = (
+    "⚠️ این پنل فقط {remaining_gb:.2f} گیگابایت حجم باقی‌مانده دارد؛ "
+    "عددی تا همین مقدار وارد نمایید."
+)
+DEDUCT_TRAFFIC_SUCCESS = (
+    "✅ {removed_gb:g} گیگابایت از پنل «{username}» کسر شد.\n"
+    "📊 موجودی جدید: {new_gb:.2f} گیگابایت"
+)
+DEDUCT_TRAFFIC_FAILED = "⚠️ کسر حجم ناموفق بود: {error}"
+DEDUCT_TRAFFIC_UNSUPPORTED = (
+    "⚠️ پنل Nexra هنوز کسر حجم را پشتیبانی نمی‌کند — "
+    "پنل را به آخرین نسخه به‌روزرسانی کنید."
+)
+DEDUCT_NOTIFY_ADMIN = (
+    "➖ حجم پنل «{username}» توسط پشتیبانی کاهش یافت.\n"
+    "➖ {removed_gb:g} گیگابایت کسر شد.\n"
+    "📊 موجودی جدید: {new_gb:.2f} گیگابایت"
+)
+PANEL_USERNAME_NOT_FOUND = "⚠️ پنلی با نام کاربری «{username}» یافت نشد. دوباره وارد نمایید:"
+BTN_ADD_PANEL_TRAFFIC = "➕ افزایش حجم پنل"
+BTN_REDUCE_PANEL_TRAFFIC = "➖ کاهش حجم پنل"
+CHOOSE_PANEL_FOR_TRAFFIC = "▪️ حجم کدام پنل تغییر کند؟"
+USER_HAS_NO_PANELS = "این کاربر پنلی ندارد."
 
 BTN_PARTNERSHIP = "🤝 ثبت درخواست همکاری"
 ASK_PARTNER_NAME = "🤝 لطفاً یک نام مستعار برای خود وارد نمایید:"
@@ -412,6 +441,14 @@ USER_PROFILE_NO_INVOICES = "\n✅ فاکتور بازی ندارد.\n"
 USER_PROFILE_HISTORY = "\n📜 آخرین تراکنش‌ها:\n{history}"
 USER_PROFILE_HISTORY_LINE = "   • {kind} — {amount:,} تومان — {status} ({date})\n"
 USER_PROFILE_NO_HISTORY = "\n📜 تراکنشی ثبت نشده.\n"
+
+# --- a message the superadmin forwarded to the bot ---
+FORWARD_NOT_A_USER = "👤 این شخص کاربر ربات نیست.\n🆔 آیدی عددی: <code>{telegram_id}</code>"
+FORWARD_HIDDEN_USER = (
+    "🔒 فرستنده‌ی این پیام ({name}) در تنظیمات حریم خصوصی تلگرام، "
+    "اتصال پیام‌های فورواردی به حسابش را بسته است؛ آیدی عددی‌اش قابل دیدن نیست."
+)
+FORWARD_FROM_CHAT = "📢 این پیام از «{title}» فوروارد شده است.\n🆔 آیدی عددی: <code>{chat_id}</code>"
 
 BTN_DEDUCT_WALLET = "➖ کسر از کیف پول"
 BTN_INVOICE_FOR_USER = "🧾 صدور فاکتور"
@@ -888,6 +925,7 @@ SALES_METHOD_LABELS = {
     "weekly": "هفتگی",
     "invoice": "فاکتور",
     "grant": "افزودن دستی",
+    "deduct": "کسر دستی",
     "settlement": "تسویه‌ی هفتگی",
     "wallet_charge": "شارژ کیف پول",
 }
@@ -938,8 +976,8 @@ BTN_PANEL_HISTORY = "📜 تاریخچه‌ی شارژ"
 BTN_HISTORY = "📜 تاریخچه"
 ASK_HISTORY_USERNAME = "📜 نام کاربری پنل را وارد نمایید:"
 HISTORY_HEADER = "📜 <b>تاریخچه‌ی شارژ پنل «{username}»</b>\n━━━━━━━━━━━━━━━\n"
-HISTORY_LINE = "▫️ <b>{day}</b>\n     ‎+{gb:g} گیگ · {method} · {amount:,} تومان\n"
-HISTORY_LINE_FREE = "▫️ <b>{day}</b>\n     ‎+{gb:g} گیگ · {method}\n"
+HISTORY_LINE = "▫️ <b>{day}</b>\n     ‎{gb:+g} گیگ · {method} · {amount:,} تومان\n"
+HISTORY_LINE_FREE = "▫️ <b>{day}</b>\n     ‎{gb:+g} گیگ · {method}\n"
 HISTORY_FOOTER = "━━━━━━━━━━━━━━━\n📊 مجموع: {gb:g} گیگابایت در {count} نوبت"
 HISTORY_EMPTY = "📜 برای پنل «{username}» تا کنون شارژی ثبت نشده است."
 

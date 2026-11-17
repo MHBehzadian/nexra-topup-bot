@@ -129,3 +129,9 @@ class PanelHistory(StatesGroup):
 
 class ExportCredentials(StatesGroup):
     pin = State()
+
+
+class AdjustTraffic(StatesGroup):
+    """The superadmin adding traffic to a panel or taking it back."""
+    username = State()
+    amount = State()

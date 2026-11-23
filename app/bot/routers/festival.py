@@ -68,7 +68,7 @@ async def show_festival(message: Message, user_id: int) -> None:
     if await _panels(user_id, message) is None:
         return
     await message.answer(
-        texts.FESTIVAL_MENU.format(ends=festival.describe_end()),
+        texts.FESTIVAL_MENU.format(**festival.remaining()),
         reply_markup=keyboards.festival_menu_kb(),
     )
 
@@ -82,7 +82,9 @@ async def open_festival(message: Message, state: FSMContext) -> None:
 # ------------------------------------------------------------------ gift code
 
 
-async def _credit_code(message: Message, user_id: int, code: dict, username: str, bot: Bot) -> None:
+async def _credit_code(
+    message: Message, user_id: int, name: str, code: dict, username: str, bot: Bot
+) -> None:
     # Taken first, credited second: a double tap finds the panel already set and
     # stops here, rather than crediting the gift twice.
     if not db.set_gift_code_panel(code["code"], username):
@@ -99,35 +101,29 @@ async def _credit_code(message: Message, user_id: int, code: dict, username: str
     db.record_sale(telegram_id=user_id, username=username, gb=code["gb"], amount=0, method="gift")
     await message.answer(
         texts.FESTIVAL_CODE_CREDITED.format(
-            gb=code["gb"], username=username, new_gb=bytes_to_gb(result.get("new_traffic_bytes"))
+            gb=code["gb"], username=escape(username), new_gb=bytes_to_gb(result.get("new_traffic_bytes"))
         ),
         reply_markup=await menu_kb_for(user_id),
     )
-    user = db.get_user(user_id) or {}
     for superadmin_id in settings.superadmin_id_list:
         try:
             await bot.send_message(
-                superadmin_id,
-                texts.FESTIVAL_CODE_WON_NOTIFY.format(
-                    code=escape(code["code"]),
-                    name=escape(user.get("full_name") or "—"),
-                    telegram_id=user_id,
-                    username=escape(username),
-                    gb=code["gb"],
-                ),
+                superadmin_id, texts.FESTIVAL_CODE_WON_NOTIFY.format(name=escape(name))
             )
         except Exception:
             continue
 
 
-async def _place_code(message: Message, user_id: int, code: dict, bot: Bot) -> None:
+async def _place_code(message: Message, user_id: int, name: str, code: dict, bot: Bot) -> None:
     """A won code goes to their only panel, or they pick one."""
     admins = await _panels(user_id, message)
     if admins is None:
         return
     if len(admins) == 1:
-        await _credit_code(message, user_id, code, admins[0]["username"], bot)
+        await _credit_code(message, user_id, name, code, admins[0]["username"], bot)
         return
+    # Several panels: the good news now, the full message once one is picked.
+    await message.answer(texts.FESTIVAL_CODE_WON.format(gb=code["gb"]))
     await message.answer(
         texts.FESTIVAL_CODE_PICK_PANEL, reply_markup=keyboards.panel_picker_kb(admins, "festgift")
     )
@@ -144,7 +140,7 @@ async def ask_code(call: CallbackQuery, state: FSMContext, bot: Bot) -> None:
         # Won but never placed (closed the picker, or the panel was down): pick
         # up where they left off rather than lose the gift.
         if won["username"] is None:
-            await _place_code(call.message, user_id, won, bot)
+            await _place_code(call.message, user_id, call.from_user.full_name, won, bot)
         else:
             await call.message.answer(texts.FESTIVAL_CODE_ALREADY)
         return
@@ -183,8 +179,7 @@ async def enter_code(message: Message, state: FSMContext, bot: Bot) -> None:
     if outcome == "mine" and won and won["username"]:
         await message.answer(texts.FESTIVAL_CODE_ALREADY, reply_markup=await menu_kb_for(user_id))
         return
-    await message.answer(texts.FESTIVAL_CODE_WON.format(gb=won["gb"]))
-    await _place_code(message, user_id, won, bot)
+    await _place_code(message, user_id, message.from_user.full_name, won, bot)
 
 
 @router.callback_query(F.data.startswith("pick:festgift:"))
@@ -205,7 +200,7 @@ async def picked_gift_panel(call: CallbackQuery, bot: Bot) -> None:
         return
     await call.answer()
     await call.message.edit_reply_markup(reply_markup=None)
-    await _credit_code(call.message, user_id, won, username, bot)
+    await _credit_code(call.message, user_id, call.from_user.full_name, won, username, bot)
 
 
 # ------------------------------------------------------------------ 1000 GB + gift

@@ -1079,7 +1079,9 @@ BTN_FESTIVAL_CONTINUE = "ادامه"
 FESTIVAL_MENU = (
     "🔥 <b>جشنواره بلک فرایدی</b>\n"
     "━━━━━━━━━━━━━━━\n"
-    "⏳ پایان جشنواره: <b>{ends}</b> (به وقت تهران)\n\n"
+    "⏳ زمان باقی‌مانده:\n"
+    "<b>{days}</b> روز و <b>{hours}</b> ساعت و <b>{minutes}</b> دقیقه\n"
+    "تا پایان جشنواره بلک فرایدی\n\n"
     "یکی از گزینه‌های زیر را انتخاب نمایید:"
 )
 FESTIVAL_OVER = "⌛️ جشنواره بلک فرایدی به پایان رسیده است."
@@ -1088,11 +1090,21 @@ FESTIVAL_ASK_CODE = "🎁 کد هدیه را وارد نمایید:"
 FESTIVAL_CODE_INVALID = "❌ کد وارد شده معتبر نیست."
 FESTIVAL_CODE_TAKEN = "😕 این کد قبلاً توسط شخص دیگری استفاده شده است."
 FESTIVAL_CODE_ALREADY = "⚠️ شما قبلاً از کد هدیه استفاده کرده‌اید؛ هر نفر فقط یک بار می‌تواند کد هدیه دریافت کند."
-FESTIVAL_CODE_WON = "🎉 <b>تبریک!</b> شما اولین نفری بودید که این کد را وارد کردید و {gb:g} گیگابایت هدیه گرفتید."
+FESTIVAL_CODE_WON = (
+    "🎉 <b>تبریک!</b>\n"
+    "شما اولین نفری بودید که این کد را وارد کردید.\n\n"
+    "🎁 هدیه‌ی شما: <b>{gb:g} گیگابایت</b>"
+)
 FESTIVAL_CODE_PICK_PANEL = "🎁 هدیه به کدام پنل شارژ شود؟"
 FESTIVAL_CODE_CREDITED = (
-    "✅ {gb:g} گیگابایت هدیه به پنل «{username}» شارژ شد.\n"
-    "موجودی جدید: {new_gb:.2f} گیگابایت"
+    "🎉 <b>تبریک! شما برنده‌ی کد هدیه شدید</b>\n"
+    "━━━━━━━━━━━━━━━\n"
+    "شما اولین نفری بودید که این کد را وارد کردید.\n\n"
+    "🎁 هدیه: <b>{gb:g} گیگابایت</b>\n"
+    "▪️ پنل: {username}\n"
+    "📊 موجودی جدید: <b>{new_gb:.2f}</b> گیگابایت\n"
+    "━━━━━━━━━━━━━━━\n"
+    "🔥 جشنواره بلک فرایدی نکسرا"
 )
 FESTIVAL_CODE_FAILED = "⚠️ شارژ هدیه انجام نشد ({error}). کد برای شما محفوظ است؛ کمی بعد دوباره «وارد کردن کد هدیه» را بزنید."
 FESTIVAL_OFFER = (
@@ -1156,11 +1168,8 @@ GIFT_CODE_LINE_WON = "▫️ <code>{code}</code> — 🎁 {who} → {panel}\n"
 GIFT_CODE_PANEL_PENDING = "پنل انتخاب نشده"
 GIFT_CODE_DELETED = "🗑 کد حذف شد."
 GIFT_CODE_NOT_DELETED = "این کد استفاده شده یا وجود ندارد."
-FESTIVAL_CODE_WON_NOTIFY = (
-    "🎟 کد هدیه <code>{code}</code> برنده داشت\n"
-    "👤 {name} · آیدی عددی: <code>{telegram_id}</code>\n"
-    "▪️ پنل: {username} · {gb:g} گیگ"
-)
+# Only the winner's name, so it can be posted to the channel as it is.
+FESTIVAL_CODE_WON_NOTIFY = "🏆 برنده‌ی کد هدیه‌ی جشنواره بلک فرایدی:\n\n🎉 {name}"
 
 # --- announcements with a button (any time, not only the festival) ---
 BTN_ANNOUNCE = "📢 پیام دکمه‌دار"

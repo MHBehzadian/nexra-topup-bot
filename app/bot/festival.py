@@ -142,6 +142,22 @@ def bonus_for(count: int) -> int | None:
     return BONUS_STEPS[count] if count < len(BONUS_STEPS) else None
 
 
+_FA = str.maketrans("0123456789", "۰۱۲۳۴۵۶۷۸۹")
+
+
+def remaining() -> dict[str, str]:
+    """Days, hours and minutes left, in Persian digits, as the panel's countdown
+    banner shows them."""
+    end = ends_at()
+    total = max(0, int((end - datetime.now(timezone.utc)).total_seconds())) if end else 0
+    parts = {
+        "days": total // 86400,
+        "hours": total % 86400 // 3600,
+        "minutes": total % 3600 // 60,
+    }
+    return {k: str(v).translate(_FA) for k, v in parts.items()}
+
+
 def describe_end() -> str:
     end = ends_at()
     if end is None:

@@ -1186,7 +1186,7 @@ FESTIVAL_CODE_WON_NOTIFY = (
     "⏰ زمان وارد کردن کد: ساعت {time} به وقت ایران\n"
     "📅 {date}\n"
     "🎁 هدیه: {gb:g} گیگابایت به حجم پنل اضافه شد\n\n"
-    "به برنده‌ی عزیز تبریک می‌گوییم 🌹"
+    "@NexraGroup"
 )
 
 # --- announcements with a button (any time, not only the festival) ---

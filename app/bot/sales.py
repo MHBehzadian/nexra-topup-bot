@@ -26,8 +26,11 @@ DEDUCT = "deduct"
 SETTLEMENT = db.SETTLEMENT_METHOD
 # Money put into a wallet: reported beside the sales, never inside them.
 WALLET_CHARGE = db.WALLET_CHARGE_METHOD
+# Festival gifts (a won code, the bonus on a festival purchase): in a panel's
+# history, but free, so not takings either.
+GIFT = "gift"
 # Everything in the ledger that isn't takings.
-NOT_SALES = (GRANT, DEDUCT, *db.PAYMENT_METHODS)
+NOT_SALES = (GRANT, DEDUCT, GIFT, *db.PAYMENT_METHODS)
 MAX_LISTED_SETTLEMENTS = 20
 
 # Python's weekday(): Monday is 0.

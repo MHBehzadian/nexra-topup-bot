@@ -135,3 +135,23 @@ class AdjustTraffic(StatesGroup):
     """The superadmin adding traffic to a panel or taking it back."""
     username = State()
     amount = State()
+
+
+class FestivalCode(StatesGroup):
+    """A customer typing a gift code."""
+    code = State()
+
+
+class FestivalBuy(StatesGroup):
+    receipt = State()
+
+
+class GiftCodeAdmin(StatesGroup):
+    """The superadmin typing a code of their own."""
+    code = State()
+
+
+class Announce(StatesGroup):
+    content = State()
+    label = State()
+    channel = State()

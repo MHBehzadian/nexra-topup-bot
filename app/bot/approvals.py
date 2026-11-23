@@ -8,6 +8,7 @@ from __future__ import annotations
 
 from dataclasses import dataclass
 from datetime import datetime, timezone
+from html import escape
 
 from aiogram import Bot
 
@@ -180,8 +181,12 @@ async def approve_request(bot: Bot, request_id: int, reviewer_id: int) -> Outcom
         await enforcement.settle_up(bot, customer)
         return Outcome(True, texts.APPROVED_TOAST, finished=True)
 
+    # A festival purchase brings its gift along: both land in one credit.
+    bonus = (req.bonus_gb or 0) if req.kind == "festival" else 0
     try:
-        result = await nexra_panel.topup(customer, req.requested_gb, username=req.admin_username)
+        result = await nexra_panel.topup(
+            customer, req.requested_gb + bonus, username=req.admin_username
+        )
     except NexraPanelError as exc:
         db.revert_to_pending(request_id)
         return Outcome(False, f"{texts.PANEL_ERROR_TOAST} ({exc})", alert=True)
@@ -195,12 +200,20 @@ async def approve_request(bot: Bot, request_id: int, reviewer_id: int) -> Outcom
         amount=req.toman_amount,
         method="card",
     )
-    await _tell(
-        bot,
-        customer,
-        texts.REQUEST_APPROVED_ADMIN.format(
-            added_gb=req.requested_gb,
-            new_balance_gb=bytes_to_gb(result.get("new_traffic_bytes")),
-        ),
-    )
+    new_balance_gb = bytes_to_gb(result.get("new_traffic_bytes"))
+    if bonus:
+        db.record_sale(
+            telegram_id=customer, username=req.admin_username, gb=bonus, amount=0, method="gift"
+        )
+        text = texts.FESTIVAL_APPROVED.format(
+            gb=req.requested_gb,
+            bonus=bonus,
+            username=escape(req.admin_username or ""),
+            new_balance_gb=new_balance_gb,
+        )
+    else:
+        text = texts.REQUEST_APPROVED_ADMIN.format(
+            added_gb=req.requested_gb, new_balance_gb=new_balance_gb
+        )
+    await _tell(bot, customer, text)
     return Outcome(True, texts.APPROVED_TOAST, finished=True)

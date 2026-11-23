@@ -18,6 +18,7 @@ from .routers import all_routers
 from .auto_approve import run_auto_approver
 from .backups import run_backup_scheduler
 from .digest import run_digest_scheduler
+from .festival import run_festival_watcher
 from .forecast import run_forecast_scheduler
 from .warnings import run_warning_scanner
 from .weekly import run_weekly_scheduler
@@ -60,6 +61,7 @@ async def run() -> None:
         asyncio.create_task(run_forecast_scheduler(bot)),
         asyncio.create_task(run_auto_approver(bot)),
         asyncio.create_task(run_digest_scheduler(bot)),
+        asyncio.create_task(run_festival_watcher(bot)),
     ]
     management = await api.start(bot)
     try:

@@ -35,8 +35,9 @@ async def list_pending(message: Message) -> None:
             f"🧾 درخواست شارژ حجم #{req.id}\n"
             f"▪️ پنل: {req.admin_username}\n"
             f"👤 آیدی عددی: {req.admin_telegram_id}\n"
-            f"📊 حجم درخواستی: {req.requested_gb:g} گیگابایت\n"
-            f"💰 مبلغ: {req.toman_amount:,} تومان"
+            f"📊 حجم درخواستی: {req.requested_gb:g} گیگابایت"
+            + (f" + {req.bonus_gb:g} گیگ هدیه جشنواره" if req.kind == "festival" else "")
+            + f"\n💰 مبلغ: {req.toman_amount:,} تومان"
         )
         markup = keyboards.approval_kb(req.id, req.admin_telegram_id)
         try:
@@ -151,7 +152,7 @@ async def start_partial_approve(call: CallbackQuery, state: FSMContext) -> None:
         origin_message_id=call.message.message_id,
     )
     prompt = texts.ASK_PARTIAL_APPROVE_AMOUNT.format(amount=req.toman_amount)
-    if req.kind == "topup":
+    if req.kind in ("topup", "festival"):
         prompt += texts.PARTIAL_APPROVE_TOPUP_NOTE
     await call.answer()
     await call.message.answer(prompt, reply_markup=keyboards.cancel_kb())
@@ -179,7 +180,9 @@ async def finish_partial_approve(message: Message, state: FSMContext, bot: Bot) 
 
     # Short money can't buy the traffic it was meant for, so a traffic purchase
     # becomes wallet credit; every other kind already pays down by the amount.
-    kind = "wallet" if req.kind == "topup" else req.kind
+    # A festival purchase short of its price loses its place in the festival
+    # with it: as wallet credit it no longer counts towards the five.
+    kind = "wallet" if req.kind in ("topup", "festival") else req.kind
     if not db.adjust_pending_request(request_id, amount=received, kind=kind):
         auto_approve.release(request_id)
         await message.answer(texts.ALREADY_HANDLED, reply_markup=superadmin_kb(message.from_user.id))
@@ -192,7 +195,9 @@ async def finish_partial_approve(message: Message, state: FSMContext, bot: Bot) 
         return
 
     notice = (
-        texts.PARTIAL_RECEIPT_TOPUP_CUSTOMER if req.kind == "topup" else texts.PARTIAL_RECEIPT_CUSTOMER
+        texts.PARTIAL_RECEIPT_TOPUP_CUSTOMER
+        if req.kind in ("topup", "festival")
+        else texts.PARTIAL_RECEIPT_CUSTOMER
     ).format(claimed=claimed, received=received)
     try:
         await bot.send_message(req.admin_telegram_id, notice)

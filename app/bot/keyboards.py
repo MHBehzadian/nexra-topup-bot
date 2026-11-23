@@ -17,7 +17,16 @@ def _b(kb, name: str, text: str | None = None, **kwargs) -> None:
 
 
 def main_menu_kb() -> ReplyKeyboardMarkup:
+    # Imported here: festival pulls in the panel client, which keyboards
+    # shouldn't need just to be imported.
+    from .festival import is_live
+
     kb = ReplyKeyboardBuilder()
+    # The festival sits above everything else, on a row of its own, for as long
+    # as it runs. Only panel owners ever get this keyboard.
+    festival = is_live()
+    if festival:
+        _b(kb, "BTN_FESTIVAL")
     _b(kb, "BTN_TOPUP")
     _b(kb, "BTN_MY_PANELS")
     _b(kb, "BTN_WALLET")
@@ -27,7 +36,7 @@ def main_menu_kb() -> ReplyKeyboardMarkup:
     _b(kb, "BTN_MY_INVOICES")
     _b(kb, "BTN_PANEL_LOGIN")
     _b(kb, "BTN_CREATE_PANEL")
-    kb.adjust(2, 2, 2, 2, 2)
+    kb.adjust(*((1,) if festival else ()), 2, 2, 2, 2, 2)
     return kb.as_markup(resize_keyboard=True)
 
 
@@ -130,8 +139,10 @@ def users_section_kb() -> ReplyKeyboardMarkup:
     return _reply_kb(
         "BTN_SEARCH_USER",
         "BTN_BROADCAST",
+        "BTN_ANNOUNCE",
+        "BTN_FESTIVAL_ADMIN",
         "BTN_BACK",
-        layout=(2, 1),
+        layout=(2, 2, 1),
     )
 
 
@@ -536,5 +547,88 @@ def tutorials_list_kb(tutorials) -> InlineKeyboardMarkup:
     kb = InlineKeyboardBuilder()
     for t in tutorials:
         kb.button(text=t.title, callback_data=f"tutorial:{t.id}")
+    kb.adjust(1)
+    return kb.as_markup()
+
+
+# ------------------------------------------------------------------ festival
+
+
+def festival_menu_kb() -> InlineKeyboardMarkup:
+    kb = InlineKeyboardBuilder()
+    _b(kb, "BTN_FESTIVAL_CODE", callback_data="fest:code")
+    _b(kb, "BTN_FESTIVAL_OFFER", callback_data="fest:offer")
+    kb.adjust(1)
+    return kb.as_markup()
+
+
+def festival_continue_kb() -> InlineKeyboardMarkup:
+    kb = InlineKeyboardBuilder()
+    _b(kb, "BTN_FESTIVAL_CONTINUE", callback_data="fest:go")
+    return kb.as_markup()
+
+
+def festival_admin_kb() -> InlineKeyboardMarkup:
+    kb = InlineKeyboardBuilder()
+    _b(kb, "BTN_GIFT_CODE_RANDOM", callback_data="gc:new")
+    _b(kb, "BTN_GIFT_CODE_CUSTOM", callback_data="gc:custom")
+    _b(kb, "BTN_GIFT_CODE_LIST", callback_data="gc:list")
+    kb.adjust(2, 1)
+    return kb.as_markup()
+
+
+def gift_codes_delete_kb(codes) -> InlineKeyboardMarkup | None:
+    """A delete button for each code nobody has won yet."""
+    free = [c["code"] for c in codes if c["redeemed_by"] is None]
+    if not free:
+        return None
+    kb = InlineKeyboardBuilder()
+    for code in free:
+        kb.button(text=f"🗑 {code}", callback_data=f"gc:del:{code}")
+    kb.adjust(2)
+    return kb.as_markup()
+
+
+# ------------------------------------------------------------------ announcements
+
+
+def announce_button_kb(draft: str) -> InlineKeyboardMarkup:
+    kb = InlineKeyboardBuilder()
+    _b(kb, "BTN_ANNOUNCE_PRESET", callback_data=f"ann_btn:preset:{draft}")
+    _b(kb, "BTN_ANNOUNCE_CUSTOM", callback_data=f"ann_btn:custom:{draft}")
+    _b(kb, "BTN_ANNOUNCE_NONE", callback_data=f"ann_btn:none:{draft}")
+    kb.adjust(1, 2)
+    return kb.as_markup()
+
+
+def announce_post_kb(url: str, label: str | None, emoji: str | None) -> InlineKeyboardMarkup | None:
+    """The button under the post itself. The preset takes its colour and icon
+    from the Nexra panel like any other button; a typed one carries its own."""
+    if label is None:
+        return None
+    kb = InlineKeyboardBuilder()
+    if emoji == "preset":
+        _b(kb, "BTN_ANNOUNCE_FESTIVAL", text=label, url=url)
+    else:
+        kb.button(text=label, url=url, icon_custom_emoji_id=emoji or None)
+    return kb.as_markup()
+
+
+def announce_actions_kb(draft: str) -> InlineKeyboardMarkup:
+    kb = InlineKeyboardBuilder()
+    _b(kb, "BTN_ANNOUNCE_TO_BOT", callback_data=f"ann:bot:{draft}")
+    _b(kb, "BTN_ANNOUNCE_TO_CHANNEL", callback_data=f"ann:ch:{draft}")
+    _b(kb, "BTN_ANNOUNCE_TEST", callback_data=f"ann:test:{draft}")
+    _b(kb, "BTN_ANNOUNCE_DISCARD", callback_data=f"ann:drop:{draft}")
+    kb.adjust(2, 2)
+    return kb.as_markup()
+
+
+def announce_confirm_kb(draft: str, where: str) -> InlineKeyboardMarkup:
+    kb = InlineKeyboardBuilder()
+    _b(kb, "BTN_ANNOUNCE_CONFIRM", callback_data=f"ann:ok{where}:{draft}")
+    if where == "ch":
+        _b(kb, "BTN_ANNOUNCE_CHANGE_CHANNEL", callback_data=f"ann:setch:{draft}")
+    _b(kb, "BTN_ANNOUNCE_BACK", callback_data=f"ann:back:{draft}")
     kb.adjust(1)
     return kb.as_markup()

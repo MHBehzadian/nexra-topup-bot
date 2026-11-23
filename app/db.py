@@ -198,6 +198,19 @@ def init_db() -> None:
             )
             """
         )
+        conn.execute(
+            """
+            CREATE TABLE IF NOT EXISTS gift_codes (
+                code TEXT PRIMARY KEY,
+                gb REAL NOT NULL,
+                created_at TEXT NOT NULL,
+                created_by INTEGER,
+                redeemed_by INTEGER,
+                redeemed_at TEXT,
+                username TEXT
+            )
+            """
+        )
 
         # Columns added after the tables above first shipped. These must run last,
         # once every CREATE TABLE has been applied, so a fresh database has
@@ -224,6 +237,8 @@ def init_db() -> None:
         # reaches the amount.
         _ensure_column(conn, "invoices", "paid_amount", "INTEGER NOT NULL DEFAULT 0")
         _ensure_column(conn, "debts", "last_warned_at", "TEXT")
+        # Traffic given free on top of what a festival receipt paid for.
+        _ensure_column(conn, "topup_requests", "bonus_gb", "REAL NOT NULL DEFAULT 0")
 
     # Outside the transaction above: it opens its own connection.
     backfill_sales_from_requests()
@@ -244,6 +259,7 @@ class TopupRequest:
     reviewed_at: str | None
     kind: str = "topup"
     invoice_id: int | None = None
+    bonus_gb: float = 0
 
 
 def create_request(
@@ -255,6 +271,7 @@ def create_request(
     receipt_path: str,
     kind: str = "topup",
     invoice_id: int | None = None,
+    bonus_gb: float = 0,
 ) -> int:
     now = datetime.now(timezone.utc).isoformat()
     with _connect() as conn:
@@ -262,8 +279,8 @@ def create_request(
             """
             INSERT INTO topup_requests
                 (admin_telegram_id, admin_username, requested_gb, toman_amount, receipt_path,
-                 status, created_at, kind, invoice_id)
-            VALUES (?, ?, ?, ?, ?, 'pending', ?, ?, ?)
+                 status, created_at, kind, invoice_id, bonus_gb)
+            VALUES (?, ?, ?, ?, ?, 'pending', ?, ?, ?, ?)
             """,
             (
                 admin_telegram_id,
@@ -274,6 +291,7 @@ def create_request(
                 now,
                 kind,
                 invoice_id,
+                bonus_gb,
             ),
         )
         return cur.lastrowid
@@ -1094,3 +1112,152 @@ def get_tutorial(tutorial_id: int) -> Tutorial | None:
             "SELECT * FROM tutorials WHERE id = ?", (tutorial_id,)
         ).fetchone()
         return Tutorial(**dict(row)) if row else None
+
+
+# ------------------------------------------------------------------ festival
+
+
+def count_festival_requests(telegram_id: int, since: str, status: str) -> int:
+    """Festival purchases this person made since the festival started, by status."""
+    with _connect() as conn:
+        row = conn.execute(
+            """
+            SELECT COUNT(*) AS n FROM topup_requests
+            WHERE kind = 'festival' AND admin_telegram_id = ? AND status = ? AND created_at >= ?
+            """,
+            (telegram_id, status, since),
+        ).fetchone()
+        return row["n"]
+
+
+def festival_totals(since: str) -> dict:
+    """What the festival has sold and given away so far, for the superadmin."""
+    with _connect() as conn:
+        bought = conn.execute(
+            """
+            SELECT COUNT(*) AS n, COALESCE(SUM(bonus_gb), 0) AS bonus,
+                   COUNT(DISTINCT admin_telegram_id) AS people
+            FROM topup_requests
+            WHERE kind = 'festival' AND status = 'approved' AND created_at >= ?
+            """,
+            (since,),
+        ).fetchone()
+        pending = conn.execute(
+            """
+            SELECT COUNT(*) AS n FROM topup_requests
+            WHERE kind = 'festival' AND status = 'pending' AND created_at >= ?
+            """,
+            (since,),
+        ).fetchone()
+        codes = conn.execute(
+            """
+            SELECT COUNT(*) AS total,
+                   COALESCE(SUM(CASE WHEN redeemed_by IS NOT NULL THEN 1 ELSE 0 END), 0) AS used,
+                   COALESCE(SUM(CASE WHEN username IS NOT NULL THEN gb ELSE 0 END), 0) AS gb
+            FROM gift_codes
+            """
+        ).fetchone()
+    return {
+        "purchases": bought["n"],
+        "people": bought["people"],
+        "bonus_gb": bought["bonus"],
+        "pending": pending["n"],
+        "codes": codes["total"],
+        "codes_used": codes["used"],
+        "codes_gb": codes["gb"],
+    }
+
+
+def create_gift_code(code: str, gb: float, created_by: int) -> bool:
+    """False if a code with this name already exists."""
+    try:
+        with _connect() as conn:
+            conn.execute(
+                "INSERT INTO gift_codes (code, gb, created_at, created_by) VALUES (?, ?, ?, ?)",
+                (code, gb, datetime.now(timezone.utc).isoformat(), created_by),
+            )
+        return True
+    except sqlite3.IntegrityError:
+        return False
+
+
+def get_gift_code(code: str) -> dict | None:
+    with _connect() as conn:
+        row = conn.execute("SELECT * FROM gift_codes WHERE code = ?", (code,)).fetchone()
+        return dict(row) if row else None
+
+
+def list_gift_codes(limit: int = 60) -> list[dict]:
+    with _connect() as conn:
+        rows = conn.execute(
+            "SELECT * FROM gift_codes ORDER BY created_at DESC LIMIT ?", (limit,)
+        ).fetchall()
+        return [dict(r) for r in rows]
+
+
+def delete_gift_code(code: str) -> bool:
+    """Only a code nobody has won yet can go."""
+    with _connect() as conn:
+        cur = conn.execute(
+            "DELETE FROM gift_codes WHERE code = ? AND redeemed_by IS NULL", (code,)
+        )
+        return cur.rowcount == 1
+
+
+def gift_code_won_by(telegram_id: int, since: str) -> dict | None:
+    """The code this person won during the festival, if any."""
+    with _connect() as conn:
+        row = conn.execute(
+            "SELECT * FROM gift_codes WHERE redeemed_by = ? AND redeemed_at >= ? "
+            "ORDER BY redeemed_at LIMIT 1",
+            (telegram_id, since),
+        ).fetchone()
+        return dict(row) if row else None
+
+
+def claim_gift_code(code: str, telegram_id: int, since: str) -> str:
+    """Make this code theirs if nobody has it yet and they have won none.
+
+    One UPDATE, so two people sending the same code at the same moment can't
+    both win it: SQLite runs writes one at a time, and only the first finds it
+    unclaimed. Returns "ok"; "invalid" (no such code); "taken" (someone else
+    won it); "mine" (they won this one already); "already" (they won another).
+    """
+    now = datetime.now(timezone.utc).isoformat()
+    with _connect() as conn:
+        cur = conn.execute(
+            """
+            UPDATE gift_codes SET redeemed_by = ?, redeemed_at = ?
+            WHERE code = ? AND redeemed_by IS NULL
+              AND NOT EXISTS (
+                  SELECT 1 FROM gift_codes WHERE redeemed_by = ? AND redeemed_at >= ?
+              )
+            """,
+            (telegram_id, now, code, telegram_id, since),
+        )
+        if cur.rowcount == 1:
+            return "ok"
+        row = conn.execute(
+            "SELECT redeemed_by FROM gift_codes WHERE code = ?", (code,)
+        ).fetchone()
+    if row is None:
+        return "invalid"
+    if row["redeemed_by"] == telegram_id:
+        return "mine"
+    if row["redeemed_by"] is None:
+        return "already"
+    return "taken"
+
+
+def set_gift_code_panel(code: str, username: str | None) -> bool:
+    """Record (or, with None, undo) which panel a won code was credited to.
+    Setting it only succeeds once, so a double tap can't credit twice."""
+    with _connect() as conn:
+        if username is None:
+            conn.execute("UPDATE gift_codes SET username = NULL WHERE code = ?", (code,))
+            return True
+        cur = conn.execute(
+            "UPDATE gift_codes SET username = ? WHERE code = ? AND username IS NULL",
+            (username, code),
+        )
+        return cur.rowcount == 1

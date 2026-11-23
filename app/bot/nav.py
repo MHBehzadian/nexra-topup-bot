@@ -75,6 +75,9 @@ MENU_KEYS = (
     "BTN_SEARCH_USER",
     "BTN_PARTNERSHIP",
     "BTN_WALLET_CUSTOM",
+    "BTN_FESTIVAL",
+    "BTN_FESTIVAL_ADMIN",
+    "BTN_ANNOUNCE",
 )
 ALL_MENU_TEXTS: set[str] = {getattr(texts, name) for name in MENU_KEYS}
 

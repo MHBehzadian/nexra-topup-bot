@@ -465,6 +465,7 @@ KIND_LABELS = {
     "wallet": "شارژ کیف پول",
     "settlement": "تسویه هفتگی",
     "invoice": "پرداخت فاکتور",
+    "festival": "خرید جشنواره",
 }
 STATUS_LABELS = {
     "pending": "در انتظار ⏳",
@@ -999,6 +1000,7 @@ SALES_METHOD_LABELS = {
     "deduct": "کسر دستی",
     "settlement": "تسویه‌ی هفتگی",
     "wallet_charge": "شارژ کیف پول",
+    "gift": "هدیه جشنواره",
 }
 SALES_EMPTY = "📈 در ۷ روز گذشته فروشی ثبت نشده است."
 SALES_NONE_THIS_WEEK = "▫️ در این ۷ روز فروشی ثبت نشده است.\n"
@@ -1068,3 +1070,138 @@ NONPAYMENT_WARNING_MULTI = (
     "⛔️ در صورت عدم پرداخت، {service} شما به‌صورت خودکار معلق خواهد شد.\n"
     "برای جلوگیری از تعلیق، از دکمه‌های زیر اقدام به پرداخت نمایید."
 )
+
+# --- Black Friday festival (customers) ---
+BTN_FESTIVAL = "🔥 جشنواره بلک فرایدی"
+BTN_FESTIVAL_CODE = "🎁 وارد کردن کد هدیه"
+BTN_FESTIVAL_OFFER = "⚡️ شارژ پنل با ۱۵۰۰ گیگ شارژ هدیه"
+BTN_FESTIVAL_CONTINUE = "ادامه"
+FESTIVAL_MENU = (
+    "🔥 <b>جشنواره بلک فرایدی</b>\n"
+    "━━━━━━━━━━━━━━━\n"
+    "⏳ پایان جشنواره: <b>{ends}</b> (به وقت تهران)\n\n"
+    "یکی از گزینه‌های زیر را انتخاب نمایید:"
+)
+FESTIVAL_OVER = "⌛️ جشنواره بلک فرایدی به پایان رسیده است."
+FESTIVAL_PANELS_ONLY = "⚠️ جشنواره بلک فرایدی مخصوص همکارانی است که پنل فعال دارند."
+FESTIVAL_ASK_CODE = "🎁 کد هدیه را وارد نمایید:"
+FESTIVAL_CODE_INVALID = "❌ کد وارد شده معتبر نیست."
+FESTIVAL_CODE_TAKEN = "😕 این کد قبلاً توسط شخص دیگری استفاده شده است."
+FESTIVAL_CODE_ALREADY = "⚠️ شما قبلاً از کد هدیه استفاده کرده‌اید؛ هر نفر فقط یک بار می‌تواند کد هدیه دریافت کند."
+FESTIVAL_CODE_WON = "🎉 <b>تبریک!</b> شما اولین نفری بودید که این کد را وارد کردید و {gb:g} گیگابایت هدیه گرفتید."
+FESTIVAL_CODE_PICK_PANEL = "🎁 هدیه به کدام پنل شارژ شود؟"
+FESTIVAL_CODE_CREDITED = (
+    "✅ {gb:g} گیگابایت هدیه به پنل «{username}» شارژ شد.\n"
+    "موجودی جدید: {new_gb:.2f} گیگابایت"
+)
+FESTIVAL_CODE_FAILED = "⚠️ شارژ هدیه انجام نشد ({error}). کد برای شما محفوظ است؛ کمی بعد دوباره «وارد کردن کد هدیه» را بزنید."
+FESTIVAL_OFFER = (
+    "🔥 <b>پیشنهاد ویژه‌ی جشنواره بلک فرایدی</b>\n"
+    "━━━━━━━━━━━━━━━\n"
+    "خرید <b>{gb:,}</b> گیگابایت حجم برای پنل به همراه <b>{bonus:,} GB</b> حجم هدیه "
+    "مخصوص جشنواره بلک فرای دی\n\n"
+    "💰 مبلغ: <b>{price:,}</b> تومان"
+)
+FESTIVAL_LIMIT = "⚠️ سقف استفاده‌ی شما از جشنواره پر شده است."
+FESTIVAL_PENDING = "⏳ رسید خرید قبلی شما از جشنواره در حال بررسی است؛ پس از تأیید آن می‌توانید دوباره خرید کنید."
+FESTIVAL_DEBTS_FIRST = (
+    "⚠️ برای استفاده از جشنواره باید فاکتورهای شما صفر شود.\n\n"
+    "💰 بدهی فعلی: <b>{total:,}</b> تومان\n"
+    "پس از پرداخت و تأیید، دوباره دکمه‌ی جشنواره را بزنید."
+)
+FESTIVAL_PICK_PANEL = "⚡️ حجم جشنواره به کدام پنل شارژ شود؟"
+FESTIVAL_CARD_INSTRUCTIONS = (
+    "🔥 <b>خرید جشنواره بلک فرایدی</b>\n"
+    "━━━━━━━━━━━━━━━\n"
+    "▪️ پنل: {username}\n"
+    "📊 حجم: {gb:,} گیگ + {bonus:,} گیگ هدیه\n"
+    "💰 مبلغ: <b>{price:,}</b> تومان\n\n"
+    "لطفاً مبلغ را به شماره کارت زیر واریز نمایید:\n\n"
+    "💳 <code>{card_number}</code>\n\n"
+    "پس از واریز، تصویر رسید را ارسال نمایید."
+)
+FESTIVAL_SUBMITTED = "⏳ رسید خرید جشنواره ثبت شد. پس از تأیید، حجم و هدیه با هم به پنل شما شارژ می‌شود."
+FESTIVAL_APPROVED = (
+    "🔥 خرید جشنواره بلک فرایدی شما تأیید شد.\n"
+    "{gb:g} گیگابایت + {bonus:g} گیگابایت هدیه به پنل «{username}» اضافه شد.\n"
+    "موجودی جدید: {new_balance_gb:.2f} گیگابایت"
+)
+
+# --- Black Friday festival (superadmin) ---
+BTN_FESTIVAL_ADMIN = "🔥 جشنواره"
+FESTIVAL_ADMIN = (
+    "🔥 <b>جشنواره بلک فرایدی</b>\n"
+    "━━━━━━━━━━━━━━━\n"
+    "وضعیت: {status}\n"
+    "⏳ پایان: {ends} (تهران)\n"
+    "🕒 شروع شمارش خریدها: {started}\n\n"
+    "🛒 خریدهای تأییدشده: <b>{purchases}</b> ({people} نفر) · در انتظار: {pending}\n"
+    "🎁 حجم هدیه‌ی خریدها: {bonus_gb:g} گیگ\n"
+    "🎟 کدهای هدیه: {codes_used} از {codes} استفاده شده · {codes_gb:g} گیگ شارژ شده\n\n"
+    "روشن/خاموش کردن و زمان پایان از تنظیمات پنل نکسرا (Black Friday Festival) انجام می‌شود."
+)
+FESTIVAL_STATUS_LIVE = "🟢 فعال"
+FESTIVAL_STATUS_OFF = "⚪️ غیرفعال"
+BTN_GIFT_CODE_RANDOM = "➕ ساخت کد تصادفی"
+BTN_GIFT_CODE_CUSTOM = "✏️ کد دلخواه"
+BTN_GIFT_CODE_LIST = "📋 لیست کدها"
+ASK_GIFT_CODE = "✏️ کد دلخواه را بفرستید (۳ تا ۳۲ حرف انگلیسی، عدد، - یا _):"
+GIFT_CODE_INVALID = "⚠️ کد فقط می‌تواند حرف انگلیسی، عدد، - و _ باشد (۳ تا ۳۲ کاراکتر)."
+GIFT_CODE_EXISTS = "⚠️ این کد قبلاً ساخته شده است."
+GIFT_CODE_CREATED = "✅ کد هدیه ساخته شد ({gb:g} گیگ برای اولین نفر):\n\n<code>{code}</code>"
+GIFT_CODES_EMPTY = "📋 هنوز کد هدیه‌ای ساخته نشده است."
+GIFT_CODES_HEADER = "📋 <b>کدهای هدیه</b>\n━━━━━━━━━━━━━━━\n"
+GIFT_CODE_LINE_FREE = "▫️ <code>{code}</code> — 🟢 استفاده نشده\n"
+GIFT_CODE_LINE_WON = "▫️ <code>{code}</code> — 🎁 {who} → {panel}\n"
+GIFT_CODE_PANEL_PENDING = "پنل انتخاب نشده"
+GIFT_CODE_DELETED = "🗑 کد حذف شد."
+GIFT_CODE_NOT_DELETED = "این کد استفاده شده یا وجود ندارد."
+FESTIVAL_CODE_WON_NOTIFY = (
+    "🎟 کد هدیه <code>{code}</code> برنده داشت\n"
+    "👤 {name} · آیدی عددی: <code>{telegram_id}</code>\n"
+    "▪️ پنل: {username} · {gb:g} گیگ"
+)
+
+# --- announcements with a button (any time, not only the festival) ---
+BTN_ANNOUNCE = "📢 پیام دکمه‌دار"
+BTN_ANNOUNCE_FESTIVAL = "ورود به جشنواره"
+ASK_ANNOUNCE_CONTENT = (
+    "📢 پیام را بفرستید: متن، یا عکس / ویدیو / گیف با کپشن.\n"
+    "ایموجی پریمیوم، متن پررنگ و لینک همان‌طور که نوشته‌اید ارسال می‌شوند."
+)
+ASK_ANNOUNCE_BUTTON = (
+    "🔘 دکمه‌ی زیر پیام چه باشد؟\n\n"
+    "زدن دکمه ربات را برای کاربر دوباره استارت می‌کند (منو تازه می‌شود و اگر جشنواره فعال باشد، "
+    "صفحه‌ی جشنواره هم باز می‌شود)."
+)
+BTN_ANNOUNCE_PRESET = "🔥 «ورود به جشنواره»"
+BTN_ANNOUNCE_CUSTOM = "✏️ متن دلخواه"
+BTN_ANNOUNCE_NONE = "بدون دکمه"
+ASK_ANNOUNCE_LABEL = (
+    "✏️ متن دکمه را بفرستید.\n"
+    "اگر اول متن یک ایموجی پریمیوم بگذارید، همان ایموجی آیکون دکمه می‌شود."
+)
+ANNOUNCE_LABEL_INVALID = "⚠️ متن دکمه خالی یا خیلی بلند است (حداکثر ۶۴ کاراکتر)."
+ANNOUNCE_PREVIEW = (
+    "👆 این پیش‌نمایش (ارسال تستی به پی‌وی شما) دقیقاً همان چیزی است که ارسال می‌شود.\n"
+    "کجا ارسال شود؟"
+)
+BTN_ANNOUNCE_TO_BOT = "🤖 ارسال در ربات"
+BTN_ANNOUNCE_TO_CHANNEL = "📢 ارسال در کانال"
+BTN_ANNOUNCE_TEST = "🧪 ارسال تستی دوباره"
+BTN_ANNOUNCE_DISCARD = "🗑 حذف پیش‌نویس"
+BTN_ANNOUNCE_CONFIRM = "✅ بله، ارسال کن"
+BTN_ANNOUNCE_CHANGE_CHANNEL = "✏️ کانال دیگر"
+BTN_ANNOUNCE_BACK = "↩️ برگشت"
+ANNOUNCE_CONFIRM_BOT = "🤖 پیام برای {count:,} کاربر ربات ارسال شود؟"
+ANNOUNCE_CONFIRM_CHANNEL = "📢 پیام در کانال {channel} ارسال شود؟"
+ASK_ANNOUNCE_CHANNEL = "📢 آیدی کانال را بفرستید (مثلاً @mychannel). ربات باید ادمین کانال باشد."
+ANNOUNCE_SENDING = "⏳ در حال ارسال…"
+ANNOUNCE_BOT_DONE = "🤖 پیام در ربات ارسال شد.\n✅ موفق: {sent:,}\n❌ ناموفق: {failed:,}"
+ANNOUNCE_CHANNEL_DONE = "📢 پیام در کانال {channel} ارسال شد."
+ANNOUNCE_CHANNEL_FAILED = "⚠️ ارسال در کانال {channel} انجام نشد: {error}\nمطمئن شوید ربات ادمین کانال است و اجازه‌ی ارسال پیام دارد."
+ANNOUNCE_EXPIRED = "این پیش‌نویس دیگر در دسترس نیست؛ دوباره «پیام دکمه‌دار» را بزنید."
+ANNOUNCE_GOT = "✅ دریافت شد."
+ANNOUNCE_ALREADY_SENT = "این پیش‌نویس قبلاً همین‌جا ارسال شده است."
+ANNOUNCE_DISCARDED = "🗑 پیش‌نویس حذف شد."
+ANNOUNCE_UNSUPPORTED = "⚠️ این نوع پیام پشتیبانی نمی‌شود؛ متن، عکس، ویدیو، گیف یا فایل بفرستید."

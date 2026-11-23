@@ -49,6 +49,10 @@ DEFAULT_STYLES: dict[str, str] = {
     "BTN_CHARGE_WALLET": "primary",
     "BTN_TOPUP_THIS_PANEL": "primary",
     "BTN_APPROVE": "primary",
+    "BTN_FESTIVAL": "danger",
+    "BTN_FESTIVAL_CONTINUE": "danger",
+    "BTN_ANNOUNCE_FESTIVAL": "danger",
+    "BTN_ANNOUNCE_CONFIRM": "primary",
 }
 
 # Shown where Telegram parses no HTML (a callback's toast or alert), so a tag
@@ -60,6 +64,9 @@ PLAIN = {
     "PANEL_CHOICE_EXPIRED", "PANEL_UNREACHABLE", "PAY_ALL_NOTHING",
     "TUTORIAL_NOT_FOUND", "UNLOCKED_TOAST", "USER_HAS_NO_PANELS", "WARNING_BILL_GONE",
     "WARNING_NOT_DELIVERED", "WARNING_SENT_TOAST", "WEEKLY_NOT_ENABLED",
+    "FESTIVAL_LIMIT", "FESTIVAL_PENDING", "FESTIVAL_OVER", "FESTIVAL_PANELS_ONLY",
+    "GIFT_CODE_DELETED", "GIFT_CODE_NOT_DELETED", "ANNOUNCE_EXPIRED",
+    "ANNOUNCE_ALREADY_SENT",
 }
 
 _TEXTS_KEY = "custom_texts"

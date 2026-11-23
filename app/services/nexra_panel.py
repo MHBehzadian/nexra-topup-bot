@@ -167,6 +167,15 @@ class NexraPanelClient:
         resp = await self._request("GET", "/bot/admins/credentials")
         return self._ok(resp)
 
+    async def get_festival(self) -> dict | None:
+        """The festival as the panel has it set ({enabled, ends_at, active}), so
+        one switch in the panel's Settings runs it in both places. None from a
+        panel too old to have one."""
+        resp = await self._request("GET", "/dashboard/branding", timeout=10.0)
+        data = self._ok(resp)
+        festival = (data or {}).get("festival") if isinstance(data, dict) else None
+        return festival if isinstance(festival, dict) else None
+
     async def sync_telegram_ids(self) -> dict:
         resp = await self._request("POST", "/bot/admins/sync-telegram-ids", timeout=30.0)
         return self._ok(resp)

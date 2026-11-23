@@ -5,12 +5,13 @@ user ever starts the bot."""
 from __future__ import annotations
 
 from aiogram import Bot, F, Router
-from aiogram.filters import CommandStart
+from aiogram.filters import CommandObject, CommandStart
 from aiogram.fsm.context import FSMContext
 from aiogram.types import CallbackQuery, Message
 
-from .. import keyboards, sales, texts
+from .. import festival, keyboards, sales, texts
 from ..filters import Label
+from .festival import show_festival
 from ..forecast import render
 from ..nav import cancel_and_show_menu, forget_section, menu_kb_for
 from ..panels import format_panel_line, owned_panel, safe_get_admins
@@ -45,7 +46,7 @@ async def _notify_superadmins_of_new_user(bot: Bot, message: Message, admins: li
 
 
 @router.message(CommandStart())
-async def start(message: Message, bot: Bot) -> None:
+async def start(message: Message, bot: Bot, command: CommandObject) -> None:
     is_new_user = not db.user_exists(message.from_user.id)
     db.upsert_user(message.from_user.id, message.from_user.username, message.from_user.full_name)
 
@@ -55,6 +56,9 @@ async def start(message: Message, bot: Bot) -> None:
         await message.answer(texts.SUPERADMIN_WELCOME, reply_markup=keyboards.superadmin_menu_kb())
         return
 
+    # Asked now rather than taken from the last minute's check: a restart is
+    # how a festival that just began reaches someone's menu.
+    await festival.refresh()
     admins = await safe_get_admins(message)
     if admins is None:
         return
@@ -75,6 +79,11 @@ async def start(message: Message, bot: Bot) -> None:
         reply_markup=keyboards.main_menu_kb(),
     )
     await tell_if_suspended(message)
+
+    # Came from an announcement's button: straight into the festival while
+    # one is running (otherwise the fresh menu above was the whole point).
+    if command.args == "go" and festival.is_live():
+        await show_festival(message, message.from_user.id)
 
 
 async def tell_if_suspended(message: Message) -> None:

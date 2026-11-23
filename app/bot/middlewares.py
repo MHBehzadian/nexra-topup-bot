@@ -12,6 +12,7 @@ from aiogram.types import User as TgUser
 from .. import db
 from ..config import settings
 from . import customize, keyboards, texts
+from .states import Announce
 
 logger = logging.getLogger(__name__)
 
@@ -67,6 +68,10 @@ class ButtonTapMiddleware(BaseMiddleware):
 
     async def __call__(self, handler, event, data):
         if not isinstance(event, Message):
+            return await handler(event, data)
+        # Typing a button's label for a post: the premium emoji in front of it
+        # is the point, so it must not be read as a tap and stripped.
+        if data.get("raw_state") == Announce.label.state:
             return await handler(event, data)
         label = customize.tapped_label(event.text, event.entities)
         if label is not None:

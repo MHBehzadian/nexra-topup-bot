@@ -478,6 +478,29 @@ def traffic_panel_picker_kb(admins, mode: str) -> InlineKeyboardMarkup:
     return kb.as_markup()
 
 
+def subpanel_kind_kb() -> InlineKeyboardMarkup:
+    """The two kinds of panel a reseller can make for a colleague."""
+    kb = InlineKeyboardBuilder()
+    _b(kb, "BTN_SUBPANEL_NEXRA", callback_data="subp_kind:nexra")
+    _b(kb, "BTN_SUBPANEL_PLAIN", callback_data="subp_kind:plain")
+    kb.adjust(1)
+    return kb.as_markup()
+
+
+def subpanel_source_kb(admins) -> InlineKeyboardMarkup:
+    """Which of their own panels the new panel's traffic comes out of. By
+    position, like panel_name_picker_kb, and checked against the list kept in
+    the flow's state."""
+    kb = InlineKeyboardBuilder()
+    for index, a in enumerate(admins):
+        kb.button(
+            text=f"▪️ {a['username']} — {bytes_to_gb(a.get('traffic')):.2f} GB",
+            callback_data=f"subp_src:{index}",
+        )
+    kb.adjust(1)
+    return kb.as_markup()
+
+
 def panel_name_picker_kb(panel_names) -> InlineKeyboardMarkup:
     """Choose which Marzban panel a newly provisioned reseller belongs to.
 

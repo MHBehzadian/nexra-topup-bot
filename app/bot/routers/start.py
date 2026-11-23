@@ -160,11 +160,6 @@ async def show_forecast(message: Message) -> None:
         )
 
 
-@router.message(Label("BTN_CREATE_PANEL"))
-async def create_panel_stub(message: Message) -> None:
-    await message.answer(texts.CREATE_PANEL_SOON)
-
-
 @router.message(Label("BTN_CANCEL"))
 async def cancel(message: Message, state: FSMContext) -> None:
     await cancel_and_show_menu(message, state)

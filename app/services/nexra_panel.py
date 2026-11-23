@@ -15,6 +15,17 @@ class DeductUnsupported(NexraPanelError):
     """The panel is running a build without /bot/admin/deduct."""
 
 
+class SubPanelError(NexraPanelError):
+    """The panel refused to make a reseller's sub-panel. `message` is the
+    panel's own reason (English), `status` its HTTP status, so the flow can
+    tell a taken username or a short balance from everything else."""
+
+    def __init__(self, status: int, message: str) -> None:
+        super().__init__(f"{status}: {message}")
+        self.status = status
+        self.message = message
+
+
 class NexraPanelClient:
     def __init__(self) -> None:
         self._base_url = settings.nexra_panel_api_url.rstrip("/")
@@ -101,6 +112,42 @@ class NexraPanelClient:
             },
         )
         return self._ok(resp)
+
+    async def create_sub_admin(
+        self,
+        telegram_id: int,
+        source_username: str,
+        username: str,
+        password: str,
+        traffic_gb: float,
+        white_label: bool,
+    ) -> dict:
+        """A reseller's panel for a colleague of theirs, its traffic taken from
+        `source_username` (one of their own panels)."""
+        resp = await self._request(
+            "POST",
+            "/bot/admin/create-sub",
+            timeout=30.0,
+            json={
+                "telegram_id": telegram_id,
+                "source_username": source_username,
+                "username": username,
+                "password": password,
+                "traffic_gb": traffic_gb,
+                "white_label": white_label,
+            },
+        )
+        if resp.status_code >= 400:
+            try:
+                body = resp.json()
+                message = body.get("message") or body.get("detail") or resp.text
+            except ValueError:
+                message = resp.text
+            # A panel too old to have the endpoint answers FastAPI's bare 404.
+            if resp.status_code in (404, 405) and "success" not in resp.text:
+                message = "This feature needs the latest Nexra panel update"
+            raise SubPanelError(resp.status_code, str(message))
+        return resp.json()["data"]
 
     async def list_panels(self) -> list[str]:
         """Names of the Marzban panels a new reseller can be created on.

@@ -211,6 +211,18 @@ def init_db() -> None:
             )
             """
         )
+        # Everyone who entered a code after it was won, once each, so a late
+        # arrival can be told where in the queue they came.
+        conn.execute(
+            """
+            CREATE TABLE IF NOT EXISTS gift_code_attempts (
+                code TEXT NOT NULL,
+                telegram_id INTEGER NOT NULL,
+                attempted_at TEXT NOT NULL,
+                PRIMARY KEY (code, telegram_id)
+            )
+            """
+        )
 
         # Columns added after the tables above first shipped. These must run last,
         # once every CREATE TABLE has been applied, so a fresh database has
@@ -1261,3 +1273,26 @@ def set_gift_code_panel(code: str, username: str | None) -> bool:
             (username, code),
         )
         return cur.rowcount == 1
+
+
+def record_late_attempt(code: str, telegram_id: int) -> int:
+    """Note that this person entered an already-won code, and return where they
+    came: 2 for the first one after the winner. Entering it again keeps the
+    place they had."""
+    now = datetime.now(timezone.utc).isoformat()
+    with _connect() as conn:
+        conn.execute(
+            "INSERT OR IGNORE INTO gift_code_attempts (code, telegram_id, attempted_at) "
+            "VALUES (?, ?, ?)",
+            (code, telegram_id, now),
+        )
+        row = conn.execute(
+            """
+            SELECT COUNT(*) AS n FROM gift_code_attempts
+            WHERE code = ? AND attempted_at <= (
+                SELECT attempted_at FROM gift_code_attempts WHERE code = ? AND telegram_id = ?
+            )
+            """,
+            (code, code, telegram_id),
+        ).fetchone()
+    return row["n"] + 1

@@ -11,6 +11,7 @@ import os
 import re
 import secrets
 import uuid
+from datetime import datetime, timezone
 from html import escape
 
 from aiogram import Bot, F, Router
@@ -32,6 +33,12 @@ router = Router(name="festival")
 _CODE_CHARS = "ABCDEFGHJKLMNPQRSTUVWXYZ23456789"  # no 0/O or 1/I to misread
 _CODE_RE = re.compile(r"^[A-Z0-9_-]{3,32}$")
 _FA_DIGITS = str.maketrans("۰۱۲۳۴۵۶۷۸۹٠١٢٣٤٥٦٧٨٩", "01234567890123456789")
+
+
+def _ordinal(n: int) -> str:
+    if 1 <= n <= len(texts.FESTIVAL_PLACES):
+        return texts.FESTIVAL_PLACES[n - 1]
+    return texts.FESTIVAL_PLACE_N.format(n=str(n).translate(festival._FA))
 
 
 def normalize_code(raw: str | None) -> str:
@@ -105,11 +112,19 @@ async def _credit_code(
         ),
         reply_markup=await menu_kb_for(user_id),
     )
+    # When they entered it (the moment it became theirs), not when the panel
+    # was picked: that is what "first" was decided by.
+    entered = festival._parse(code.get("redeemed_at")) or datetime.now(timezone.utc)
+    entered = entered.astimezone(festival.TEHRAN)
+    notice = texts.FESTIVAL_CODE_WON_NOTIFY.format(
+        name=escape(name),
+        time=entered.strftime("%H:%M:%S").translate(festival._FA),
+        date=entered.strftime("%Y/%m/%d").translate(festival._FA),
+        gb=code["gb"],
+    )
     for superadmin_id in settings.superadmin_id_list:
         try:
-            await bot.send_message(
-                superadmin_id, texts.FESTIVAL_CODE_WON_NOTIFY.format(name=escape(name))
-            )
+            await bot.send_message(superadmin_id, notice)
         except Exception:
             continue
 
@@ -169,7 +184,11 @@ async def enter_code(message: Message, state: FSMContext, bot: Bot) -> None:
         return
     await state.clear()
     if outcome == "taken":
-        await message.answer(texts.FESTIVAL_CODE_TAKEN, reply_markup=await menu_kb_for(user_id))
+        place = db.record_late_attempt(code, user_id)
+        await message.answer(
+            texts.FESTIVAL_CODE_TAKEN.format(place=_ordinal(place)),
+            reply_markup=await menu_kb_for(user_id),
+        )
         return
     if outcome == "already":
         await message.answer(texts.FESTIVAL_CODE_ALREADY, reply_markup=await menu_kb_for(user_id))

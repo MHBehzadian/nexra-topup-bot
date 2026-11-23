@@ -579,7 +579,7 @@ BTN_LOGIN_WITH_VPN = "🌐 ورود به پنل با VPN"
 BTN_LOGIN_WITHOUT_VPN = "📶 ورود به پنل بدون VPN"
 PANEL_LOGIN_TEXT = (
     "🔐 <b>ورود به پنل</b>\n"
-    "━━━━━━━━━━━━━━━\n"
+    "\n"
     "بسته به اینکه VPN شما روشن است یا خیر، یکی از دو گزینه‌ی زیر را انتخاب کنید.\n"
     "هر دو به یک پنل وصل می‌شوند و نام کاربری و رمز یکسانی دارند.\n\n"
     "اگر یکی باز نشد، دیگری را امتحان کنید."
@@ -688,7 +688,7 @@ WHEN_DAYS_AGO = "{days} روز پیش"
 
 BILLS_SUMMARY = (
     "🧾 <b>فاکتورهای باز</b>\n"
-    "━━━━━━━━━━━━━━━\n"
+    "\n"
     "💰 جمع کل: <b>{total:,}</b> تومان\n"
     "👥 {customers} مشتری · {count} مورد\n"
     "⏰ سررسید گذشته: {overdue_count} مورد ({overdue_total:,} تومان)"
@@ -722,7 +722,7 @@ MY_BILLS_SUMMARY = (
 # --- a panel locked for non-payment ---
 SUSPENDED_NOTICE = (
     "⛔️ <b>پنل شما مسدود شد</b>\n"
-    "━━━━━━━━━━━━━━━\n"
+    "\n"
     "متأسفانه پنل شما به علت عدم پرداخت فاکتور پرداخت هفتگی مسدود شد "
     "و تا پرداخت، ورود به پنل ممکن نیست.\n\n"
     "💰 جمع بدهی: <b>{total:,}</b> تومان · {count} مورد\n\n"
@@ -734,7 +734,7 @@ BTN_SHOW_ALL_BILLS = "🧾 نمایش همه فاکتورها"
 # the lock is explained wherever they look, not only in a notice they missed.
 SUSPENDED_REMINDER = (
     "⛔️ <b>پنل شما مسدود است</b>\n"
-    "━━━━━━━━━━━━━━━\n"
+    "\n"
     "پنل «{panels}» به علت عدم پرداخت فاکتور پرداخت هفتگی مسدود شده است، "
     "به همین دلیل ورود با رمز قبلی ممکن نیست.\n\n"
     "پس از پرداخت، دسترسی پنل با همان رمز قبلی به‌صورت خودکار برمی‌گردد."
@@ -745,7 +745,7 @@ SUSPENDED_CANNOT_CHANGE_PASSWORD = (
 # Sent ahead of a lock, at each of the hours in enforcement.WARNING_HOURS.
 LOCK_WARNING = (
     "⚠️ <b>هشدار مسدود شدن پنل</b>\n"
-    "━━━━━━━━━━━━━━━\n"
+    "\n"
     "فاکتور پرداخت هفتگی شما هنوز پرداخت نشده است.\n\n"
     "▪️ پنل: {panels}\n"
     "💰 مبلغ بدهی: <b>{amount:,}</b> تومان\n\n"
@@ -757,13 +757,13 @@ LOCK_DEADLINE_DAYS = "<b>{when}</b> (حدود {days} روز دیگر)"
 BTN_PAY_ALL_BILLS = "💳 پرداخت همه فاکتورها"
 UNSUSPENDED_NOTICE = (
     "✅ <b>پنل شما باز شد</b>\n"
-    "━━━━━━━━━━━━━━━\n"
+    "\n"
     "پرداخت شما ثبت شد و دسترسی پنل‌تان برقرار است.\n"
     "از همراهی شما سپاسگزاریم."
 )
 PAY_ALL_INSTRUCTIONS = (
     "💳 <b>پرداخت همه فاکتورها</b>\n"
-    "━━━━━━━━━━━━━━━\n"
+    "\n"
     "💰 مبلغ کل: <b>{amount:,}</b> تومان · {count} مورد\n\n"
     "لطفاً مبلغ بالا را به شماره کارت زیر واریز کنید و سپس عکس رسید را ارسال نمایید:\n\n"
     "💳 <code>{card_number}</code>\n\n"
@@ -869,7 +869,7 @@ MY_BILL_WEEKLY = (
 # the billing system itself, the same voice as the automatic reminders.
 NONPAYMENT_WARNING = (
     "🔔 <b>اطلاعیه‌ی سیستم — عدم پرداخت</b>\n"
-    "━━━━━━━━━━━━━━━\n"
+    "\n"
     "{subject}\n"
     "💰 مبلغ بدهی: <b>{amount:,}</b> تومان\n"
     "{days_line}\n\n"
@@ -978,14 +978,14 @@ BILL_NOTICE_NOT_DELIVERED = "⚠️ پیام به مشتری تحویل نشد (
 
 # --- the week's sales ---
 BTN_SALES_REPORT = "📈 فروش ۷ روز اخیر"
-SALES_HEADER = "📈 <b>فروش ۷ روز گذشته</b>\n━━━━━━━━━━━━━━━\n"
+SALES_HEADER = "📈 <b>فروش ۷ روز گذشته</b>\n\n"
 SALES_DAY_LINE = (
     "▫️ <b>{day}</b>\n"
     "     💰 {amount:,} تومان · 📊 {gb:g} گیگ · {count} فروش\n"
 )
 SALES_DAY_EMPTY = "▫️ {day}\n     — بدون فروش\n"
 SALES_FOOTER = (
-    "━━━━━━━━━━━━━━━\n"
+    "\n"
     "💰 جمع هفته: <b>{total:,}</b> تومان\n"
     "📊 مجموع حجم: {gb:g} گیگابایت · {count} فروش\n"
     "🧮 میانگین روزانه: {average:,} تومان\n"
@@ -1008,11 +1008,11 @@ SALES_NONE_THIS_WEEK = "▫️ در این ۷ روز فروشی ثبت نشده 
 SALES_SETTLED_HEADER = "\n💵 <b>تسویه‌های هفتگی دریافت‌شده</b>\n"
 SALES_SETTLED_LINE = "▫️ {day} · <b>{username}</b> · {amount:,} تومان\n"
 SALES_SETTLED_MORE = "     … و {count} پرداخت دیگر\n"
-SALES_SETTLED_TOTAL = "━━━━━━━━━━━━━━━\n💰 جمع تسویه‌ها: <b>{total:,}</b> تومان · {count} پرداخت\n"
+SALES_SETTLED_TOTAL = "\n💰 جمع تسویه‌ها: <b>{total:,}</b> تومان · {count} پرداخت\n"
 
 # --- the nightly summary ---
 BTN_DIGEST = "📋 خلاصه‌ی امروز"
-DIGEST_HEADER = "📋 <b>خلاصه‌ی امروز</b> · {day}\n━━━━━━━━━━━━━━━\n"
+DIGEST_HEADER = "📋 <b>خلاصه‌ی امروز</b> · {day}\n\n"
 DIGEST_SALES = "💰 فروش امروز: <b>{amount:,}</b> تومان · {gb:g} گیگ · {count} فروش\n"
 DIGEST_NO_SALES = "💰 فروش امروز: بدون فروش\n"
 DIGEST_SALES_METHODS = "🧾 روش پرداخت: {methods}\n"
@@ -1048,10 +1048,10 @@ DIGEST_PANELS_UNAVAILABLE = "\n📉 وضعیت پنل‌ها در دسترس ن�
 BTN_PANEL_HISTORY = "📜 تاریخچه‌ی شارژ"
 BTN_HISTORY = "📜 تاریخچه"
 ASK_HISTORY_USERNAME = "📜 نام کاربری پنل را وارد نمایید:"
-HISTORY_HEADER = "📜 <b>تاریخچه‌ی شارژ پنل «{username}»</b>\n━━━━━━━━━━━━━━━\n"
+HISTORY_HEADER = "📜 <b>تاریخچه‌ی شارژ پنل «{username}»</b>\n\n"
 HISTORY_LINE = "▫️ <b>{day}</b>\n     ‎{gb:+g} گیگ · {method} · {amount:,} تومان\n"
 HISTORY_LINE_FREE = "▫️ <b>{day}</b>\n     ‎{gb:+g} گیگ · {method}\n"
-HISTORY_FOOTER = "━━━━━━━━━━━━━━━\n📊 مجموع: {gb:g} گیگابایت در {count} نوبت"
+HISTORY_FOOTER = "\n📊 مجموع: {gb:g} گیگابایت در {count} نوبت"
 HISTORY_EMPTY = "📜 برای پنل «{username}» تا کنون شارژی ثبت نشده است."
 
 # --- acting on a customer, not on each separate debt ---
@@ -1063,9 +1063,9 @@ WARN_ITEM_INVOICE = "▫️ فاکتور #{id} — {amount:,} تومان\n     {
 WARN_ITEM_WEEKLY = "▫️ پرداخت هفتگی · {username} — {amount:,} تومان\n     {timing}\n"
 NONPAYMENT_WARNING_MULTI = (
     "🔔 <b>اطلاعیه‌ی سیستم — عدم پرداخت</b>\n"
-    "━━━━━━━━━━━━━━━\n"
+    "\n"
     "{items}"
-    "━━━━━━━━━━━━━━━\n"
+    "\n"
     "💰 جمع بدهی: <b>{total:,}</b> تومان\n\n"
     "⛔️ در صورت عدم پرداخت، {service} شما به‌صورت خودکار معلق خواهد شد.\n"
     "برای جلوگیری از تعلیق، از دکمه‌های زیر اقدام به پرداخت نمایید."
@@ -1078,7 +1078,7 @@ BTN_FESTIVAL_OFFER = "⚡️ شارژ پنل با ۱۵۰۰ گیگ شارژ هد�
 BTN_FESTIVAL_CONTINUE = "ادامه"
 FESTIVAL_MENU = (
     "🔥 <b>جشنواره بلک فرایدی</b>\n"
-    "━━━━━━━━━━━━━━━\n"
+    "\n"
     "⏳ زمان باقی‌مانده:\n"
     "<b>{days}</b> روز و <b>{hours}</b> ساعت و <b>{minutes}</b> دقیقه\n"
     "تا پایان جشنواره بلک فرایدی\n\n"
@@ -1088,7 +1088,18 @@ FESTIVAL_OVER = "⌛️ جشنواره بلک فرایدی به پایان رس�
 FESTIVAL_PANELS_ONLY = "⚠️ جشنواره بلک فرایدی مخصوص همکارانی است که پنل فعال دارند."
 FESTIVAL_ASK_CODE = "🎁 کد هدیه را وارد نمایید:"
 FESTIVAL_CODE_INVALID = "❌ کد وارد شده معتبر نیست."
-FESTIVAL_CODE_TAKEN = "😕 این کد قبلاً توسط شخص دیگری استفاده شده است."
+FESTIVAL_CODE_TAKEN = (
+    "😕 <b>متأسفانه به شما تعلق نگرفت</b>\n\n"
+    "شما <b>{place}</b> نفری بودید که این کد را وارد کردید.\n"
+    "هدیه‌ی این کد به اولین نفر می‌رسد و پیش از شما برنده‌اش مشخص شده بود.\n\n"
+    "🔥 کدهای بعدی را از دست ندهید!"
+)
+# Ordinals for the late: "the 2nd", "the 3rd"… Past the tenth, a number.
+FESTIVAL_PLACES = (
+    "اولین", "دومین", "سومین", "چهارمین", "پنجمین",
+    "ششمین", "هفتمین", "هشتمین", "نهمین", "دهمین",
+)
+FESTIVAL_PLACE_N = "{n}اُمین"
 FESTIVAL_CODE_ALREADY = "⚠️ شما قبلاً از کد هدیه استفاده کرده‌اید؛ هر نفر فقط یک بار می‌تواند کد هدیه دریافت کند."
 FESTIVAL_CODE_WON = (
     "🎉 <b>تبریک!</b>\n"
@@ -1098,18 +1109,18 @@ FESTIVAL_CODE_WON = (
 FESTIVAL_CODE_PICK_PANEL = "🎁 هدیه به کدام پنل شارژ شود؟"
 FESTIVAL_CODE_CREDITED = (
     "🎉 <b>تبریک! شما برنده‌ی کد هدیه شدید</b>\n"
-    "━━━━━━━━━━━━━━━\n"
+    "\n"
     "شما اولین نفری بودید که این کد را وارد کردید.\n\n"
     "🎁 هدیه: <b>{gb:g} گیگابایت</b>\n"
     "▪️ پنل: {username}\n"
     "📊 موجودی جدید: <b>{new_gb:.2f}</b> گیگابایت\n"
-    "━━━━━━━━━━━━━━━\n"
+    "\n"
     "🔥 جشنواره بلک فرایدی نکسرا"
 )
 FESTIVAL_CODE_FAILED = "⚠️ شارژ هدیه انجام نشد ({error}). کد برای شما محفوظ است؛ کمی بعد دوباره «وارد کردن کد هدیه» را بزنید."
 FESTIVAL_OFFER = (
     "🔥 <b>پیشنهاد ویژه‌ی جشنواره بلک فرایدی</b>\n"
-    "━━━━━━━━━━━━━━━\n"
+    "\n"
     "خرید <b>{gb:,}</b> گیگابایت حجم برای پنل به همراه <b>{bonus:,} GB</b> حجم هدیه "
     "مخصوص جشنواره بلک فرای دی\n\n"
     "💰 مبلغ: <b>{price:,}</b> تومان"
@@ -1124,7 +1135,7 @@ FESTIVAL_DEBTS_FIRST = (
 FESTIVAL_PICK_PANEL = "⚡️ حجم جشنواره به کدام پنل شارژ شود؟"
 FESTIVAL_CARD_INSTRUCTIONS = (
     "🔥 <b>خرید جشنواره بلک فرایدی</b>\n"
-    "━━━━━━━━━━━━━━━\n"
+    "\n"
     "▪️ پنل: {username}\n"
     "📊 حجم: {gb:,} گیگ + {bonus:,} گیگ هدیه\n"
     "💰 مبلغ: <b>{price:,}</b> تومان\n\n"
@@ -1143,7 +1154,7 @@ FESTIVAL_APPROVED = (
 BTN_FESTIVAL_ADMIN = "🔥 جشنواره"
 FESTIVAL_ADMIN = (
     "🔥 <b>جشنواره بلک فرایدی</b>\n"
-    "━━━━━━━━━━━━━━━\n"
+    "\n"
     "وضعیت: {status}\n"
     "⏳ پایان: {ends} (تهران)\n"
     "🕒 شروع شمارش خریدها: {started}\n\n"
@@ -1162,14 +1173,21 @@ GIFT_CODE_INVALID = "⚠️ کد فقط می‌تواند حرف انگلیسی�
 GIFT_CODE_EXISTS = "⚠️ این کد قبلاً ساخته شده است."
 GIFT_CODE_CREATED = "✅ کد هدیه ساخته شد ({gb:g} گیگ برای اولین نفر):\n\n<code>{code}</code>"
 GIFT_CODES_EMPTY = "📋 هنوز کد هدیه‌ای ساخته نشده است."
-GIFT_CODES_HEADER = "📋 <b>کدهای هدیه</b>\n━━━━━━━━━━━━━━━\n"
+GIFT_CODES_HEADER = "📋 <b>کدهای هدیه</b>\n\n"
 GIFT_CODE_LINE_FREE = "▫️ <code>{code}</code> — 🟢 استفاده نشده\n"
 GIFT_CODE_LINE_WON = "▫️ <code>{code}</code> — 🎁 {who} → {panel}\n"
 GIFT_CODE_PANEL_PENDING = "پنل انتخاب نشده"
 GIFT_CODE_DELETED = "🗑 کد حذف شد."
 GIFT_CODE_NOT_DELETED = "این کد استفاده شده یا وجود ندارد."
 # Only the winner's name, so it can be posted to the channel as it is.
-FESTIVAL_CODE_WON_NOTIFY = "🏆 برنده‌ی کد هدیه‌ی جشنواره بلک فرایدی:\n\n🎉 {name}"
+FESTIVAL_CODE_WON_NOTIFY = (
+    "🏆 <b>برنده‌ی کد هدیه‌ی جشنواره بلک فرایدی</b>\n\n"
+    "🎉 {name}\n\n"
+    "⏰ زمان وارد کردن کد: ساعت {time} به وقت ایران\n"
+    "📅 {date}\n"
+    "🎁 هدیه: {gb:g} گیگابایت به حجم پنل اضافه شد\n\n"
+    "به برنده‌ی عزیز تبریک می‌گوییم 🌹"
+)
 
 # --- announcements with a button (any time, not only the festival) ---
 BTN_ANNOUNCE = "📢 پیام دکمه‌دار"

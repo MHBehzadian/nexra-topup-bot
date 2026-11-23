@@ -20,9 +20,14 @@ CANCELLED = "🚫 عملیات لغو شد."
 BTN_TOPUP = "💳 شارژ حجم"
 BTN_BALANCE = "📊 موجودی من"
 BTN_CREATE_PANEL = "➕ ساخت پنل جدید"
-CREATE_PANEL_NEEDS_PANEL = (
-    "ℹ️ ساخت پنل برای همکار، مخصوص همکارانی است که خودشان پنل فعال دارند.\n\n"
-    "اگر هنوز پنل ندارید، ابتدا «ثبت درخواست همکاری» را بزنید."
+# Sent to everyone the superadmin hasn't turned panel-making on for. Written to
+# be forwarded to support, so it carries who is asking.
+CREATE_PANEL_NOT_ENABLED = (
+    "⛔️ قابلیت ساخت پنل جدید برای شما فعال نیست.\n"
+    "در صورت نیاز به فعال‌سازی، این پیام را برای پشتیبانی فوروارد کنید.\n\n"
+    "🆔 آیدی عددی: <code>{user_id}</code>\n"
+    "👤 یوزرنیم: {tg_username}\n"
+    "🗄 پنل‌ها: {panels}"
 )
 BTN_CHANGE_PASSWORD = "🔑 تغییر رمز پنل"
 ASK_CURRENT_PASSWORD = "🔒 برای تغییر رمز، ابتدا رمز عبور فعلی پنل خود را وارد نمایید:"

@@ -34,16 +34,30 @@ router = Router(name="sub_panel")
 USERNAME_RE = re.compile(r"^[A-Za-z0-9_.-]{3,32}$")
 
 
+def _allowed(admins: list[dict]) -> list[dict]:
+    """Their panels the superadmin has turned panel-making on for in Nexra."""
+    return [a for a in admins if a.get("can_create_subpanels")]
+
+
+async def _not_enabled(message: Message, user, admins: list[dict]) -> None:
+    await message.answer(
+        texts.CREATE_PANEL_NOT_ENABLED.format(
+            user_id=user.id,
+            tg_username=f"@{user.username}" if user.username else "-",
+            panels="، ".join(a["username"] for a in admins) or "-",
+        ),
+        reply_markup=await menu_kb_for(user.id),
+    )
+
+
 @router.message(Label("BTN_CREATE_PANEL"))
 async def start_sub_panel(message: Message, state: FSMContext) -> None:
     await state.clear()
     admins = await safe_get_admins(message)
     if admins is None:
         return
-    if not admins:
-        await message.answer(
-            texts.CREATE_PANEL_NEEDS_PANEL, reply_markup=await menu_kb_for(message.from_user.id)
-        )
+    if not _allowed(admins):
+        await _not_enabled(message, message.from_user, admins)
         return
     await state.set_state(SubPanel.kind)
     await message.answer(texts.ASK_SUBPANEL_KIND, reply_markup=keyboards.subpanel_kind_kb())
@@ -63,11 +77,10 @@ async def picked_kind(call: CallbackQuery, state: FSMContext) -> None:
             texts.PANEL_UNREACHABLE, reply_markup=await menu_kb_for(call.from_user.id)
         )
         return
+    all_admins, admins = admins, _allowed(admins)
     if not admins:
         await state.clear()
-        await call.message.answer(
-            texts.CREATE_PANEL_NEEDS_PANEL, reply_markup=await menu_kb_for(call.from_user.id)
-        )
+        await _not_enabled(call.message, call.from_user, all_admins)
         return
 
     # The source only decides the server (and the inbounds and expiry that come
@@ -197,6 +210,16 @@ async def _explain_failure(
 
     await state.clear()
     menu = await menu_kb_for(message.from_user.id)
+    if exc.status == 403 and "not enabled" in exc.message:
+        await message.answer(
+            texts.CREATE_PANEL_NOT_ENABLED.format(
+                user_id=message.from_user.id,
+                tg_username=f"@{message.from_user.username}" if message.from_user.username else "-",
+                panels=source,
+            ),
+            reply_markup=menu,
+        )
+        return
     if exc.status == 403:
         await message.answer(texts.SUBPANEL_SOURCE_LOCKED.format(source=source), reply_markup=menu)
         return

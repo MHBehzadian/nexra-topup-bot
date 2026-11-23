@@ -100,7 +100,6 @@ class SubPanel(StatesGroup):
     source = State()
     username = State()
     password = State()
-    traffic = State()
 
 
 class CreateAdmin(StatesGroup):

@@ -1,12 +1,13 @@
 """A reseller making a panel for a colleague of theirs, from the bot:
-kind (a Nexra panel, or one with no trace of Nexra) -> which of their panels
-pays for it (skipped if they own one) -> username -> password -> traffic.
+kind (a Nexra panel, or one with no trace of Nexra) -> which of their panels'
+servers it goes on (skipped when there is only one) -> username -> password
+-> created empty -> straight into the usual top-up to buy its traffic.
 
-The traffic moves out of their own panel into the new one, and the new panel
-is linked to their Telegram account like their own: they see it under their
-panels, top it up, and get its warnings and bills. The colleague only ever
-gets a username and password — for the white-label kind, on a login page with
-nothing of Nexra on it.
+Nothing is taken from their own panel: the new one is paid for on its own.
+It is linked to their Telegram account like their own, so they see it under
+their panels, top it up, and get its warnings and bills. The colleague only
+ever gets a username and password — for the white-label kind, on a login page
+with nothing of Nexra on it.
 """
 
 from __future__ import annotations
@@ -22,14 +23,14 @@ from ..filters import Label
 from ..nav import ALL_MENU_TEXTS, menu_kb_for
 from ..panels import safe_get_admins
 from ..states import SubPanel
+from .topup import _ask_amount
 from ...config import settings
 from ...services.nexra_panel import NexraPanelError, SubPanelError, nexra_panel
-from ...units import bytes_to_gb
 
 router = Router(name="sub_panel")
 
 # The same rule the panel applies, checked here so a bad name is asked again
-# straight away instead of after the password and the traffic.
+# straight away instead of after the password.
 USERNAME_RE = re.compile(r"^[A-Za-z0-9_.-]{3,32}$")
 
 
@@ -69,7 +70,9 @@ async def picked_kind(call: CallbackQuery, state: FSMContext) -> None:
         )
         return
 
-    if len(admins) == 1:
+    # The source only decides the server (and the inbounds and expiry that come
+    # with it), so there is nothing to ask when all their panels share one.
+    if len({a.get("panel") for a in admins}) == 1:
         await _ask_username(call.message, state, admins[0]["username"])
         return
 
@@ -116,7 +119,7 @@ async def got_username(message: Message, state: FSMContext) -> None:
     data = await state.get_data()
     # Back here after the panel said the name was taken: the rest is known.
     if data.get("new_password"):
-        await _ask_traffic(message, state)
+        await _create(message, state)
         return
     await state.set_state(SubPanel.password)
     await message.answer(texts.ASK_SUBPANEL_PASSWORD, reply_markup=keyboards.cancel_kb())
@@ -129,57 +132,21 @@ async def got_password(message: Message, state: FSMContext) -> None:
         await message.answer(texts.INVALID_SUBPANEL_PASSWORD)
         return
     await state.update_data(new_password=password)
-    await _ask_traffic(message, state)
+    await _create(message, state)
 
 
-async def _source_panel(telegram_id: int, source: str) -> dict | None:
-    """The source panel as it is now — its balance moves while the flow runs."""
-    admins = await nexra_panel.get_admins(telegram_id)
-    return next((a for a in admins if a["username"] == source), None)
-
-
-async def _ask_traffic(message: Message, state: FSMContext) -> None:
-    data = await state.get_data()
-    try:
-        panel = await _source_panel(message.chat.id, data["source"])
-    except NexraPanelError:
-        await state.clear()
-        await message.answer(texts.PANEL_UNREACHABLE, reply_markup=await menu_kb_for(message.chat.id))
-        return
-    if panel is None:
-        await state.clear()
-        await message.answer(texts.NOT_LINKED_RETRY, reply_markup=await menu_kb_for(message.chat.id))
-        return
-    await state.set_state(SubPanel.traffic)
-    await message.answer(
-        texts.ASK_SUBPANEL_TRAFFIC.format(
-            source=data["source"], remaining_gb=bytes_to_gb(panel.get("traffic"))
-        ),
-        reply_markup=keyboards.cancel_kb(),
-    )
-
-
-@router.message(SubPanel.traffic, ~F.text.in_(ALL_MENU_TEXTS))
-async def got_traffic(message: Message, state: FSMContext) -> None:
+async def _create(message: Message, state: FSMContext) -> None:
     user_id = message.from_user.id
-    try:
-        traffic = float((message.text or "").strip().replace(",", "."))
-    except ValueError:
-        traffic = 0
-    if not traffic > 0 or traffic != traffic or traffic == float("inf"):
-        await message.answer(texts.INVALID_AMOUNT_GB)
-        return
-
     data = await state.get_data()
     source = data["source"]
+    username = data["new_username"]
     await message.answer(texts.CREATING_ADMIN)
     try:
         result = await nexra_panel.create_sub_admin(
             telegram_id=user_id,
             source_username=source,
-            username=data["new_username"],
+            username=username,
             password=data["new_password"],
-            traffic_gb=traffic,
             white_label=bool(data.get("white_label")),
         )
     except SubPanelError as exc:
@@ -197,17 +164,15 @@ async def got_traffic(message: Message, state: FSMContext) -> None:
     expiry_line = texts.CREATE_ADMIN_EXPIRY_LINE.format(expiry=expiry[:10]) if expiry else ""
     if result.get("white_label"):
         summary = texts.SUBPANEL_SUCCESS_PLAIN.format(
-            username=data["new_username"],
+            username=username,
             password=data["new_password"],
-            traffic_gb=traffic,
             panel_url=texts.PANEL_URL_WHITE_LABEL,
             expiry_line=expiry_line,
         )
     else:
-        summary = texts.CREATE_ADMIN_SUCCESS.format(
-            username=data["new_username"],
+        summary = texts.SUBPANEL_SUCCESS_NEXRA.format(
+            username=username,
             password=data["new_password"],
-            traffic_gb=traffic,
             panel_url=settings.panel_login_link,
             alarm_bot=settings.alarm_bot,
             manager_bot=settings.manager_bot,
@@ -215,37 +180,19 @@ async def got_traffic(message: Message, state: FSMContext) -> None:
         )
     # Alone, so it can be forwarded to the colleague as it is.
     await message.answer(summary)
-    await message.answer(
-        texts.SUBPANEL_CREATED_NOTE.format(
-            username=data["new_username"],
-            traffic_gb=traffic,
-            source=source,
-            remaining_gb=bytes_to_gb(result.get("source_traffic_bytes")),
-        ),
-        reply_markup=await menu_kb_for(user_id),
-    )
+    await message.answer(texts.SUBPANEL_CREATED_NOTE.format(username=username))
+    # The new panel is empty: go straight to buying its traffic, through the
+    # same top-up (and payment) every other panel of theirs uses.
+    await _ask_amount(message, state, username)
 
 
 async def _explain_failure(
     message: Message, state: FSMContext, exc: SubPanelError, source: str
 ) -> None:
-    """Ask again for what can be fixed by typing something else; end the flow
-    for everything that can't."""
+    """Ask again for a taken username; end the flow for everything else."""
     if exc.status == 409 and "already exists" in exc.message:
         await state.set_state(SubPanel.username)
         await message.answer(texts.SUBPANEL_USERNAME_TAKEN, reply_markup=keyboards.cancel_kb())
-        return
-    if exc.status == 409 and "left on this panel" in exc.message:
-        try:
-            panel = await _source_panel(message.from_user.id, source)
-        except NexraPanelError:
-            panel = None
-        await message.answer(
-            texts.SUBPANEL_TRAFFIC_TOO_HIGH.format(
-                source=source, remaining_gb=bytes_to_gb((panel or {}).get("traffic"))
-            ),
-            reply_markup=keyboards.cancel_kb(),
-        )
         return
 
     await state.clear()

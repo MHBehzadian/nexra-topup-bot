@@ -21,8 +21,7 @@ BTN_TOPUP = "💳 شارژ حجم"
 BTN_BALANCE = "📊 موجودی من"
 BTN_CREATE_PANEL = "➕ ساخت پنل جدید"
 CREATE_PANEL_NEEDS_PANEL = (
-    "ℹ️ ساخت پنل برای همکار، مخصوص همکارانی است که خودشان پنل فعال دارند؛ "
-    "حجم پنل جدید از پنل شما کسر می‌شود.\n\n"
+    "ℹ️ ساخت پنل برای همکار، مخصوص همکارانی است که خودشان پنل فعال دارند.\n\n"
     "اگر هنوز پنل ندارید، ابتدا «ثبت درخواست همکاری» را بزنید."
 )
 BTN_CHANGE_PASSWORD = "🔑 تغییر رمز پنل"
@@ -621,7 +620,8 @@ CREATE_ADMIN_FAILED = "⚠️ ساخت پنل ناموفق بود: {error}"
 ASK_SUBPANEL_KIND = (
     "➕ <b>ساخت پنل برای همکار</b>\n"
     "━━━━━━━━━━━━━━━\n"
-    "حجم پنل جدید از حجم پنل خودتان کسر می‌شود. پنل جدید در «پنل‌های من» شما هم دیده می‌شود "
+    "پنل جدید جدا از پنل خودتان است: چیزی از حجم پنل شما کم نمی‌شود و حجم آن را "
+    "بعد از ساخت، جداگانه پرداخت می‌کنید. پنل جدید در «پنل‌های من» شما هم دیده می‌شود "
     "و شارژ، هشدارها و فاکتورهای آن با خود شماست.\n\n"
     "🔷 <b>پنل نکسرا:</b> همان پنل همیشگی، با نام نکسرا و دکمه‌های پشتیبانی و شارژ.\n\n"
     "⚪️ <b>پنل بدون نشانی از نکسرا:</b> بدون نام و لوگوی نکسرا و بدون دکمه‌های پشتیبانی و پرداخت؛ "
@@ -630,7 +630,7 @@ ASK_SUBPANEL_KIND = (
 )
 BTN_SUBPANEL_NEXRA = "🔷 ساخت پنل نکسرا"
 BTN_SUBPANEL_PLAIN = "⚪️ ساخت پنل بدون نشانی از نکسرا"
-ASK_SUBPANEL_SOURCE = "▪️ حجم پنل جدید از کدام پنل شما کسر شود؟"
+ASK_SUBPANEL_SOURCE = "▪️ پنل جدید روی سرورِ کدام پنل شما ساخته شود؟"
 ASK_SUBPANEL_USERNAME = (
     "👤 نام کاربری پنل جدید را وارد نمایید:\n"
     "(فقط حروف انگلیسی، عدد و _ . - ؛ بین ۳ تا ۳۲ کاراکتر)"
@@ -642,13 +642,6 @@ INVALID_SUBPANEL_USERNAME = (
 SUBPANEL_USERNAME_TAKEN = "⚠️ این نام کاربری قبلاً گرفته شده است. لطفاً نام دیگری وارد نمایید:"
 ASK_SUBPANEL_PASSWORD = "🔑 رمز عبور پنل جدید را وارد نمایید (بین ۶ تا ۶۴ کاراکتر، بدون فاصله):"
 INVALID_SUBPANEL_PASSWORD = "⚠️ رمز عبور باید بین ۶ تا ۶۴ کاراکتر و بدون فاصله باشد. لطفاً دوباره وارد نمایید:"
-ASK_SUBPANEL_TRAFFIC = (
-    "📊 چند گیگابایت از پنل «{source}» به پنل جدید منتقل شود؟\n"
-    "موجودی فعلی: {remaining_gb:.2f} GB"
-)
-SUBPANEL_TRAFFIC_TOO_HIGH = (
-    "⚠️ موجودی پنل «{source}» فقط {remaining_gb:.2f} GB است. لطفاً عدد کمتری وارد نمایید:"
-)
 SUBPANEL_SOURCE_LOCKED = (
     "⛔️ پنل «{source}» مسدود، غیرفعال یا منقضی است و نمی‌توان از حجم آن پنل جدید ساخت."
 )
@@ -659,14 +652,22 @@ SUBPANEL_SUCCESS_PLAIN = (
     'Panel "{username}" created successfully.\n\n'
     "Panel:\n{panel_url}\n\n"
     "Username:\n<code>{username}</code>\n\n"
-    "Pass:\n<code>{password}</code>\n\n"
-    "Traffic:\n{traffic_gb:g}GB{expiry_line}"
+    "Pass:\n<code>{password}</code>{expiry_line}"
+)
+# The Nexra kind: the same as CREATE_ADMIN_SUCCESS, less the traffic, which
+# isn't bought yet when this is sent.
+SUBPANEL_SUCCESS_NEXRA = (
+    'Admin "{username}" created successfully.\n\n'
+    "Panel:\n{panel_url}\n\n"
+    "Username:\n<code>{username}</code>\n\n"
+    "Pass:\n<code>{password}</code>{expiry_line}\n\n"
+    "Alarms Bot\n{alarm_bot}\n\n"
+    "Panel Manager:\n{manager_bot}"
 )
 SUBPANEL_CREATED_NOTE = (
-    "✅ پنل «{username}» ساخته شد و {traffic_gb:g} GB از پنل «{source}» کسر شد "
-    "(موجودی جدید: {remaining_gb:.2f} GB).\n\n"
-    "پیام بالا را برای همکارتان فوروارد کنید. این پنل در «پنل‌های من» شما هم دیده می‌شود "
-    "و شارژ آن هم از همین ربات، با خود شماست."
+    "✅ پنل «{username}» ساخته شد. پیام بالا را برای همکارتان فوروارد کنید.\n\n"
+    "💳 این پنل فعلاً حجمی ندارد؛ حالا حجم آن را انتخاب و پرداخت کنید. "
+    "اگر الان پرداخت نکنید، بعداً هم از «💳 شارژ حجم» می‌توانید این پنل را انتخاب و شارژ کنید."
 )
 # The login link handed out with a white-label panel. "?wl=1" makes the panel
 # show its plain login page; keep it on whatever address goes here. Change it

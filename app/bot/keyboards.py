@@ -488,15 +488,13 @@ def subpanel_kind_kb() -> InlineKeyboardMarkup:
 
 
 def subpanel_source_kb(admins) -> InlineKeyboardMarkup:
-    """Which of their own panels the new panel's traffic comes out of. By
-    position, like panel_name_picker_kb, and checked against the list kept in
-    the flow's state."""
+    """Which of their own panels' servers the new panel goes on. By position,
+    like panel_name_picker_kb, and checked against the list kept in the flow's
+    state."""
     kb = InlineKeyboardBuilder()
     for index, a in enumerate(admins):
-        kb.button(
-            text=f"▪️ {a['username']} — {bytes_to_gb(a.get('traffic')):.2f} GB",
-            callback_data=f"subp_src:{index}",
-        )
+        server = f" — {a['panel']}" if a.get("panel") else ""
+        kb.button(text=f"▪️ {a['username']}{server}", callback_data=f"subp_src:{index}")
     kb.adjust(1)
     return kb.as_markup()
 

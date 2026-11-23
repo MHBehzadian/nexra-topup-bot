@@ -119,11 +119,11 @@ class NexraPanelClient:
         source_username: str,
         username: str,
         password: str,
-        traffic_gb: float,
         white_label: bool,
     ) -> dict:
-        """A reseller's panel for a colleague of theirs, its traffic taken from
-        `source_username` (one of their own panels)."""
+        """A reseller's panel for a colleague of theirs, made empty on the same
+        server as `source_username` (one of their own panels). Its traffic is
+        bought separately, through the usual top-up."""
         resp = await self._request(
             "POST",
             "/bot/admin/create-sub",
@@ -133,7 +133,6 @@ class NexraPanelClient:
                 "source_username": source_username,
                 "username": username,
                 "password": password,
-                "traffic_gb": traffic_gb,
                 "white_label": white_label,
             },
         )

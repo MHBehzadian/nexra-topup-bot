@@ -211,14 +211,31 @@ def init_db() -> None:
             )
             """
         )
-        # Everyone who entered a code after it was won, once each, so a late
-        # arrival can be told where in the queue they came.
+        # Everyone who entered a code after it was won, once each. Superseded by
+        # gift_code_log; kept so its rows can be carried over.
         conn.execute(
             """
             CREATE TABLE IF NOT EXISTS gift_code_attempts (
                 code TEXT NOT NULL,
                 telegram_id INTEGER NOT NULL,
                 attempted_at TEXT NOT NULL,
+                PRIMARY KEY (code, telegram_id)
+            )
+            """
+        )
+        # Everyone who entered a code — winner, late, owing — once per person,
+        # for the superadmin's report and the late arrivals' place in the queue.
+        conn.execute(
+            """
+            CREATE TABLE IF NOT EXISTS gift_code_log (
+                code TEXT NOT NULL,
+                telegram_id INTEGER NOT NULL,
+                name TEXT,
+                first_at TEXT NOT NULL,
+                last_at TEXT NOT NULL,
+                outcome TEXT NOT NULL,
+                debt INTEGER NOT NULL DEFAULT 0,
+                tries INTEGER NOT NULL DEFAULT 1,
                 PRIMARY KEY (code, telegram_id)
             )
             """
@@ -270,6 +287,21 @@ def init_db() -> None:
         # A won code taken down by the superadmin: hidden and no longer
         # enterable, but kept, since it is what stops its winner winning twice.
         _ensure_column(conn, "gift_codes", "deleted", "INTEGER NOT NULL DEFAULT 0")
+
+        # Codes entered before the log existed: their winners and late arrivals.
+        conn.execute(
+            """
+            INSERT OR IGNORE INTO gift_code_log (code, telegram_id, first_at, last_at, outcome)
+            SELECT code, redeemed_by, redeemed_at, redeemed_at, 'won'
+            FROM gift_codes WHERE redeemed_by IS NOT NULL
+            """
+        )
+        conn.execute(
+            """
+            INSERT OR IGNORE INTO gift_code_log (code, telegram_id, first_at, last_at, outcome)
+            SELECT code, telegram_id, attempted_at, attempted_at, 'late' FROM gift_code_attempts
+            """
+        )
 
     # Outside the transaction above: it opens its own connection.
     backfill_sales_from_requests()
@@ -1301,27 +1333,64 @@ def set_gift_code_panel(code: str, username: str | None) -> bool:
         return cur.rowcount == 1
 
 
-def record_late_attempt(code: str, telegram_id: int) -> int:
-    """Note that this person entered an already-won code, and return where they
-    came: 2 for the first one after the winner. Entering it again keeps the
-    place they had."""
+def log_code_attempt(
+    code: str, telegram_id: int, name: str | None, outcome: str, debt: int = 0
+) -> int:
+    """Note that this person entered this code, with how it went, and return
+    where they came among everyone who entered it (1 for the first). Entering
+    it again keeps their place and updates the outcome — except a win, which
+    nothing after it replaces.
+
+    outcome: "won", "late" (someone had it already), "debt" (had unpaid bills),
+    "debt_late" (both), "already" (had won another code).
+    """
     now = datetime.now(timezone.utc).isoformat()
     with _connect() as conn:
         conn.execute(
-            "INSERT OR IGNORE INTO gift_code_attempts (code, telegram_id, attempted_at) "
-            "VALUES (?, ?, ?)",
-            (code, telegram_id, now),
+            """
+            INSERT INTO gift_code_log (code, telegram_id, name, first_at, last_at, outcome, debt, tries)
+            VALUES (?, ?, ?, ?, ?, ?, ?, 1)
+            ON CONFLICT(code, telegram_id) DO UPDATE SET
+                name = COALESCE(excluded.name, name),
+                last_at = excluded.last_at,
+                outcome = CASE WHEN outcome = 'won' THEN outcome ELSE excluded.outcome END,
+                debt = excluded.debt,
+                tries = tries + 1
+            """,
+            (code, telegram_id, name, now, now, outcome, debt),
         )
         row = conn.execute(
             """
-            SELECT COUNT(*) AS n FROM gift_code_attempts
-            WHERE code = ? AND attempted_at <= (
-                SELECT attempted_at FROM gift_code_attempts WHERE code = ? AND telegram_id = ?
+            SELECT COUNT(*) AS n FROM gift_code_log
+            WHERE code = ? AND first_at <= (
+                SELECT first_at FROM gift_code_log WHERE code = ? AND telegram_id = ?
             )
             """,
             (code, code, telegram_id),
         ).fetchone()
-    return row["n"] + 1
+    return row["n"]
+
+
+def code_log(code: str) -> list[dict]:
+    """Everyone who entered a code, in the order they first did."""
+    with _connect() as conn:
+        rows = conn.execute(
+            """
+            SELECT l.*, u.username AS tg_username, u.full_name AS tg_name
+            FROM gift_code_log l LEFT JOIN bot_users u ON u.telegram_id = l.telegram_id
+            WHERE l.code = ? ORDER BY l.first_at
+            """,
+            (code,),
+        ).fetchall()
+        return [dict(r) for r in rows]
+
+
+def code_log_counts() -> dict[str, int]:
+    with _connect() as conn:
+        rows = conn.execute(
+            "SELECT code, COUNT(*) AS n FROM gift_code_log GROUP BY code"
+        ).fetchall()
+        return {r["code"]: r["n"] for r in rows}
 
 
 # ---- panels resellers asked for, made once paid (bot/subpanels.py) ----------

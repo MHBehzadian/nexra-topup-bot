@@ -619,6 +619,20 @@ def gift_codes_delete_kb(codes) -> InlineKeyboardMarkup | None:
     return kb.as_markup()
 
 
+def gift_codes_report_kb(codes, counts: dict) -> InlineKeyboardMarkup | None:
+    """One button per code, opening who entered it and how it went."""
+    if not codes:
+        return None
+    kb = InlineKeyboardBuilder()
+    for c in codes:
+        kb.button(
+            text=f"📊 {c['code']} · {counts.get(c['code'], 0)}",
+            callback_data=f"gc:rep:{c['code']}",
+        )
+    kb.adjust(2)
+    return kb.as_markup()
+
+
 def gift_code_confirm_delete_kb(code: str) -> InlineKeyboardMarkup:
     kb = InlineKeyboardBuilder()
     _b(kb, "BTN_GIFT_CODE_CONFIRM_DELETE", callback_data=f"gc:delok:{code}")

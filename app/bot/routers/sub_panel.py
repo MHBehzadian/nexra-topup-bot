@@ -139,10 +139,21 @@ async def got_username(message: Message, state: FSMContext) -> None:
     await message.answer(texts.ASK_SUBPANEL_PASSWORD, reply_markup=keyboards.cancel_kb())
 
 
+def password_ok(password: str) -> bool:
+    """6 to 64 English characters with no spaces, at least one of them a letter
+    and one a digit — the same rule the Nexra panel enforces."""
+    return (
+        6 <= len(password) <= 64
+        and all(33 <= ord(c) <= 126 for c in password)
+        and any(c.isascii() and c.isalpha() for c in password)
+        and any(c.isdigit() for c in password)
+    )
+
+
 @router.message(SubPanel.password, ~F.text.in_(ALL_MENU_TEXTS))
 async def got_password(message: Message, state: FSMContext) -> None:
     password = (message.text or "").strip()
-    if not 6 <= len(password) <= 64 or any(c.isspace() for c in password):
+    if not password_ok(password):
         await message.answer(texts.INVALID_SUBPANEL_PASSWORD)
         return
     await state.update_data(new_password=password)

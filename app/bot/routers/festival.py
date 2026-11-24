@@ -174,8 +174,8 @@ async def ask_code(call: CallbackQuery, state: FSMContext, bot: Bot) -> None:
         return
     if await _panels(user_id, call.message) is None:
         return
-    if await _owes(user_id, call.message):
-        return
+    # Debts are judged once the code is in, so the superadmin's report can say
+    # who entered which code and why it didn't go to them.
     await state.set_state(FestivalCode.code)
     await call.message.answer(texts.FESTIVAL_ASK_CODE, reply_markup=keyboards.cancel_kb())
 
@@ -188,31 +188,50 @@ async def enter_code(message: Message, state: FSMContext, bot: Bot) -> None:
         await state.clear()
         await message.answer(texts.FESTIVAL_OVER, reply_markup=await menu_kb_for(user_id))
         return
-    if not _CODE_RE.match(code):
-        await message.answer(texts.FESTIVAL_CODE_INVALID)
-        return
-    # Checked again here: a code must not go to someone who can't have it.
-    if await _owes(user_id, message):
-        await state.clear()
-        await message.answer(texts.BACK_TO_MENU, reply_markup=await menu_kb_for(user_id))
-        return
-
-    outcome = db.claim_gift_code(code, user_id, festival.started_at())
-    if outcome == "invalid":
+    found = db.get_gift_code(code) if _CODE_RE.match(code) else None
+    if not found or found.get("deleted"):
         # Stay in the state: a typo deserves another go without starting over.
         await message.answer(texts.FESTIVAL_CODE_INVALID)
         return
     await state.clear()
-    if outcome == "taken":
-        place = db.record_late_attempt(code, user_id)
+    name = message.from_user.full_name
+    menu = await menu_kb_for(user_id)
+
+    async def late(outcome: str, debt: int = 0) -> None:
+        place = db.log_code_attempt(code, user_id, name, outcome, debt)
         await message.answer(
-            texts.FESTIVAL_CODE_TAKEN.format(place=_ordinal(place)),
-            reply_markup=await menu_kb_for(user_id),
+            texts.FESTIVAL_CODE_TAKEN.format(place=_ordinal(place)), reply_markup=menu
         )
+
+    taken = found["redeemed_by"] is not None and found["redeemed_by"] != user_id
+    owed = open_bills(user_id)
+    if owed:
+        # Never to someone with an open bill. If it was gone anyway, that is
+        # what they are told; the report keeps both reasons.
+        debt = sum(b.amount for b in owed)
+        if taken:
+            await late("debt_late", debt)
+            return
+        db.log_code_attempt(code, user_id, name, "debt", debt)
+        await message.answer(
+            texts.FESTIVAL_CODE_DEBTS_FIRST.format(total=debt),
+            reply_markup=keyboards.suspended_kb(),
+        )
+        await message.answer(texts.BACK_TO_MENU, reply_markup=menu)
+        return
+
+    outcome = db.claim_gift_code(code, user_id, festival.started_at())
+    if outcome == "invalid":
+        await message.answer(texts.FESTIVAL_CODE_INVALID, reply_markup=menu)
+        return
+    if outcome == "taken":
+        await late("late")
         return
     if outcome == "already":
-        await message.answer(texts.FESTIVAL_CODE_ALREADY, reply_markup=await menu_kb_for(user_id))
+        db.log_code_attempt(code, user_id, name, "already")
+        await message.answer(texts.FESTIVAL_CODE_ALREADY, reply_markup=menu)
         return
+    db.log_code_attempt(code, user_id, name, "won")
 
     won = db.get_gift_code(code)
     if outcome == "mine" and won and won["username"]:
@@ -486,10 +505,13 @@ async def list_codes(call: CallbackQuery) -> None:
     if not codes:
         await call.message.answer(texts.GIFT_CODES_EMPTY)
         return
+    counts = db.code_log_counts()
     lines = []
     for c in codes:
+        n = counts.get(c["code"], 0)
+        tried = texts.GIFT_CODE_LINE_TRIED.format(count=n) if n else ""
         if c["redeemed_by"] is None:
-            lines.append(texts.GIFT_CODE_LINE_FREE.format(code=escape(c["code"])))
+            lines.append(texts.GIFT_CODE_LINE_FREE.format(code=escape(c["code"]), tried=tried))
             continue
         user = db.get_user(c["redeemed_by"]) or {}
         who = escape(user.get("full_name") or "") or str(c["redeemed_by"])
@@ -498,12 +520,47 @@ async def list_codes(call: CallbackQuery) -> None:
                 code=escape(c["code"]),
                 who=f"{who} (<code>{c['redeemed_by']}</code>)",
                 panel=escape(c["username"] or texts.GIFT_CODE_PANEL_PENDING),
+                tried=tried,
             )
         )
     await call.message.answer(
-        texts.GIFT_CODES_HEADER + "".join(lines),
-        reply_markup=keyboards.gift_codes_delete_kb(codes),
+        texts.GIFT_CODES_HEADER + "".join(lines) + texts.GIFT_CODES_REPORT_HINT,
+        reply_markup=keyboards.gift_codes_report_kb(codes, counts),
     )
+
+
+_REPORT_MAX = 40
+
+
+@router.callback_query(F.data.startswith("gc:rep:"), SuperadminFilter())
+async def code_report(call: CallbackQuery) -> None:
+    code = call.data.split(":", 2)[2]
+    await call.answer()
+    found = db.get_gift_code(code)
+    entries = db.code_log(code)
+    if not entries:
+        await call.message.answer(texts.GIFT_CODE_REPORT_EMPTY.format(code=escape(code)))
+        return
+    text = texts.GIFT_CODE_REPORT_HEADER.format(code=escape(code), count=len(entries))
+    for n, e in enumerate(entries[:_REPORT_MAX], start=1):
+        icon, reason = texts.GIFT_CODE_REASONS.get(e["outcome"], ("▫️", e["outcome"]))
+        panel = escape((found or {}).get("username") or texts.GIFT_CODE_PANEL_PENDING)
+        reason = reason.format(debt=e["debt"] or 0, panel=panel)
+        if e["tries"] and e["tries"] > 1:
+            reason += texts.GIFT_CODE_REPORT_TRIES.format(tries=e["tries"])
+        handle = f"@{e['tg_username']} · " if e.get("tg_username") else ""
+        stamp = festival._parse(e["first_at"])
+        text += texts.GIFT_CODE_REPORT_LINE.format(
+            n=n,
+            icon=icon,
+            name=escape(e["name"] or e.get("tg_name") or "—"),
+            ident=f"({escape(handle)}<code>{e['telegram_id']}</code>)",
+            time=stamp.astimezone(festival.TEHRAN).strftime("%H:%M:%S") if stamp else "—",
+            reason=reason,
+        )
+    if len(entries) > _REPORT_MAX:
+        text += texts.GIFT_CODE_REPORT_MORE.format(count=len(entries) - _REPORT_MAX)
+    await call.message.answer(text)
 
 
 @router.callback_query(F.data == "gc:dellist", SuperadminFilter())

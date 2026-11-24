@@ -658,8 +658,15 @@ INVALID_SUBPANEL_USERNAME = (
     "و طول آن باید بین ۳ تا ۳۲ کاراکتر باشد. لطفاً دوباره وارد نمایید:"
 )
 SUBPANEL_USERNAME_TAKEN = "⚠️ این نام کاربری قبلاً گرفته شده است. لطفاً نام دیگری وارد نمایید:"
-ASK_SUBPANEL_PASSWORD = "🔑 رمز عبور پنل جدید را وارد نمایید (بین ۶ تا ۶۴ کاراکتر، بدون فاصله):"
-INVALID_SUBPANEL_PASSWORD = "⚠️ رمز عبور باید بین ۶ تا ۶۴ کاراکتر و بدون فاصله باشد. لطفاً دوباره وارد نمایید:"
+ASK_SUBPANEL_PASSWORD = (
+    "🔑 رمز عبور پنل جدید را وارد نمایید:\n"
+    "حداقل ۶ کاراکتر، با حروف انگلیسی و عدد (هر دو)، بدون فاصله."
+)
+INVALID_SUBPANEL_PASSWORD = (
+    "⚠️ رمز عبور قابل قبول نیست.\n"
+    "باید حداقل ۶ کاراکتر باشد و هم حرف انگلیسی و هم عدد داشته باشد (مثلاً nexra2026)، بدون فاصله.\n"
+    "لطفاً دوباره وارد نمایید:"
+)
 SUBPANEL_SOURCE_LOCKED = (
     "⛔️ پنل «{source}» مسدود، غیرفعال یا منقضی است و نمی‌توان از حجم آن پنل جدید ساخت."
 )
@@ -1169,7 +1176,7 @@ FESTIVAL_CODE_INVALID = "❌ کد وارد شده معتبر نیست."
 FESTIVAL_CODE_TAKEN = (
     "😕 <b>متأسفانه به شما تعلق نگرفت</b>\n\n"
     "شما <b>{place}</b> نفری بودید که این کد را وارد کردید.\n"
-    "هدیه‌ی این کد به اولین نفر می‌رسد و پیش از شما برنده‌اش مشخص شده بود.\n\n"
+    "هدیه‌ی این کد به برنده‌اش رسیده است.\n\n"
     "🔥 کدهای بعدی را از دست ندهید!"
 )
 # Ordinals for the late: "the 2nd", "the 3rd"… Past the tenth, a number.
@@ -1181,14 +1188,12 @@ FESTIVAL_PLACE_N = "{n}اُمین"
 FESTIVAL_CODE_ALREADY = "⚠️ شما قبلاً از کد هدیه استفاده کرده‌اید؛ هر نفر فقط یک بار می‌تواند کد هدیه دریافت کند."
 FESTIVAL_CODE_WON = (
     "🎉 <b>تبریک!</b>\n"
-    "شما اولین نفری بودید که این کد را وارد کردید.\n\n"
+    "شما برنده‌ی این کد هدیه شدید.\n\n"
     "🎁 هدیه‌ی شما: <b>{gb:g} گیگابایت</b>"
 )
 FESTIVAL_CODE_PICK_PANEL = "🎁 هدیه به کدام پنل شارژ شود؟"
 FESTIVAL_CODE_CREDITED = (
-    "🎉 <b>تبریک! شما برنده‌ی کد هدیه شدید</b>\n"
-    "\n"
-    "شما اولین نفری بودید که این کد را وارد کردید.\n\n"
+    "🎉 <b>تبریک! شما برنده‌ی کد هدیه شدید</b>\n\n"
     "🎁 هدیه: <b>{gb:g} گیگابایت</b>\n"
     "▪️ پنل: {username}\n"
     "📊 موجودی جدید: <b>{new_gb:.2f}</b> گیگابایت\n"
@@ -1257,8 +1262,22 @@ GIFT_CODE_EXISTS = "⚠️ این کد قبلاً ساخته شده است."
 GIFT_CODE_CREATED = "✅ کد هدیه ساخته شد ({gb:g} گیگ برای اولین نفر):\n\n<code>{code}</code>"
 GIFT_CODES_EMPTY = "📋 هنوز کد هدیه‌ای ساخته نشده است."
 GIFT_CODES_HEADER = "📋 <b>کدهای هدیه</b>\n\n"
-GIFT_CODE_LINE_FREE = "▫️ <code>{code}</code> — 🟢 استفاده نشده\n"
-GIFT_CODE_LINE_WON = "▫️ <code>{code}</code> — 🎁 {who} → {panel}\n"
+GIFT_CODE_LINE_FREE = "▫️ <code>{code}</code> — 🟢 استفاده نشده{tried}\n"
+GIFT_CODE_LINE_WON = "▫️ <code>{code}</code> — 🎁 {who} → {panel}{tried}\n"
+GIFT_CODE_LINE_TRIED = " · 👥 {count} نفر"
+GIFT_CODES_REPORT_HINT = "\n📊 برای دیدن اینکه چه کسانی هر کد را زدند، روی کد بزنید:"
+GIFT_CODE_REPORT_HEADER = "📊 <b>گزارش کد</b> <code>{code}</code>\n👥 {count} نفر این کد را وارد کردند\n\n"
+GIFT_CODE_REPORT_EMPTY = "📊 کد <code>{code}</code> را هنوز کسی وارد نکرده است."
+GIFT_CODE_REPORT_LINE = "{n}. {icon} <b>{name}</b> {ident} — {time}\n      {reason}\n"
+GIFT_CODE_REPORT_MORE = "… و {count} نفر دیگر\n"
+GIFT_CODE_REASONS = {
+    "won": ("🏆", "برنده شد → پنل {panel}"),
+    "late": ("⏱", "دیر رسید؛ کد قبلاً برنده داشت"),
+    "debt": ("💳", "بدهی داشت ({debt:,} تومان)"),
+    "debt_late": ("💳⏱", "هم بدهی داشت ({debt:,} تومان) و هم دیر رسید"),
+    "already": ("🔁", "قبلاً کد هدیه‌ی دیگری برده بود"),
+}
+GIFT_CODE_REPORT_TRIES = " · {tries} بار زد"
 GIFT_CODE_PANEL_PENDING = "پنل انتخاب نشده"
 BTN_GIFT_CODE_DELETE = "🗑 حذف کد"
 BTN_GIFT_CODE_CONFIRM_DELETE = "🗑 بله، حذف شود"

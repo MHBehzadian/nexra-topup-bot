@@ -120,10 +120,12 @@ class NexraPanelClient:
         username: str,
         password: str,
         white_label: bool,
+        traffic_gb: float = 0,
+        dry_run: bool = False,
     ) -> dict:
-        """A reseller's panel for a colleague of theirs, made empty on the same
-        server as `source_username` (one of their own panels). Its traffic is
-        bought separately, through the usual top-up."""
+        """A reseller's panel for a colleague of theirs, on the same server as
+        `source_username` (one of their own panels), made with `traffic_gb`
+        once that has been paid for. `dry_run` only checks it would work."""
         resp = await self._request(
             "POST",
             "/bot/admin/create-sub",
@@ -134,6 +136,8 @@ class NexraPanelClient:
                 "username": username,
                 "password": password,
                 "white_label": white_label,
+                "traffic_gb": traffic_gb,
+                "dry_run": dry_run,
             },
         )
         if resp.status_code >= 400:

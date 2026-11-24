@@ -199,6 +199,22 @@ def init_db() -> None:
             """
         )
 
+        # A panel a reseller asked for, waiting for its traffic to be paid for:
+        # it is only made, with that traffic, once the payment goes through
+        # (see bot/subpanels.py). The password waits here until then.
+        conn.execute(
+            """
+            CREATE TABLE IF NOT EXISTS pending_subpanels (
+                username TEXT PRIMARY KEY,
+                telegram_id INTEGER NOT NULL,
+                source TEXT NOT NULL,
+                password TEXT NOT NULL,
+                white_label INTEGER NOT NULL DEFAULT 0,
+                created_at TEXT NOT NULL
+            )
+            """
+        )
+
         # Columns added after the tables above first shipped. These must run last,
         # once every CREATE TABLE has been applied, so a fresh database has
         # something to alter.
@@ -1094,3 +1110,88 @@ def get_tutorial(tutorial_id: int) -> Tutorial | None:
             "SELECT * FROM tutorials WHERE id = ?", (tutorial_id,)
         ).fetchone()
         return Tutorial(**dict(row)) if row else None
+
+
+# ---- panels resellers asked for, made once paid (bot/subpanels.py) ----------
+
+# A request nobody paid for stops holding its username after this long.
+PENDING_SUBPANEL_DAYS = 7
+
+
+@dataclass
+class PendingSubpanel:
+    username: str
+    telegram_id: int
+    source: str
+    password: str
+    white_label: bool
+
+
+def _pending_cutoff() -> str:
+    from datetime import timedelta
+
+    return (datetime.now(timezone.utc) - timedelta(days=PENDING_SUBPANEL_DAYS)).isoformat()
+
+
+def save_pending_subpanel(
+    username: str, telegram_id: int, source: str, password: str, white_label: bool
+) -> None:
+    with _connect() as conn:
+        conn.execute(
+            """
+            INSERT INTO pending_subpanels
+                (username, telegram_id, source, password, white_label, created_at)
+            VALUES (?, ?, ?, ?, ?, ?)
+            ON CONFLICT(username) DO UPDATE SET
+                telegram_id = excluded.telegram_id, source = excluded.source,
+                password = excluded.password, white_label = excluded.white_label,
+                created_at = excluded.created_at
+            """,
+            (
+                username,
+                telegram_id,
+                source,
+                password,
+                1 if white_label else 0,
+                datetime.now(timezone.utc).isoformat(),
+            ),
+        )
+
+
+def get_pending_subpanel(username: str, telegram_id: int) -> PendingSubpanel | None:
+    """This person's request for this username, unless it has lapsed."""
+    with _connect() as conn:
+        row = conn.execute(
+            """
+            SELECT * FROM pending_subpanels
+            WHERE username = ? AND telegram_id = ? AND created_at >= ?
+            """,
+            (username, telegram_id, _pending_cutoff()),
+        ).fetchone()
+    if not row:
+        return None
+    return PendingSubpanel(
+        username=row["username"],
+        telegram_id=row["telegram_id"],
+        source=row["source"],
+        password=row["password"],
+        white_label=bool(row["white_label"]),
+    )
+
+
+def pending_subpanel_held_by_other(username: str, telegram_id: int) -> bool:
+    """Whether someone else has asked for this username and may still pay."""
+    with _connect() as conn:
+        row = conn.execute(
+            """
+            SELECT 1 FROM pending_subpanels
+            WHERE lower(username) = lower(?) AND telegram_id != ? AND created_at >= ?
+            """,
+            (username, telegram_id, _pending_cutoff()),
+        ).fetchone()
+    return row is not None
+
+
+def delete_pending_subpanel(username: str) -> None:
+    with _connect() as conn:
+        conn.execute("DELETE FROM pending_subpanels WHERE username = ?", (username,))

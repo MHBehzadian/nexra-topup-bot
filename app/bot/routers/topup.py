@@ -13,14 +13,14 @@ from aiogram import Bot, F, Router
 from aiogram.fsm.context import FSMContext
 from aiogram.types import CallbackQuery, FSInputFile, Message
 
-from .. import auto_approve, keyboards, texts
+from .. import auto_approve, keyboards, subpanels, texts
 from ..filters import Label
 from ..nav import ALL_MENU_TEXTS, menu_kb_for
 from ..panels import choose_panel, owned_panel
 from ..states import TopUp
 from ... import db
 from ...config import settings
-from ...services.nexra_panel import NexraPanelError, nexra_panel
+from ...services.nexra_panel import NexraPanelError
 from ...units import bytes_to_gb
 
 router = Router(name="topup")
@@ -76,8 +76,11 @@ async def get_amount_gb(message: Message, state: FSMContext) -> None:
         return
     # Separate messages for the two bounds: "invalid number" tells someone who
     # typed 100 nothing about what to do next.
-    if amount < settings.min_gb:
-        await message.answer(texts.BELOW_MIN_GB.format(min_gb=settings.min_gb))
+    data = await state.get_data()
+    # A panel not yet made can't be made with less than subpanels.MIN_GB.
+    min_gb = subpanels.min_gb_for(message.from_user.id, data.get("panel_username") or "")
+    if amount < min_gb:
+        await message.answer(texts.BELOW_MIN_GB.format(min_gb=min_gb))
         return
     if amount > settings.max_gb:
         await message.answer(texts.ABOVE_MAX_GB.format(max_gb=settings.max_gb))
@@ -136,7 +139,7 @@ async def pay_from_wallet(call: CallbackQuery, state: FSMContext, bot: Bot) -> N
         return
 
     try:
-        result = await nexra_panel.topup(telegram_id, gb, username=username)
+        result = await subpanels.credit(bot, telegram_id, gb, username)
     except NexraPanelError as exc:
         db.add_wallet_balance(telegram_id, price)  # refund
         await call.answer()
@@ -177,14 +180,18 @@ async def pay_weekly_credit(call: CallbackQuery, state: FSMContext, bot: Bot) ->
     username, price, gb = data["panel_username"], data["total_price"], data["amount_gb"]
     telegram_id = call.from_user.id
 
-    if not db.is_weekly_enabled(username):
+    # A panel not yet made has no weekly setting of its own; it follows the
+    # panel it is being made from, and keeps it once made.
+    spec = subpanels.pending(telegram_id, username)
+    weekly_name = spec.source if spec else username
+    if not db.is_weekly_enabled(weekly_name):
         await call.answer(texts.WEEKLY_NOT_ENABLED, show_alert=True)
         return
 
     # Credit is the whole point here: the traffic lands now and is billed at the
     # end of the week, so there's no receipt or approval step.
     try:
-        result = await nexra_panel.topup(telegram_id, gb, username=username)
+        result = await subpanels.credit(bot, telegram_id, gb, username)
     except NexraPanelError as exc:
         await call.answer()
         await call.message.answer(
@@ -193,6 +200,8 @@ async def pay_weekly_credit(call: CallbackQuery, state: FSMContext, bot: Bot) ->
         return
 
     await state.clear()
+    if spec:
+        db.set_weekly_enabled(username, True)
     db.clear_warning_bucket(username)
     debt = db.add_debt(username, telegram_id, price)
     # Sold now, billed at the end of the week — it belongs in today's sales.
@@ -251,7 +260,9 @@ async def get_receipt(message: Message, state: FSMContext, bot: Bot) -> None:
     await state.clear()
     username = data["panel_username"]
 
-    target = await owned_panel(message.from_user.id, username)
+    # A panel waiting for this very payment doesn't exist yet to be owned.
+    pending_panel = subpanels.pending(message.from_user.id, username)
+    target = pending_panel or await owned_panel(message.from_user.id, username)
     if not target:
         await message.answer(
             texts.NOT_LINKED_RETRY, reply_markup=await menu_kb_for(message.from_user.id)
@@ -278,7 +289,7 @@ async def get_receipt(message: Message, state: FSMContext, bot: Bot) -> None:
         f"👤 آیدی عددی: {message.from_user.id}\n"
         f"📊 حجم درخواستی: {data['amount_gb']:g} گیگابایت\n"
         f"💰 مبلغ: {data['total_price']:,} تومان"
-    ) + auto_approve.caption_note()
+    ) + subpanels.receipt_note(message.from_user.id, username) + auto_approve.caption_note()
     for superadmin_id in settings.superadmin_id_list:
         try:
             await bot.send_photo(

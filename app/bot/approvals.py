@@ -11,10 +11,10 @@ from datetime import datetime, timezone
 
 from aiogram import Bot
 
-from . import bills, enforcement, texts
+from . import bills, enforcement, subpanels, texts
 from .. import db
 from ..billing import apply_wallet_to_debts
-from ..services.nexra_panel import NexraPanelError, nexra_panel
+from ..services.nexra_panel import NexraPanelError
 from ..units import bytes_to_gb
 
 # Oldest debt first, with open-ended invoices (no deadline) last.
@@ -181,7 +181,7 @@ async def approve_request(bot: Bot, request_id: int, reviewer_id: int) -> Outcom
         return Outcome(True, texts.APPROVED_TOAST, finished=True)
 
     try:
-        result = await nexra_panel.topup(customer, req.requested_gb, username=req.admin_username)
+        result = await subpanels.credit(bot, customer, req.requested_gb, req.admin_username)
     except NexraPanelError as exc:
         db.revert_to_pending(request_id)
         return Outcome(False, f"{texts.PANEL_ERROR_TOAST} ({exc})", alert=True)

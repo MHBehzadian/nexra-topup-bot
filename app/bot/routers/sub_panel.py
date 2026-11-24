@@ -1,7 +1,8 @@
 """A reseller making a panel for a colleague of theirs, from the bot:
 kind (a Nexra panel, or one with no trace of Nexra) -> which of their panels'
 servers it goes on (skipped when there is only one) -> username -> password
--> created empty -> straight into the usual top-up to buy its traffic.
+-> the usual top-up for its traffic -> made, with that traffic, once paid
+(bot/subpanels.py).
 
 Nothing is taken from their own panel: the new one is paid for on its own.
 It is linked to their Telegram account like their own, so they see it under
@@ -18,13 +19,13 @@ from aiogram import F, Router
 from aiogram.fsm.context import FSMContext
 from aiogram.types import CallbackQuery, Message
 
-from .. import keyboards, texts
+from .. import keyboards, subpanels, texts
+from ... import db
 from ..filters import Label
 from ..nav import ALL_MENU_TEXTS, menu_kb_for
 from ..panels import safe_get_admins
 from ..states import SubPanel
 from .topup import _ask_amount
-from ...config import settings
 from ...services.nexra_panel import NexraPanelError, SubPanelError, nexra_panel
 
 router = Router(name="sub_panel")
@@ -149,18 +150,25 @@ async def got_password(message: Message, state: FSMContext) -> None:
 
 
 async def _create(message: Message, state: FSMContext) -> None:
+    """Check the panel could be made, then have its traffic paid for. It is
+    made only once the payment goes through (bot/subpanels.py), so it never
+    exists empty and nobody pays for a name that turns out to be taken."""
     user_id = message.from_user.id
     data = await state.get_data()
     source = data["source"]
     username = data["new_username"]
-    await message.answer(texts.CREATING_ADMIN)
+    if db.pending_subpanel_held_by_other(username, user_id):
+        await state.set_state(SubPanel.username)
+        await message.answer(texts.SUBPANEL_USERNAME_TAKEN, reply_markup=keyboards.cancel_kb())
+        return
     try:
-        result = await nexra_panel.create_sub_admin(
+        await nexra_panel.create_sub_admin(
             telegram_id=user_id,
             source_username=source,
             username=username,
             password=data["new_password"],
             white_label=bool(data.get("white_label")),
+            dry_run=True,
         )
     except SubPanelError as exc:
         await _explain_failure(message, state, exc, source)
@@ -172,30 +180,19 @@ async def _create(message: Message, state: FSMContext) -> None:
         )
         return
 
+    db.save_pending_subpanel(
+        username=username,
+        telegram_id=user_id,
+        source=source,
+        password=data["new_password"],
+        white_label=bool(data.get("white_label")),
+    )
     await state.clear()
-    expiry = result.get("expiry_date")
-    expiry_line = texts.CREATE_ADMIN_EXPIRY_LINE.format(expiry=expiry[:10]) if expiry else ""
-    if result.get("white_label"):
-        summary = texts.SUBPANEL_SUCCESS_PLAIN.format(
-            username=username,
-            password=data["new_password"],
-            panel_url=texts.PANEL_URL_WHITE_LABEL,
-            expiry_line=expiry_line,
-        )
-    else:
-        summary = texts.SUBPANEL_SUCCESS_NEXRA.format(
-            username=username,
-            password=data["new_password"],
-            panel_url=settings.panel_login_link,
-            alarm_bot=settings.alarm_bot,
-            manager_bot=settings.manager_bot,
-            expiry_line=expiry_line,
-        )
-    # Alone, so it can be forwarded to the colleague as it is.
-    await message.answer(summary)
-    await message.answer(texts.SUBPANEL_CREATED_NOTE.format(username=username))
-    # The new panel is empty: go straight to buying its traffic, through the
-    # same top-up (and payment) every other panel of theirs uses.
+    await message.answer(
+        texts.SUBPANEL_PAY_FIRST.format(username=username, min_gb=subpanels.MIN_GB)
+    )
+    # The usual top-up from here on — same amounts, prices and ways to pay —
+    # with the new username as its panel.
     await _ask_amount(message, state, username)
 
 

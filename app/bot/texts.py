@@ -638,7 +638,7 @@ ASK_SUBPANEL_KIND = (
     "➕ <b>ساخت پنل برای همکار</b>\n"
     "━━━━━━━━━━━━━━━\n"
     "پنل جدید جدا از پنل خودتان است: چیزی از حجم پنل شما کم نمی‌شود و حجم آن را "
-    "بعد از ساخت، جداگانه پرداخت می‌کنید. پنل جدید در «پنل‌های من» شما هم دیده می‌شود "
+    "جداگانه پرداخت می‌کنید؛ پنل بعد از پرداخت ساخته می‌شود. پنل جدید در «پنل‌های من» شما هم دیده می‌شود "
     "و شارژ، هشدارها و فاکتورهای آن با خود شماست.\n\n"
     "🔷 <b>پنل نکسرا:</b> همان پنل همیشگی، با نام نکسرا و دکمه‌های پشتیبانی و شارژ.\n\n"
     "⚪️ <b>پنل بدون نشانی از نکسرا:</b> بدون نام و لوگوی نکسرا و بدون دکمه‌های پشتیبانی و پرداخت؛ "
@@ -669,23 +669,23 @@ SUBPANEL_SUCCESS_PLAIN = (
     'Panel "{username}" created successfully.\n\n'
     "Panel:\n{panel_url}\n\n"
     "Username:\n<code>{username}</code>\n\n"
-    "Pass:\n<code>{password}</code>{expiry_line}"
+    "Pass:\n<code>{password}</code>\n\n"
+    "Traffic:\n{traffic_gb:g}GB{expiry_line}"
 )
-# The Nexra kind: the same as CREATE_ADMIN_SUCCESS, less the traffic, which
-# isn't bought yet when this is sent.
-SUBPANEL_SUCCESS_NEXRA = (
-    'Admin "{username}" created successfully.\n\n'
-    "Panel:\n{panel_url}\n\n"
-    "Username:\n<code>{username}</code>\n\n"
-    "Pass:\n<code>{password}</code>{expiry_line}\n\n"
-    "Alarms Bot\n{alarm_bot}\n\n"
-    "Panel Manager:\n{manager_bot}"
+SUBPANEL_PAY_FIRST = (
+    "📝 مشخصات پنل «{username}» ثبت شد.\n\n"
+    "💳 پنل بعد از پرداخت حجم آن ساخته می‌شود و مشخصات ورودش همین‌جا برایتان ارسال می‌شود. "
+    "حداقل حجم پنل جدید {min_gb:g} گیگابایت است."
 )
 SUBPANEL_CREATED_NOTE = (
-    "✅ پنل «{username}» ساخته شد. پیام بالا را برای همکارتان فوروارد کنید.\n\n"
-    "💳 این پنل فعلاً حجمی ندارد؛ حالا حجم آن را انتخاب و پرداخت کنید. "
-    "اگر الان پرداخت نکنید، بعداً هم از «💳 شارژ حجم» می‌توانید این پنل را انتخاب و شارژ کنید."
+    "✅ پنل «{username}» با {traffic_gb:g} گیگابایت ساخته شد. "
+    "پیام بالا را برای همکارتان فوروارد کنید.\n\n"
+    "این پنل در «پنل‌های من» شما هم دیده می‌شود و شارژهای بعدی آن هم با خود شماست."
 )
+# On the superadmin's copy of a receipt that pays for a new panel.
+SUBPANEL_RECEIPT_NOTE = "\n🆕 ساخت پنل جدید ({kind}) روی سرورِ پنل «{source}»"
+SUBPANEL_KIND_NEXRA = "نکسرا"
+SUBPANEL_KIND_PLAIN = "بدون نشانی از نکسرا"
 # The login link handed out with a white-label panel. "?wl=1" makes the panel
 # show its plain login page; keep it on whatever address goes here. Change it
 # to a domain without "nexra" in it for the panel to carry no trace of us.

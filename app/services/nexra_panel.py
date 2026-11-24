@@ -148,6 +148,16 @@ class NexraPanelClient:
             raise SubPanelError(resp.status_code, str(message))
         return resp.json()["data"]
 
+    async def set_subpanels(self, telegram_id: int, enabled: bool) -> list[str]:
+        """Turn panel-making on or off for every panel this Telegram account
+        owns; returns their usernames."""
+        resp = await self._request(
+            "POST", "/bot/admin/subpanels", json={"telegram_id": telegram_id, "enabled": enabled}
+        )
+        if resp.status_code in (404, 405) and "success" not in resp.text:
+            raise NexraPanelError("این قابلیت به آخرین نسخه‌ی پنل نکسرا نیاز دارد")
+        return self._ok(resp)["usernames"]
+
     async def list_panels(self) -> list[str]:
         """Names of the Marzban panels a new reseller can be created on.
 

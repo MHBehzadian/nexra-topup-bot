@@ -443,6 +443,18 @@ USER_PROFILE = (
 USER_PROFILE_PANELS = "\n▪️ پنل‌ها:\n{panels}"
 USER_PROFILE_PANEL_LINE = "   • <b>{username}</b> — {remaining_gb:.2f} / {initial_gb:.2f} گیگابایت\n"
 USER_PROFILE_NO_PANELS = "\n▪️ پنلی متصل نیست.\n"
+USER_PROFILE_SUBPANELS_ON = "🆕 ساخت پنل برای همکار: ✅ فعال\n"
+USER_PROFILE_SUBPANELS_OFF = "🆕 ساخت پنل برای همکار: ⛔️ غیرفعال\n"
+BTN_ENABLE_SUBPANELS = "🆕 فعال‌کردن ساخت پنل"
+BTN_DISABLE_SUBPANELS = "🚫 غیرفعال‌کردن ساخت پنل"
+SUBPANELS_ENABLED_ADMIN = "✅ ساخت پنل جدید برای این کاربر فعال شد (پنل‌ها: {panels})."
+SUBPANELS_DISABLED_ADMIN = "🚫 ساخت پنل جدید برای این کاربر غیرفعال شد (پنل‌ها: {panels})."
+SUBPANELS_TOGGLE_FAILED = "⚠️ تغییر انجام نشد: {error}"
+SUBPANELS_ENABLED_USER = (
+    "✅ قابلیت ساخت پنل جدید برای شما فعال شد.\n"
+    "از دکمه‌ی «➕ ساخت پنل جدید» می‌توانید برای همکارتان پنل بسازید."
+)
+SUBPANELS_NOTICE_NOT_DELIVERED = "ℹ️ پیام فعال‌سازی به کاربر نرسید (احتمالاً ربات را بسته است)."
 USER_PROFILE_DEBTS = "\n💰 بدهی‌ها:\n{debts}"
 USER_PROFILE_DEBT_LINE = "   • {username}: {amount:,} تومان\n"
 USER_PROFILE_NO_DEBTS = "\n✅ بدهی ندارد.\n"

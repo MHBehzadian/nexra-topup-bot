@@ -221,9 +221,12 @@ def pay_invoice_kb(invoice_id: int) -> InlineKeyboardMarkup:
     return kb.as_markup()
 
 
-def user_actions_kb(telegram_id: int, locked: bool = False) -> InlineKeyboardMarkup:
+def user_actions_kb(
+    telegram_id: int, locked: bool = False, subpanels: bool | None = None
+) -> InlineKeyboardMarkup:
     """`locked`: the panel shows one of their panels as locked, whether or not
-    the bot has a record of it."""
+    the bot has a record of it. `subpanels`: whether they may make panels for
+    colleagues; None (no panels) leaves the button out."""
     from .. import db  # here rather than at import time: keyboards is imported very early
 
     kb = InlineKeyboardBuilder()
@@ -241,7 +244,12 @@ def user_actions_kb(telegram_id: int, locked: bool = False) -> InlineKeyboardMar
         _b(kb, "BTN_UNLOCK_PANELS", callback_data=f"usr_unlock:{telegram_id}")
     else:
         _b(kb, "BTN_LOCK_PANELS", callback_data=f"usr_lock:{telegram_id}")
-    kb.adjust(2, 2, 2, 2, 1)
+    if subpanels is not None:
+        if subpanels:
+            _b(kb, "BTN_DISABLE_SUBPANELS", callback_data=f"usr_subp:off:{telegram_id}")
+        else:
+            _b(kb, "BTN_ENABLE_SUBPANELS", callback_data=f"usr_subp:on:{telegram_id}")
+    kb.adjust(2, 2, 2, 2, 1, 1)
     return kb.as_markup()
 
 

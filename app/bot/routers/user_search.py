@@ -39,6 +39,10 @@ from ...units import bytes_to_gb
 logger = logging.getLogger(__name__)
 
 router = Router(name="user_search")
+
+# The customer's id in one of the bot's own messages (CREATE_PANEL_NOT_ENABLED,
+# FORWARD_NOT_A_USER): the first number after "آیدی عددی".
+_ID_IN_TEXT = re.compile(r"آیدی عددی[^\d-]*(-?\d{4,})")
 router.message.filter(SuperadminFilter())
 router.callback_query.filter(SuperadminFilter())
 
@@ -99,6 +103,11 @@ def _render_profile(telegram_id: int, panels: list[dict]) -> str:
             for p in panels
         )
         text += texts.USER_PROFILE_PANELS.format(panels=lines)
+        text += (
+            texts.USER_PROFILE_SUBPANELS_ON
+            if any(p.get("can_create_subpanels") for p in panels)
+            else texts.USER_PROFILE_SUBPANELS_OFF
+        )
     else:
         text += texts.USER_PROFILE_NO_PANELS
 
@@ -163,8 +172,12 @@ async def show_profile(message: Message, telegram_id: int, panels: list[dict] | 
     if unreachable:
         text += "\n" + texts.PANEL_UNREACHABLE
     locked_on_panel = any(p.get("suspended_reason") for p in panels)
+    subpanels = any(p.get("can_create_subpanels") for p in panels) if panels else None
     await message.answer(
-        text, reply_markup=keyboards.user_actions_kb(telegram_id, locked=locked_on_panel)
+        text,
+        reply_markup=keyboards.user_actions_kb(
+            telegram_id, locked=locked_on_panel, subpanels=subpanels
+        ),
     )
 
 
@@ -184,6 +197,13 @@ async def from_forward(message: Message, state: FSMContext) -> None:
     origin = message.forward_origin
 
     if isinstance(origin, MessageOriginUser):
+        # One of this bot's own messages, forwarded back by support — e.g. the
+        # "panel-making isn't enabled for you" notice. It names the customer.
+        if origin.sender_user.id == message.bot.id:
+            found = _ID_IN_TEXT.search(message.text or message.caption or "")
+            if found:
+                await _open_or_identify(message, int(found.group(1)))
+                return
         await _open_or_identify(message, origin.sender_user.id)
         return
 
@@ -446,3 +466,38 @@ async def choose_bill_to_delete(call: CallbackQuery) -> None:
     )
 
 
+
+
+# ---- panel-making for colleagues ---------------------------------------------
+
+
+@router.callback_query(F.data.startswith("usr_subp:"))
+async def toggle_subpanels(call: CallbackQuery, bot: Bot) -> None:
+    _, mode, raw_id = call.data.split(":", 2)
+    target = int(raw_id)
+    enabled = mode == "on"
+    try:
+        usernames = await nexra_panel.set_subpanels(target, enabled)
+    except NexraPanelError as exc:
+        await call.answer()
+        await call.message.answer(
+            texts.SUBPANELS_TOGGLE_FAILED.format(error=exc),
+            reply_markup=superadmin_kb(call.from_user.id),
+        )
+        return
+    await call.answer()
+    await call.message.answer(
+        (texts.SUBPANELS_ENABLED_ADMIN if enabled else texts.SUBPANELS_DISABLED_ADMIN).format(
+            panels="، ".join(usernames)
+        ),
+        reply_markup=superadmin_kb(call.from_user.id),
+    )
+    # Only turning it on is news to them; turning it off shows itself the next
+    # time they tap the button.
+    if enabled:
+        try:
+            await bot.send_message(target, texts.SUBPANELS_ENABLED_USER)
+        except Exception:
+            await call.message.answer(texts.SUBPANELS_NOTICE_NOT_DELIVERED)
+    # The card they pressed it on now shows the other button.
+    await show_profile(call.message, target)

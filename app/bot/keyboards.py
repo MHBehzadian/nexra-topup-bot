@@ -232,9 +232,12 @@ def pay_invoice_kb(invoice_id: int) -> InlineKeyboardMarkup:
     return kb.as_markup()
 
 
-def user_actions_kb(telegram_id: int, locked: bool = False) -> InlineKeyboardMarkup:
+def user_actions_kb(
+    telegram_id: int, locked: bool = False, subpanels: bool | None = None
+) -> InlineKeyboardMarkup:
     """`locked`: the panel shows one of their panels as locked, whether or not
-    the bot has a record of it."""
+    the bot has a record of it. `subpanels`: whether they may make panels for
+    colleagues; None (no panels) leaves the button out."""
     from .. import db  # here rather than at import time: keyboards is imported very early
 
     kb = InlineKeyboardBuilder()
@@ -252,7 +255,12 @@ def user_actions_kb(telegram_id: int, locked: bool = False) -> InlineKeyboardMar
         _b(kb, "BTN_UNLOCK_PANELS", callback_data=f"usr_unlock:{telegram_id}")
     else:
         _b(kb, "BTN_LOCK_PANELS", callback_data=f"usr_lock:{telegram_id}")
-    kb.adjust(2, 2, 2, 2, 1)
+    if subpanels is not None:
+        if subpanels:
+            _b(kb, "BTN_DISABLE_SUBPANELS", callback_data=f"usr_subp:off:{telegram_id}")
+        else:
+            _b(kb, "BTN_ENABLE_SUBPANELS", callback_data=f"usr_subp:on:{telegram_id}")
+    kb.adjust(2, 2, 2, 2, 1, 1)
     return kb.as_markup()
 
 
@@ -485,6 +493,27 @@ def traffic_panel_picker_kb(admins, mode: str) -> InlineKeyboardMarkup:
             text=f"▪️ {a['username']} — {bytes_to_gb(a.get('traffic')):.2f} GB",
             callback_data=f"trf:{mode}:{a['username']}",
         )
+    kb.adjust(1)
+    return kb.as_markup()
+
+
+def subpanel_kind_kb() -> InlineKeyboardMarkup:
+    """The two kinds of panel a reseller can make for a colleague."""
+    kb = InlineKeyboardBuilder()
+    _b(kb, "BTN_SUBPANEL_NEXRA", callback_data="subp_kind:nexra")
+    _b(kb, "BTN_SUBPANEL_PLAIN", callback_data="subp_kind:plain")
+    kb.adjust(1)
+    return kb.as_markup()
+
+
+def subpanel_source_kb(admins) -> InlineKeyboardMarkup:
+    """Which of their own panels' servers the new panel goes on. By position,
+    like panel_name_picker_kb, and checked against the list kept in the flow's
+    state."""
+    kb = InlineKeyboardBuilder()
+    for index, a in enumerate(admins):
+        server = f" — {a['panel']}" if a.get("panel") else ""
+        kb.button(text=f"▪️ {a['username']}{server}", callback_data=f"subp_src:{index}")
     kb.adjust(1)
     return kb.as_markup()
 

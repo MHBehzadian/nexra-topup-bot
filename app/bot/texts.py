@@ -20,7 +20,15 @@ CANCELLED = "🚫 عملیات لغو شد."
 BTN_TOPUP = "💳 شارژ حجم"
 BTN_BALANCE = "📊 موجودی من"
 BTN_CREATE_PANEL = "➕ ساخت پنل جدید"
-CREATE_PANEL_SOON = "⏳ این امکان به‌زودی فعال خواهد شد."
+# Sent to everyone the superadmin hasn't turned panel-making on for. Written to
+# be forwarded to support, so it carries who is asking.
+CREATE_PANEL_NOT_ENABLED = (
+    "⛔️ قابلیت ساخت پنل جدید برای شما فعال نیست.\n"
+    "در صورت نیاز به فعال‌سازی، این پیام را برای پشتیبانی فوروارد کنید.\n\n"
+    "🆔 آیدی عددی: <code>{user_id}</code>\n"
+    "👤 یوزرنیم: {tg_username}\n"
+    "🗄 پنل‌ها: {panels}"
+)
 BTN_CHANGE_PASSWORD = "🔑 تغییر رمز پنل"
 ASK_CURRENT_PASSWORD = "🔒 برای تغییر رمز، ابتدا رمز عبور فعلی پنل خود را وارد نمایید:"
 ASK_NEW_PASSWORD = "🔑 اکنون رمز عبور جدید را وارد نمایید:"
@@ -435,6 +443,18 @@ USER_PROFILE = (
 USER_PROFILE_PANELS = "\n▪️ پنل‌ها:\n{panels}"
 USER_PROFILE_PANEL_LINE = "   • <b>{username}</b> — {remaining_gb:.2f} / {initial_gb:.2f} گیگابایت\n"
 USER_PROFILE_NO_PANELS = "\n▪️ پنلی متصل نیست.\n"
+USER_PROFILE_SUBPANELS_ON = "🆕 ساخت پنل برای همکار: ✅ فعال\n"
+USER_PROFILE_SUBPANELS_OFF = "🆕 ساخت پنل برای همکار: ⛔️ غیرفعال\n"
+BTN_ENABLE_SUBPANELS = "🆕 فعال‌کردن ساخت پنل"
+BTN_DISABLE_SUBPANELS = "🚫 غیرفعال‌کردن ساخت پنل"
+SUBPANELS_ENABLED_ADMIN = "✅ ساخت پنل جدید برای این کاربر فعال شد (پنل‌ها: {panels})."
+SUBPANELS_DISABLED_ADMIN = "🚫 ساخت پنل جدید برای این کاربر غیرفعال شد (پنل‌ها: {panels})."
+SUBPANELS_TOGGLE_FAILED = "⚠️ تغییر انجام نشد: {error}"
+SUBPANELS_ENABLED_USER = (
+    "✅ قابلیت ساخت پنل جدید برای شما فعال شد.\n"
+    "از دکمه‌ی «➕ ساخت پنل جدید» می‌توانید برای همکارتان پنل بسازید."
+)
+SUBPANELS_NOTICE_NOT_DELIVERED = "ℹ️ پیام فعال‌سازی به کاربر نرسید (احتمالاً ربات را بسته است)."
 USER_PROFILE_DEBTS = "\n💰 بدهی‌ها:\n{debts}"
 USER_PROFILE_DEBT_LINE = "   • {username}: {amount:,} تومان\n"
 USER_PROFILE_NO_DEBTS = "\n✅ بدهی ندارد.\n"
@@ -613,6 +633,64 @@ CREATE_ADMIN_NOT_DELIVERED = (
 )
 PANEL_CHOICE_EXPIRED = "⚠️ این فهرست منقضی شده است؛ لطفاً مجدداً از ابتدا اقدام نمایید."
 CREATE_ADMIN_FAILED = "⚠️ ساخت پنل ناموفق بود: {error}"
+
+# A reseller making a panel for a colleague of theirs, out of their own traffic.
+ASK_SUBPANEL_KIND = (
+    "➕ <b>ساخت پنل برای همکار</b>\n"
+    "━━━━━━━━━━━━━━━\n"
+    "پنل جدید جدا از پنل خودتان است: چیزی از حجم پنل شما کم نمی‌شود و حجم آن را "
+    "جداگانه پرداخت می‌کنید؛ پنل بعد از پرداخت ساخته می‌شود. پنل جدید در «پنل‌های من» شما هم دیده می‌شود "
+    "و شارژ، هشدارها و فاکتورهای آن با خود شماست.\n\n"
+    "🔷 <b>پنل نکسرا:</b> همان پنل همیشگی، با نام نکسرا و دکمه‌های پشتیبانی و شارژ.\n\n"
+    "⚪️ <b>پنل بدون نشانی از نکسرا:</b> بدون نام و لوگوی نکسرا و بدون دکمه‌های پشتیبانی و پرداخت؛ "
+    "می‌توانید با خیال راحت آن را به همکارتان بدهید.\n\n"
+    "نوع پنل را انتخاب نمایید:"
+)
+BTN_SUBPANEL_NEXRA = "🔷 ساخت پنل نکسرا"
+BTN_SUBPANEL_PLAIN = "⚪️ ساخت پنل بدون نشانی از نکسرا"
+ASK_SUBPANEL_SOURCE = "▪️ پنل جدید روی سرورِ کدام پنل شما ساخته شود؟"
+ASK_SUBPANEL_USERNAME = (
+    "👤 نام کاربری پنل جدید را وارد نمایید:\n"
+    "(فقط حروف انگلیسی، عدد و _ . - ؛ بین ۳ تا ۳۲ کاراکتر)"
+)
+INVALID_SUBPANEL_USERNAME = (
+    "⚠️ این نام کاربری قابل قبول نیست. فقط حروف انگلیسی، عدد و _ . - مجاز است "
+    "و طول آن باید بین ۳ تا ۳۲ کاراکتر باشد. لطفاً دوباره وارد نمایید:"
+)
+SUBPANEL_USERNAME_TAKEN = "⚠️ این نام کاربری قبلاً گرفته شده است. لطفاً نام دیگری وارد نمایید:"
+ASK_SUBPANEL_PASSWORD = "🔑 رمز عبور پنل جدید را وارد نمایید (بین ۶ تا ۶۴ کاراکتر، بدون فاصله):"
+INVALID_SUBPANEL_PASSWORD = "⚠️ رمز عبور باید بین ۶ تا ۶۴ کاراکتر و بدون فاصله باشد. لطفاً دوباره وارد نمایید:"
+SUBPANEL_SOURCE_LOCKED = (
+    "⛔️ پنل «{source}» مسدود، غیرفعال یا منقضی است و نمی‌توان از حجم آن پنل جدید ساخت."
+)
+SUBPANEL_FAILED = "⚠️ ساخت پنل ناموفق بود: {error}"
+# Written to be forwarded to the colleague as it stands, so plain English like
+# CREATE_ADMIN_SUCCESS — and with nothing in it that leads back to Nexra.
+SUBPANEL_SUCCESS_PLAIN = (
+    'Panel "{username}" created successfully.\n\n'
+    "Panel:\n{panel_url}\n\n"
+    "Username:\n<code>{username}</code>\n\n"
+    "Pass:\n<code>{password}</code>\n\n"
+    "Traffic:\n{traffic_gb:g}GB{expiry_line}"
+)
+SUBPANEL_PAY_FIRST = (
+    "📝 مشخصات پنل «{username}» ثبت شد.\n\n"
+    "💳 پنل بعد از پرداخت حجم آن ساخته می‌شود و مشخصات ورودش همین‌جا برایتان ارسال می‌شود. "
+    "حداقل حجم پنل جدید {min_gb:g} گیگابایت است."
+)
+SUBPANEL_CREATED_NOTE = (
+    "✅ پنل «{username}» با {traffic_gb:g} گیگابایت ساخته شد. "
+    "پیام بالا را برای همکارتان فوروارد کنید.\n\n"
+    "این پنل در «پنل‌های من» شما هم دیده می‌شود و شارژهای بعدی آن هم با خود شماست."
+)
+# On the superadmin's copy of a receipt that pays for a new panel.
+SUBPANEL_RECEIPT_NOTE = "\n🆕 ساخت پنل جدید ({kind}) روی سرورِ پنل «{source}»"
+SUBPANEL_KIND_NEXRA = "نکسرا"
+SUBPANEL_KIND_PLAIN = "بدون نشانی از نکسرا"
+# The login link handed out with a white-label panel. "?wl=1" makes the panel
+# show its plain login page; keep it on whatever address goes here. Change it
+# to a domain without "nexra" in it for the panel to carry no trace of us.
+PANEL_URL_WHITE_LABEL = "https://panel.nexradns.site/dashboard/login?wl=1"
 
 BTN_BACKUP = "📦 دریافت بکاپ"
 BACKUP_CAPTION = (

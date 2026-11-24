@@ -15,6 +15,17 @@ class DeductUnsupported(NexraPanelError):
     """The panel is running a build without /bot/admin/deduct."""
 
 
+class SubPanelError(NexraPanelError):
+    """The panel refused to make a reseller's sub-panel. `message` is the
+    panel's own reason (English), `status` its HTTP status, so the flow can
+    tell a taken username or a short balance from everything else."""
+
+    def __init__(self, status: int, message: str) -> None:
+        super().__init__(f"{status}: {message}")
+        self.status = status
+        self.message = message
+
+
 class NexraPanelClient:
     def __init__(self) -> None:
         self._base_url = settings.nexra_panel_api_url.rstrip("/")
@@ -101,6 +112,55 @@ class NexraPanelClient:
             },
         )
         return self._ok(resp)
+
+    async def create_sub_admin(
+        self,
+        telegram_id: int,
+        source_username: str,
+        username: str,
+        password: str,
+        white_label: bool,
+        traffic_gb: float = 0,
+        dry_run: bool = False,
+    ) -> dict:
+        """A reseller's panel for a colleague of theirs, on the same server as
+        `source_username` (one of their own panels), made with `traffic_gb`
+        once that has been paid for. `dry_run` only checks it would work."""
+        resp = await self._request(
+            "POST",
+            "/bot/admin/create-sub",
+            timeout=30.0,
+            json={
+                "telegram_id": telegram_id,
+                "source_username": source_username,
+                "username": username,
+                "password": password,
+                "white_label": white_label,
+                "traffic_gb": traffic_gb,
+                "dry_run": dry_run,
+            },
+        )
+        if resp.status_code >= 400:
+            try:
+                body = resp.json()
+                message = body.get("message") or body.get("detail") or resp.text
+            except ValueError:
+                message = resp.text
+            # A panel too old to have the endpoint answers FastAPI's bare 404.
+            if resp.status_code in (404, 405) and "success" not in resp.text:
+                message = "This feature needs the latest Nexra panel update"
+            raise SubPanelError(resp.status_code, str(message))
+        return resp.json()["data"]
+
+    async def set_subpanels(self, telegram_id: int, enabled: bool) -> list[str]:
+        """Turn panel-making on or off for every panel this Telegram account
+        owns; returns their usernames."""
+        resp = await self._request(
+            "POST", "/bot/admin/subpanels", json={"telegram_id": telegram_id, "enabled": enabled}
+        )
+        if resp.status_code in (404, 405) and "success" not in resp.text:
+            raise NexraPanelError("این قابلیت به آخرین نسخه‌ی پنل نکسرا نیاز دارد")
+        return self._ok(resp)["usernames"]
 
     async def list_panels(self) -> list[str]:
         """Names of the Marzban panels a new reseller can be created on.

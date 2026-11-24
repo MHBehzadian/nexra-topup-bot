@@ -93,6 +93,15 @@ class PayAllBills(StatesGroup):
     receipt = State()
 
 
+class SubPanel(StatesGroup):
+    """A reseller making a panel for a colleague (routers/sub_panel.py)."""
+
+    kind = State()
+    source = State()
+    username = State()
+    password = State()
+
+
 class CreateAdmin(StatesGroup):
     username = State()
     password = State()

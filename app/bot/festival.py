@@ -146,14 +146,14 @@ _FA = str.maketrans("0123456789", "۰۱۲۳۴۵۶۷۸۹")
 
 
 def remaining() -> dict[str, str]:
-    """Days, hours and minutes left, in Persian digits, as the panel's countdown
-    banner shows them."""
+    """Days, hours, minutes and seconds left, in Persian digits."""
     end = ends_at()
     total = max(0, int((end - datetime.now(timezone.utc)).total_seconds())) if end else 0
     parts = {
         "days": total // 86400,
         "hours": total % 86400 // 3600,
         "minutes": total % 3600 // 60,
+        "seconds": total % 60,
     }
     return {k: str(v).translate(_FA) for k, v in parts.items()}
 

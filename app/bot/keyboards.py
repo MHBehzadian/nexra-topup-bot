@@ -602,18 +602,27 @@ def festival_admin_kb() -> InlineKeyboardMarkup:
     _b(kb, "BTN_GIFT_CODE_RANDOM", callback_data="gc:new")
     _b(kb, "BTN_GIFT_CODE_CUSTOM", callback_data="gc:custom")
     _b(kb, "BTN_GIFT_CODE_LIST", callback_data="gc:list")
-    kb.adjust(2, 1)
+    _b(kb, "BTN_GIFT_CODE_DELETE", callback_data="gc:dellist")
+    kb.adjust(2, 2)
     return kb.as_markup()
 
 
 def gift_codes_delete_kb(codes) -> InlineKeyboardMarkup | None:
-    """A delete button for each code nobody has won yet."""
-    free = [c["code"] for c in codes if c["redeemed_by"] is None]
-    if not free:
+    """A delete button for every code; each asks before it goes."""
+    if not codes:
         return None
     kb = InlineKeyboardBuilder()
-    for code in free:
-        kb.button(text=f"🗑 {code}", callback_data=f"gc:del:{code}")
+    for c in codes:
+        mark = "🟢" if c["redeemed_by"] is None else "🎁"
+        kb.button(text=f"🗑 {c['code']} {mark}", callback_data=f"gc:del:{c['code']}")
+    kb.adjust(2)
+    return kb.as_markup()
+
+
+def gift_code_confirm_delete_kb(code: str) -> InlineKeyboardMarkup:
+    kb = InlineKeyboardBuilder()
+    _b(kb, "BTN_GIFT_CODE_CONFIRM_DELETE", callback_data=f"gc:delok:{code}")
+    _b(kb, "BTN_KEEP", callback_data="gc:delno")
     kb.adjust(2)
     return kb.as_markup()
 

@@ -267,6 +267,9 @@ def init_db() -> None:
         _ensure_column(conn, "debts", "last_warned_at", "TEXT")
         # Traffic given free on top of what a festival receipt paid for.
         _ensure_column(conn, "topup_requests", "bonus_gb", "REAL NOT NULL DEFAULT 0")
+        # A won code taken down by the superadmin: hidden and no longer
+        # enterable, but kept, since it is what stops its winner winning twice.
+        _ensure_column(conn, "gift_codes", "deleted", "INTEGER NOT NULL DEFAULT 0")
 
     # Outside the transaction above: it opens its own connection.
     backfill_sales_from_requests()
@@ -1218,16 +1221,23 @@ def get_gift_code(code: str) -> dict | None:
 def list_gift_codes(limit: int = 60) -> list[dict]:
     with _connect() as conn:
         rows = conn.execute(
-            "SELECT * FROM gift_codes ORDER BY created_at DESC LIMIT ?", (limit,)
+            "SELECT * FROM gift_codes WHERE deleted = 0 ORDER BY created_at DESC LIMIT ?",
+            (limit,),
         ).fetchall()
         return [dict(r) for r in rows]
 
 
 def delete_gift_code(code: str) -> bool:
-    """Only a code nobody has won yet can go."""
+    """Take a code down so nobody can enter it any more. One nobody has won is
+    removed outright; a won one is only hidden (see the deleted column)."""
     with _connect() as conn:
         cur = conn.execute(
             "DELETE FROM gift_codes WHERE code = ? AND redeemed_by IS NULL", (code,)
+        )
+        if cur.rowcount == 1:
+            return True
+        cur = conn.execute(
+            "UPDATE gift_codes SET deleted = 1 WHERE code = ? AND deleted = 0", (code,)
         )
         return cur.rowcount == 1
 
@@ -1256,7 +1266,7 @@ def claim_gift_code(code: str, telegram_id: int, since: str) -> str:
         cur = conn.execute(
             """
             UPDATE gift_codes SET redeemed_by = ?, redeemed_at = ?
-            WHERE code = ? AND redeemed_by IS NULL
+            WHERE code = ? AND redeemed_by IS NULL AND deleted = 0
               AND NOT EXISTS (
                   SELECT 1 FROM gift_codes WHERE redeemed_by = ? AND redeemed_at >= ?
               )
@@ -1266,9 +1276,9 @@ def claim_gift_code(code: str, telegram_id: int, since: str) -> str:
         if cur.rowcount == 1:
             return "ok"
         row = conn.execute(
-            "SELECT redeemed_by FROM gift_codes WHERE code = ?", (code,)
+            "SELECT redeemed_by, deleted FROM gift_codes WHERE code = ?", (code,)
         ).fetchone()
-    if row is None:
+    if row is None or row["deleted"]:
         return "invalid"
     if row["redeemed_by"] == telegram_id:
         return "mine"

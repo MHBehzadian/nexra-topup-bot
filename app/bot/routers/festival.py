@@ -506,10 +506,43 @@ async def list_codes(call: CallbackQuery) -> None:
     )
 
 
+@router.callback_query(F.data == "gc:dellist", SuperadminFilter())
+async def pick_code_to_delete(call: CallbackQuery) -> None:
+    await call.answer()
+    codes = db.list_gift_codes()
+    if not codes:
+        await call.message.answer(texts.GIFT_CODES_EMPTY)
+        return
+    await call.message.answer(
+        texts.GIFT_CODES_DELETE_PICK, reply_markup=keyboards.gift_codes_delete_kb(codes)
+    )
+
+
 @router.callback_query(F.data.startswith("gc:del:"), SuperadminFilter())
+async def confirm_delete_code(call: CallbackQuery) -> None:
+    code = call.data.split(":", 2)[2]
+    found = db.get_gift_code(code)
+    if not found or found.get("deleted"):
+        await call.answer(texts.GIFT_CODE_NOT_DELETED, show_alert=True)
+        return
+    await call.answer()
+    text = texts.GIFT_CODE_CONFIRM_DELETE if found["redeemed_by"] is None else texts.GIFT_CODE_CONFIRM_DELETE_WON
+    await call.message.answer(
+        text.format(code=escape(code)), reply_markup=keyboards.gift_code_confirm_delete_kb(code)
+    )
+
+
+@router.callback_query(F.data.startswith("gc:delok:"), SuperadminFilter())
 async def delete_code(call: CallbackQuery) -> None:
     code = call.data.split(":", 2)[2]
-    if db.delete_gift_code(code):
-        await call.answer(texts.GIFT_CODE_DELETED, show_alert=True)
-    else:
+    if not db.delete_gift_code(code):
         await call.answer(texts.GIFT_CODE_NOT_DELETED, show_alert=True)
+        return
+    await call.answer()
+    await call.message.edit_text(texts.GIFT_CODE_DELETED.format(code=escape(code)))
+
+
+@router.callback_query(F.data == "gc:delno", SuperadminFilter())
+async def keep_code(call: CallbackQuery) -> None:
+    await call.answer()
+    await call.message.edit_text(texts.GIFT_CODE_DELETE_KEPT)

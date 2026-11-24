@@ -1260,8 +1260,20 @@ GIFT_CODES_HEADER = "📋 <b>کدهای هدیه</b>\n\n"
 GIFT_CODE_LINE_FREE = "▫️ <code>{code}</code> — 🟢 استفاده نشده\n"
 GIFT_CODE_LINE_WON = "▫️ <code>{code}</code> — 🎁 {who} → {panel}\n"
 GIFT_CODE_PANEL_PENDING = "پنل انتخاب نشده"
-GIFT_CODE_DELETED = "🗑 کد حذف شد."
-GIFT_CODE_NOT_DELETED = "این کد استفاده شده یا وجود ندارد."
+BTN_GIFT_CODE_DELETE = "🗑 حذف کد"
+BTN_GIFT_CODE_CONFIRM_DELETE = "🗑 بله، حذف شود"
+GIFT_CODES_DELETE_PICK = "🗑 کدام کد حذف شود؟\n🟢 استفاده نشده · 🎁 برنده داشته"
+GIFT_CODE_CONFIRM_DELETE = (
+    "🗑 کد <code>{code}</code> حذف شود؟\n"
+    "بعد از حذف، وارد کردن این کد در ربات «نامعتبر» می‌شود."
+)
+GIFT_CODE_CONFIRM_DELETE_WON = (
+    "🗑 کد <code>{code}</code> حذف شود؟\n"
+    "این کد برنده داشته؛ هدیه‌ی برنده سر جایش می‌ماند و فقط کد از لیست حذف و غیرقابل استفاده می‌شود."
+)
+GIFT_CODE_DELETED = "🗑 کد <code>{code}</code> حذف شد."
+GIFT_CODE_NOT_DELETED = "این کد قبلاً حذف شده یا وجود ندارد."
+GIFT_CODE_DELETE_KEPT = "↩️ کد حذف نشد."
 # Only the winner's name, so it can be posted to the channel as it is.
 FESTIVAL_CODE_WON_NOTIFY = (
     "🏆 <b>برنده‌ی کد هدیه‌ی جشنواره بلک فرایدی</b>\n\n"

@@ -59,6 +59,19 @@ async def _panels(user_id: int, message: Message) -> list[dict] | None:
     return admins
 
 
+async def _owes(user_id: int, message: Message) -> bool:
+    """Whether they owe anything (and are told to settle it first): neither a
+    gift code nor a festival purchase is for someone with an open bill."""
+    owed = open_bills(user_id)
+    if not owed:
+        return False
+    await message.answer(
+        texts.FESTIVAL_CODE_DEBTS_FIRST.format(total=sum(b.amount for b in owed)),
+        reply_markup=keyboards.suspended_kb(),
+    )
+    return True
+
+
 async def _still_live(user_id: int, message: Message) -> bool:
     if festival.is_live():
         return True
@@ -161,6 +174,8 @@ async def ask_code(call: CallbackQuery, state: FSMContext, bot: Bot) -> None:
         return
     if await _panels(user_id, call.message) is None:
         return
+    if await _owes(user_id, call.message):
+        return
     await state.set_state(FestivalCode.code)
     await call.message.answer(texts.FESTIVAL_ASK_CODE, reply_markup=keyboards.cancel_kb())
 
@@ -175,6 +190,11 @@ async def enter_code(message: Message, state: FSMContext, bot: Bot) -> None:
         return
     if not _CODE_RE.match(code):
         await message.answer(texts.FESTIVAL_CODE_INVALID)
+        return
+    # Checked again here: a code must not go to someone who can't have it.
+    if await _owes(user_id, message):
+        await state.clear()
+        await message.answer(texts.BACK_TO_MENU, reply_markup=await menu_kb_for(user_id))
         return
 
     outcome = db.claim_gift_code(code, user_id, festival.started_at())

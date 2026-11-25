@@ -619,6 +619,17 @@ def gift_codes_delete_kb(codes) -> InlineKeyboardMarkup | None:
     return kb.as_markup()
 
 
+def gift_code_condition_kb(kind: str) -> InlineKeyboardMarkup:
+    """The minimum traffic a new code asks for; `kind` is "new" (random) or
+    "custom" (typed next)."""
+    kb = InlineKeyboardBuilder()
+    _b(kb, "BTN_GIFT_CODE_COND_NONE", callback_data=f"gc:cond:{kind}:0")
+    _b(kb, "BTN_GIFT_CODE_COND_200", callback_data=f"gc:cond:{kind}:200")
+    _b(kb, "BTN_GIFT_CODE_COND_OTHER", callback_data=f"gc:cond:{kind}:other")
+    kb.adjust(2, 1)
+    return kb.as_markup()
+
+
 def gift_codes_report_kb(codes, counts: dict) -> InlineKeyboardMarkup | None:
     """One button per code, opening who entered it and how it went."""
     if not codes:

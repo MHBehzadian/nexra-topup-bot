@@ -197,27 +197,47 @@ async def enter_code(message: Message, state: FSMContext, bot: Bot) -> None:
     name = message.from_user.full_name
     menu = await menu_kb_for(user_id)
 
-    async def late(outcome: str, debt: int = 0) -> None:
-        place = db.log_code_attempt(code, user_id, name, outcome, debt)
+    async def late(outcome: str, debt: int = 0, best_gb: float | None = None) -> None:
+        place = db.log_code_attempt(code, user_id, name, outcome, debt, best_gb)
         await message.answer(
             texts.FESTIVAL_CODE_TAKEN.format(place=_ordinal(place)), reply_markup=menu
         )
 
     taken = found["redeemed_by"] is not None and found["redeemed_by"] != user_id
     owed = open_bills(user_id)
-    if owed:
-        # Never to someone with an open bill. If it was gone anyway, that is
-        # what they are told; the report keeps both reasons.
-        debt = sum(b.amount for b in owed)
-        if taken:
-            await late("debt_late", debt)
+    debt = sum(b.amount for b in owed)
+
+    # The code's own condition, never announced: a panel with at least this
+    # much traffic left right now.
+    min_gb = found.get("min_gb") or 0
+    best_gb = None
+    if min_gb:
+        try:
+            admins = await nexra_panel.get_admins(user_id)
+        except Exception:
+            await message.answer(texts.PANEL_UNREACHABLE, reply_markup=menu)
             return
-        db.log_code_attempt(code, user_id, name, "debt", debt)
+        best_gb = max((bytes_to_gb(a.get("traffic")) for a in admins), default=0)
+    unmet = [r for r, failed in (("debt", debt > 0), ("low", best_gb is not None and best_gb < min_gb)) if failed]
+
+    if taken:
+        # Gone anyway, so that is what they are told; the report keeps the rest.
+        await late("+".join(unmet + ["late"]), debt, best_gb)
+        return
+    if unmet:
+        # The code stays for the next person; they hear what they were missing.
+        db.log_code_attempt(code, user_id, name, "+".join(unmet), debt, best_gb)
+        conditions = ""
+        if "debt" in unmet:
+            conditions += texts.FESTIVAL_COND_DEBT.format(total=debt)
+        if "low" in unmet:
+            conditions += texts.FESTIVAL_COND_MIN_GB.format(min_gb=min_gb)
         await message.answer(
-            texts.FESTIVAL_CODE_DEBTS_FIRST.format(total=debt),
-            reply_markup=keyboards.suspended_kb(),
+            texts.FESTIVAL_CODE_UNMET.format(conditions=conditions),
+            reply_markup=keyboards.suspended_kb() if debt else menu,
         )
-        await message.answer(texts.BACK_TO_MENU, reply_markup=menu)
+        if debt:
+            await message.answer(texts.BACK_TO_MENU, reply_markup=menu)
         return
 
     outcome = db.claim_gift_code(code, user_id, festival.started_at())
@@ -225,13 +245,13 @@ async def enter_code(message: Message, state: FSMContext, bot: Bot) -> None:
         await message.answer(texts.FESTIVAL_CODE_INVALID, reply_markup=menu)
         return
     if outcome == "taken":
-        await late("late")
+        await late("late", 0, best_gb)
         return
     if outcome == "already":
         db.log_code_attempt(code, user_id, name, "already")
         await message.answer(texts.FESTIVAL_CODE_ALREADY, reply_markup=menu)
         return
-    db.log_code_attempt(code, user_id, name, "won")
+    db.log_code_attempt(code, user_id, name, "won", 0, best_gb)
 
     won = db.get_gift_code(code)
     if outcome == "mine" and won and won["username"]:
@@ -461,28 +481,69 @@ async def festival_admin(message: Message, state: FSMContext) -> None:
     await message.answer(_admin_text(), reply_markup=keyboards.festival_admin_kb())
 
 
-async def _created(message: Message, code: str) -> None:
+async def _created(message: Message, code: str, min_gb: float) -> None:
+    cond = texts.GIFT_CODE_COND_SUFFIX.format(min_gb=min_gb) if min_gb else ""
     await message.answer(
-        texts.GIFT_CODE_CREATED.format(code=code, gb=festival.GIFT_CODE_GB),
+        texts.GIFT_CODE_CREATED.format(code=code, gb=festival.GIFT_CODE_GB, cond=cond),
         reply_markup=superadmin_kb(message.chat.id),
     )
 
 
-@router.callback_query(F.data == "gc:new", SuperadminFilter())
-async def new_random_code(call: CallbackQuery) -> None:
-    await call.answer()
+async def _make_random(message: Message, user_id: int, min_gb: float) -> None:
     for _ in range(5):
         code = "BF-" + "".join(secrets.choice(_CODE_CHARS) for _ in range(8))
-        if db.create_gift_code(code, festival.GIFT_CODE_GB, call.from_user.id):
-            await _created(call.message, code)
+        if db.create_gift_code(code, festival.GIFT_CODE_GB, user_id, min_gb):
+            await _created(message, code, min_gb)
             return
 
 
-@router.callback_query(F.data == "gc:custom", SuperadminFilter())
-async def ask_custom_code(call: CallbackQuery, state: FSMContext) -> None:
-    await call.answer()
+async def _next_step(message: Message, state: FSMContext, user_id: int, kind: str, min_gb: float) -> None:
+    """Once the condition is known: a random code is made now; for a typed
+    one, its text is asked for."""
+    if kind == "new":
+        await state.clear()
+        await _make_random(message, user_id, min_gb)
+        return
     await state.set_state(GiftCodeAdmin.code)
-    await call.message.answer(texts.ASK_GIFT_CODE, reply_markup=keyboards.cancel_kb())
+    await state.update_data(min_gb=min_gb)
+    await message.answer(texts.ASK_GIFT_CODE, reply_markup=keyboards.cancel_kb())
+
+
+@router.callback_query(F.data.in_({"gc:new", "gc:custom"}), SuperadminFilter())
+async def ask_condition(call: CallbackQuery, state: FSMContext) -> None:
+    await call.answer()
+    await state.clear()
+    kind = call.data.split(":", 1)[1]
+    await call.message.answer(
+        texts.ASK_GIFT_CODE_CONDITION, reply_markup=keyboards.gift_code_condition_kb(kind)
+    )
+
+
+@router.callback_query(F.data.startswith("gc:cond:"), SuperadminFilter())
+async def chose_condition(call: CallbackQuery, state: FSMContext) -> None:
+    _, _, kind, value = call.data.split(":", 3)
+    await call.answer()
+    await call.message.edit_reply_markup(reply_markup=None)
+    if value == "other":
+        await state.set_state(GiftCodeAdmin.min_gb)
+        await state.update_data(kind=kind)
+        await call.message.answer(texts.ASK_GIFT_CODE_MIN_GB, reply_markup=keyboards.cancel_kb())
+        return
+    await _next_step(call.message, state, call.from_user.id, kind, float(value))
+
+
+@router.message(GiftCodeAdmin.min_gb, SuperadminFilter(), ~F.text.in_(ALL_MENU_TEXTS))
+async def typed_min_gb(message: Message, state: FSMContext) -> None:
+    raw = (message.text or "").strip().translate(_FA_DIGITS).replace(",", "")
+    try:
+        min_gb = float(raw)
+    except ValueError:
+        min_gb = 0
+    if min_gb <= 0:
+        await message.answer(texts.INVALID_GIFT_CODE_MIN_GB)
+        return
+    kind = (await state.get_data()).get("kind", "new")
+    await _next_step(message, state, message.from_user.id, kind, min_gb)
 
 
 @router.message(GiftCodeAdmin.code, SuperadminFilter(), ~F.text.in_(ALL_MENU_TEXTS))
@@ -491,11 +552,12 @@ async def save_custom_code(message: Message, state: FSMContext) -> None:
     if not _CODE_RE.match(code):
         await message.answer(texts.GIFT_CODE_INVALID)
         return
+    min_gb = float((await state.get_data()).get("min_gb") or 0)
     await state.clear()
-    if not db.create_gift_code(code, festival.GIFT_CODE_GB, message.from_user.id):
+    if not db.create_gift_code(code, festival.GIFT_CODE_GB, message.from_user.id, min_gb):
         await message.answer(texts.GIFT_CODE_EXISTS, reply_markup=superadmin_kb(message.from_user.id))
         return
-    await _created(message, code)
+    await _created(message, code, min_gb)
 
 
 @router.callback_query(F.data == "gc:list", SuperadminFilter())
@@ -510,6 +572,8 @@ async def list_codes(call: CallbackQuery) -> None:
     for c in codes:
         n = counts.get(c["code"], 0)
         tried = texts.GIFT_CODE_LINE_TRIED.format(count=n) if n else ""
+        if c.get("min_gb"):
+            tried = texts.GIFT_CODE_LINE_COND.format(min_gb=c["min_gb"]) + tried
         if c["redeemed_by"] is None:
             lines.append(texts.GIFT_CODE_LINE_FREE.format(code=escape(c["code"]), tried=tried))
             continue
@@ -543,9 +607,24 @@ async def code_report(call: CallbackQuery) -> None:
         return
     text = texts.GIFT_CODE_REPORT_HEADER.format(code=escape(code), count=len(entries))
     for n, e in enumerate(entries[:_REPORT_MAX], start=1):
-        icon, reason = texts.GIFT_CODE_REASONS.get(e["outcome"], ("▫️", e["outcome"]))
         panel = escape((found or {}).get("username") or texts.GIFT_CODE_PANEL_PENDING)
-        reason = reason.format(debt=e["debt"] or 0, panel=panel)
+        best = (
+            texts.GIFT_CODE_BEST_GB.format(gb=e["best_gb"]) if e.get("best_gb") is not None else "—"
+        )
+        icons, reasons = [], []
+        # "debt_late" is how an entry read before reasons were joined with "+".
+        for part in e["outcome"].replace("_", "+").split("+"):
+            icon, reason = texts.GIFT_CODE_REASONS.get(part, ("▫️", part))
+            icons.append(icon)
+            reasons.append(
+                reason.format(
+                    debt=e["debt"] or 0,
+                    panel=panel,
+                    min_gb=(found or {}).get("min_gb") or 0,
+                    best_gb=best,
+                )
+            )
+        icon, reason = "".join(icons), texts.GIFT_CODE_REASON_JOIN.join(reasons)
         if e["tries"] and e["tries"] > 1:
             reason += texts.GIFT_CODE_REPORT_TRIES.format(tries=e["tries"])
         handle = f"@{e['tg_username']} · " if e.get("tg_username") else ""

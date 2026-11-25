@@ -156,8 +156,9 @@ class FestivalBuy(StatesGroup):
 
 
 class GiftCodeAdmin(StatesGroup):
-    """The superadmin typing a code of their own."""
+    """The superadmin typing a code of their own, or a code's minimum traffic."""
     code = State()
+    min_gb = State()
 
 
 class Announce(StatesGroup):

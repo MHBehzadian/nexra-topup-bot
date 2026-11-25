@@ -1259,7 +1259,27 @@ BTN_GIFT_CODE_LIST = "📋 لیست کدها"
 ASK_GIFT_CODE = "✏️ کد دلخواه را بفرستید (۳ تا ۳۲ حرف انگلیسی، عدد، - یا _):"
 GIFT_CODE_INVALID = "⚠️ کد فقط می‌تواند حرف انگلیسی، عدد، - و _ باشد (۳ تا ۳۲ کاراکتر)."
 GIFT_CODE_EXISTS = "⚠️ این کد قبلاً ساخته شده است."
-GIFT_CODE_CREATED = "✅ کد هدیه ساخته شد ({gb:g} گیگ برای اولین نفر):\n\n<code>{code}</code>"
+GIFT_CODE_CREATED = "✅ کد هدیه ساخته شد ({gb:g} گیگ برای برنده):\n\n<code>{code}</code>{cond}"
+GIFT_CODE_COND_SUFFIX = "\n\n📦 شرط (به کاربر گفته نمی‌شود): حداقل {min_gb:g} گیگ حجم در پنل"
+ASK_GIFT_CODE_CONDITION = (
+    "📦 برای این کد شرط حداقل حجم در پنل بگذارم؟\n\n"
+    "این شرط از قبل به کاربر گفته نمی‌شود؛ فقط اگر کد را بزند، کد هنوز برنده نداشته باشد "
+    "و شرط را نداشته باشد، به او گفته می‌شود. کد هم برای نفر بعدی می‌ماند."
+)
+BTN_GIFT_CODE_COND_NONE = "بدون شرط"
+BTN_GIFT_CODE_COND_200 = "📦 حداقل ۲۰۰ گیگ"
+BTN_GIFT_CODE_COND_OTHER = "✏️ مقدار دیگر"
+ASK_GIFT_CODE_MIN_GB = "📦 حداقل حجم باقی‌مانده در پنل (گیگابایت) را بفرستید:"
+INVALID_GIFT_CODE_MIN_GB = "⚠️ یک عدد بزرگ‌تر از صفر بفرستید (مثلاً 200)."
+GIFT_CODE_LINE_COND = " · 📦≥{min_gb:g}"
+FESTIVAL_CODE_UNMET = (
+    "😕 <b>متأسفانه به شما تعلق نگرفت</b>\n\n"
+    "این کد هنوز برنده‌ای نداشت، اما شرط دریافت هدیه را نداشتید:\n"
+    "{conditions}\n"
+    "کد هنوز برای نفر بعدی فعال است."
+)
+FESTIVAL_COND_DEBT = "💳 صفر بودن فاکتورها (بدهی فعلی: {total:,} تومان)\n"
+FESTIVAL_COND_MIN_GB = "📦 داشتن حداقل {min_gb:g} گیگابایت حجم در پنل\n"
 GIFT_CODES_EMPTY = "📋 هنوز کد هدیه‌ای ساخته نشده است."
 GIFT_CODES_HEADER = "📋 <b>کدهای هدیه</b>\n\n"
 GIFT_CODE_LINE_FREE = "▫️ <code>{code}</code> — 🟢 استفاده نشده{tried}\n"
@@ -1270,13 +1290,16 @@ GIFT_CODE_REPORT_HEADER = "📊 <b>گزارش کد</b> <code>{code}</code>\n👥
 GIFT_CODE_REPORT_EMPTY = "📊 کد <code>{code}</code> را هنوز کسی وارد نکرده است."
 GIFT_CODE_REPORT_LINE = "{n}. {icon} <b>{name}</b> {ident} — {time}\n      {reason}\n"
 GIFT_CODE_REPORT_MORE = "… و {count} نفر دیگر\n"
+# Each reason an entry got (or didn't get) the gift; several are joined.
 GIFT_CODE_REASONS = {
     "won": ("🏆", "برنده شد → پنل {panel}"),
     "late": ("⏱", "دیر رسید؛ کد قبلاً برنده داشت"),
     "debt": ("💳", "بدهی داشت ({debt:,} تومان)"),
-    "debt_late": ("💳⏱", "هم بدهی داشت ({debt:,} تومان) و هم دیر رسید"),
+    "low": ("📦", "حجم پنلش کمتر از {min_gb:g} گیگ بود ({best_gb})"),
     "already": ("🔁", "قبلاً کد هدیه‌ی دیگری برده بود"),
 }
+GIFT_CODE_REASON_JOIN = "؛ "
+GIFT_CODE_BEST_GB = "بیشترین: {gb:.0f} گیگ"
 GIFT_CODE_REPORT_TRIES = " · {tries} بار زد"
 GIFT_CODE_PANEL_PENDING = "پنل انتخاب نشده"
 BTN_GIFT_CODE_DELETE = "🗑 حذف کد"

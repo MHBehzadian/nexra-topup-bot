@@ -287,6 +287,11 @@ def init_db() -> None:
         # A won code taken down by the superadmin: hidden and no longer
         # enterable, but kept, since it is what stops its winner winning twice.
         _ensure_column(conn, "gift_codes", "deleted", "INTEGER NOT NULL DEFAULT 0")
+        # A condition on a code: the person entering it must have a panel with
+        # at least this much traffic left. 0 for none.
+        _ensure_column(conn, "gift_codes", "min_gb", "REAL NOT NULL DEFAULT 0")
+        # The most traffic left on any of their panels when they entered it.
+        _ensure_column(conn, "gift_code_log", "best_gb", "REAL")
 
         # Codes entered before the log existed: their winners and late arrivals.
         conn.execute(
@@ -1231,13 +1236,14 @@ def festival_totals(since: str) -> dict:
     }
 
 
-def create_gift_code(code: str, gb: float, created_by: int) -> bool:
+def create_gift_code(code: str, gb: float, created_by: int, min_gb: float = 0) -> bool:
     """False if a code with this name already exists."""
     try:
         with _connect() as conn:
             conn.execute(
-                "INSERT INTO gift_codes (code, gb, created_at, created_by) VALUES (?, ?, ?, ?)",
-                (code, gb, datetime.now(timezone.utc).isoformat(), created_by),
+                "INSERT INTO gift_codes (code, gb, created_at, created_by, min_gb) "
+                "VALUES (?, ?, ?, ?, ?)",
+                (code, gb, datetime.now(timezone.utc).isoformat(), created_by, min_gb),
             )
         return True
     except sqlite3.IntegrityError:
@@ -1334,30 +1340,38 @@ def set_gift_code_panel(code: str, username: str | None) -> bool:
 
 
 def log_code_attempt(
-    code: str, telegram_id: int, name: str | None, outcome: str, debt: int = 0
+    code: str,
+    telegram_id: int,
+    name: str | None,
+    outcome: str,
+    debt: int = 0,
+    best_gb: float | None = None,
 ) -> int:
     """Note that this person entered this code, with how it went, and return
     where they came among everyone who entered it (1 for the first). Entering
     it again keeps their place and updates the outcome — except a win, which
     nothing after it replaces.
 
-    outcome: "won", "late" (someone had it already), "debt" (had unpaid bills),
-    "debt_late" (both), "already" (had won another code).
+    outcome: "won", "already" (had won another code), or the reasons it was
+    refused joined with "+": "late" (someone had it already), "debt" (unpaid
+    bills), "low" (no panel with the code's minimum traffic left).
     """
     now = datetime.now(timezone.utc).isoformat()
     with _connect() as conn:
         conn.execute(
             """
-            INSERT INTO gift_code_log (code, telegram_id, name, first_at, last_at, outcome, debt, tries)
-            VALUES (?, ?, ?, ?, ?, ?, ?, 1)
+            INSERT INTO gift_code_log
+                (code, telegram_id, name, first_at, last_at, outcome, debt, tries, best_gb)
+            VALUES (?, ?, ?, ?, ?, ?, ?, 1, ?)
             ON CONFLICT(code, telegram_id) DO UPDATE SET
                 name = COALESCE(excluded.name, name),
                 last_at = excluded.last_at,
                 outcome = CASE WHEN outcome = 'won' THEN outcome ELSE excluded.outcome END,
                 debt = excluded.debt,
+                best_gb = COALESCE(excluded.best_gb, best_gb),
                 tries = tries + 1
             """,
-            (code, telegram_id, name, now, now, outcome, debt),
+            (code, telegram_id, name, now, now, outcome, debt, best_gb),
         )
         row = conn.execute(
             """

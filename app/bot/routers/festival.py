@@ -220,13 +220,13 @@ async def enter_code(message: Message, state: FSMContext, bot: Bot) -> None:
         best_gb = max((bytes_to_gb(a.get("traffic")) for a in admins), default=0)
     unmet = [r for r, failed in (("debt", debt > 0), ("low", best_gb is not None and best_gb < min_gb)) if failed]
 
-    if taken:
-        # Gone anyway, so that is what they are told; the report keeps the rest.
-        await late("+".join(unmet + ["late"]), debt, best_gb)
-        return
     if unmet:
-        # The code stays for the next person; they hear what they were missing.
-        db.log_code_attempt(code, user_id, name, "+".join(unmet), debt, best_gb)
+        # What they are missing comes first, and alone: whether someone already
+        # has the code is only told to those who could have had it, so settling
+        # the bill is worth it either way. The report still records "late".
+        db.log_code_attempt(
+            code, user_id, name, "+".join(unmet + (["late"] if taken else [])), debt, best_gb
+        )
         conditions = ""
         if "debt" in unmet:
             conditions += texts.FESTIVAL_COND_DEBT.format(total=debt)
@@ -238,6 +238,9 @@ async def enter_code(message: Message, state: FSMContext, bot: Bot) -> None:
         )
         if debt:
             await message.answer(texts.BACK_TO_MENU, reply_markup=menu)
+        return
+    if taken:
+        await late("late", 0, best_gb)
         return
 
     outcome = db.claim_gift_code(code, user_id, festival.started_at())

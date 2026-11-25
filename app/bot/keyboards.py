@@ -93,8 +93,10 @@ def superadmin_menu_kb() -> ReplyKeyboardMarkup:
         "BTN_SEC_FINANCE",
         "BTN_SEC_USERS",
         "BTN_TUTORIALS",
+        "BTN_SEC_SALES_BOTS",
+        "BTN_SEC_TUNNELS",
         "BTN_SEC_SETTINGS",
-        layout=(1, 2, 2, 1),
+        layout=(1, 2, 2, 2, 1),
     )
 
 
@@ -159,7 +161,42 @@ def settings_section_kb() -> ReplyKeyboardMarkup:
     )
 
 
+def sales_bots_section_kb() -> ReplyKeyboardMarkup:
+    return _reply_kb(
+        "BTN_NEW_SALES_BOT",
+        "BTN_SALES_BOTS",
+        "BTN_BOTS_HEALTH",
+        "BTN_BOTS_BACKUP",
+        "BTN_BOTS_UPDATE",
+        "BTN_BOTS_REPAIR",
+        "BTN_BOTS_NEXRA_URL",
+        "BTN_BOTS_PRODUCTS",
+        "BTN_SERVERS",
+        "BTN_BOTS_MIGRATE",
+        "BTN_BACK",
+        layout=(1, 2, 2, 2, 2, 1, 1),
+    )
+
+
+def tunnels_section_kb() -> ReplyKeyboardMarkup:
+    return _reply_kb(
+        "BTN_TM_STATUS",
+        "BTN_TM_DOMAINS",
+        "BTN_TM_LINKS",
+        "BTN_TM_CHECK",
+        "BTN_TM_SCAN",
+        "BTN_TM_BACKUP",
+        "BTN_TM_OBSERVE",
+        "BTN_BACKHAUL",
+        "BTN_TM_CONNECT",
+        "BTN_BACK",
+        layout=(1, 2, 2, 2, 2, 1),
+    )
+
+
 SECTION_KEYBOARDS = {
+    "sales_bots": sales_bots_section_kb,
+    "tunnels": tunnels_section_kb,
     "panels": panels_section_kb,
     "finance": finance_section_kb,
     "users": users_section_kb,

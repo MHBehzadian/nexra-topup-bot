@@ -135,3 +135,22 @@ class AdjustTraffic(StatesGroup):
     """The superadmin adding traffic to a panel or taking it back."""
     username = State()
     amount = State()
+
+
+class AddServer(StatesGroup):
+    address = State()
+    secret = State()
+
+
+class NewSalesBot(StatesGroup):
+    token = State()
+    admin = State()
+
+
+class BotsNexraUrl(StatesGroup):
+    url = State()
+
+
+class ConnectTunnelManager(StatesGroup):
+    url = State()
+    key = State()

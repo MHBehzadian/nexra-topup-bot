@@ -199,6 +199,22 @@ def init_db() -> None:
             """
         )
 
+        # Servers the bot manages over SSH: sales bots are installed on them,
+        # Backhaul monitors are read from them.
+        conn.execute(
+            """
+            CREATE TABLE IF NOT EXISTS servers (
+                id INTEGER PRIMARY KEY AUTOINCREMENT,
+                name TEXT NOT NULL,
+                host TEXT NOT NULL,
+                port INTEGER NOT NULL DEFAULT 22,
+                username TEXT NOT NULL DEFAULT 'root',
+                secret TEXT NOT NULL,
+                created_at TEXT NOT NULL
+            )
+            """
+        )
+
         # Columns added after the tables above first shipped. These must run last,
         # once every CREATE TABLE has been applied, so a fresh database has
         # something to alter.
@@ -1094,3 +1110,30 @@ def get_tutorial(tutorial_id: int) -> Tutorial | None:
             "SELECT * FROM tutorials WHERE id = ?", (tutorial_id,)
         ).fetchone()
         return Tutorial(**dict(row)) if row else None
+
+
+# ------------------------------------------------------------------ servers
+
+
+def add_server(name: str, host: str, port: int, username: str, secret: str) -> int:
+    with _connect() as conn:
+        cur = conn.execute(
+            "INSERT INTO servers (name, host, port, username, secret, created_at) VALUES (?, ?, ?, ?, ?, ?)",
+            (name, host, port, username, secret, datetime.now(timezone.utc).isoformat()),
+        )
+        return int(cur.lastrowid)
+
+
+def list_servers() -> list[sqlite3.Row]:
+    with _connect() as conn:
+        return conn.execute("SELECT * FROM servers ORDER BY id").fetchall()
+
+
+def get_server(server_id: int) -> sqlite3.Row | None:
+    with _connect() as conn:
+        return conn.execute("SELECT * FROM servers WHERE id = ?", (server_id,)).fetchone()
+
+
+def delete_server(server_id: int) -> None:
+    with _connect() as conn:
+        conn.execute("DELETE FROM servers WHERE id = ?", (server_id,))

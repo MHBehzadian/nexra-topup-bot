@@ -57,6 +57,8 @@ _SECTIONS = {
     "BTN_SEC_USERS": ("SECTION_USERS", "users"),
     "BTN_SEC_SETTINGS": ("SECTION_SETTINGS", "settings"),
     "BTN_TUTORIALS": ("SECTION_TUTORIALS", "tutorials"),
+    "BTN_SEC_SALES_BOTS": ("SECTION_SALES_BOTS", "sales_bots"),
+    "BTN_SEC_TUNNELS": ("SECTION_TUNNELS", "tunnels"),
 }
 
 

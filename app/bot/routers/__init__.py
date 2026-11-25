@@ -8,6 +8,8 @@ from .traffic import router as traffic_router
 from .partnership import router as partnership_router
 from .tutorials import router as tutorials_router
 from .approval import router as approval_router
+from .sales_bots import router as sales_bots_router
+from .tunnels import router as tunnels_router
 
 all_routers = [
     start_router,
@@ -20,4 +22,6 @@ all_routers = [
     partnership_router,
     tutorials_router,
     approval_router,
+    sales_bots_router,
+    tunnels_router,
 ]

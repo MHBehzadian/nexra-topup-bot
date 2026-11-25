@@ -4,3 +4,5 @@ pydantic-settings==2.14.2
 # Ships the IANA timezone database: the slim base image has none, and weekly
 # billing runs on Asia/Tehran local time.
 tzdata==2025.2
+# SSH to the servers sales bots are installed on (and Backhaul monitors read from)
+asyncssh==2.21.1

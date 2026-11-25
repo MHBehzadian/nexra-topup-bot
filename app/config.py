@@ -42,6 +42,19 @@ class Settings(BaseSettings):
     management_host: str = "0.0.0.0"
     management_api_key: str = ""
 
+    # Sales bots (nexra-mirzabot) installed from this bot over SSH.
+    nexrabot_install_url: str = "https://raw.githubusercontent.com/MHBehzadian/nexra-mirzabot/main/install.sh"
+    # "latest", or a release such as v6.0.12 (a pre-release works too)
+    nexrabot_release: str = "latest"
+    # The secret code that gates panel management in every new sales bot.
+    # Empty: each new bot gets a random one, shown when it is made.
+    nexra_secret_code: str = ""
+    # Nexra Panel superadmin login, so a new sales bot is connected to the
+    # panel (and given to its admin) by itself. Not needed when the panel runs
+    # on the same server as the bot: install.sh finds it there.
+    nexra_panel_owner_username: str = ""
+    nexra_panel_owner_password: str = ""
+
     @property
     def management_key(self) -> str:
         return self.management_api_key or self.nexra_panel_bot_api_key
